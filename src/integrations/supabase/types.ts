@@ -332,6 +332,7 @@ export type Database = {
           author_id: string | null
           category: string | null
           content: string
+          content_html: string | null
           created_at: string
           excerpt: string | null
           id: string
@@ -348,6 +349,7 @@ export type Database = {
           author_id?: string | null
           category?: string | null
           content: string
+          content_html?: string | null
           created_at?: string
           excerpt?: string | null
           id?: string
@@ -364,6 +366,7 @@ export type Database = {
           author_id?: string | null
           category?: string | null
           content?: string
+          content_html?: string | null
           created_at?: string
           excerpt?: string | null
           id?: string
@@ -561,6 +564,7 @@ export type Database = {
           description: string | null
           duration: string | null
           id: string
+          is_external: boolean | null
           is_featured: boolean | null
           is_published: boolean | null
           likes_count: number | null
@@ -568,6 +572,7 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           updated_at: string
+          video_file_url: string | null
           video_url: string
           views: number | null
         }
@@ -578,6 +583,7 @@ export type Database = {
           description?: string | null
           duration?: string | null
           id?: string
+          is_external?: boolean | null
           is_featured?: boolean | null
           is_published?: boolean | null
           likes_count?: number | null
@@ -585,6 +591,7 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           updated_at?: string
+          video_file_url?: string | null
           video_url: string
           views?: number | null
         }
@@ -595,6 +602,7 @@ export type Database = {
           description?: string | null
           duration?: string | null
           id?: string
+          is_external?: boolean | null
           is_featured?: boolean | null
           is_published?: boolean | null
           likes_count?: number | null
@@ -602,6 +610,7 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
+          video_file_url?: string | null
           video_url?: string
           views?: number | null
         }
