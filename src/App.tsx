@@ -13,6 +13,7 @@ import Giveaways from "./pages/Giveaways";
 import Events from "./pages/Events";
 import GuessTheWin from "./pages/GuessTheWin";
 import Leaderboard from "./pages/Leaderboard";
+import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -21,6 +22,8 @@ import AdminBonuses from "./pages/admin/AdminBonuses";
 import AdminGiveaways from "./pages/admin/AdminGiveaways";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
+import AdminNews from "./pages/admin/AdminNews";
+import AdminEvents from "./pages/admin/AdminEvents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,10 +36,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* Auth Route (No Layout) */}
             <Route path="/auth" element={<Auth />} />
 
-            {/* Main Layout Routes */}
             <Route element={<MainLayout />}>
               <Route path="/" element={<Index />} />
               <Route path="/videos" element={<Videos />} />
@@ -46,13 +47,15 @@ const App = () => (
               <Route path="/events" element={<Events />} />
               <Route path="/guess-the-win" element={<GuessTheWin />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/profile" element={<Profile />} />
               
-              {/* Admin Routes */}
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="videos" element={<AdminVideos />} />
                 <Route path="bonuses" element={<AdminBonuses />} />
                 <Route path="giveaways" element={<AdminGiveaways />} />
+                <Route path="news" element={<AdminNews />} />
+                <Route path="events" element={<AdminEvents />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="audit" element={<AdminAuditLog />} />
               </Route>
