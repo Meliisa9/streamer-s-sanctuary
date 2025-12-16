@@ -18,13 +18,17 @@ export interface SiteSettings {
   nav_events_visible: boolean;
   nav_gtw_visible: boolean;
   nav_leaderboard_visible: boolean;
-  // Homepage stats
   stat_community_value: string;
   stat_community_label: string;
   stat_wins_value: string;
   stat_wins_label: string;
   stat_giveaways_value: string;
   stat_giveaways_label: string;
+  footer_copyright: string;
+  social_twitter: string;
+  social_youtube: string;
+  social_instagram: string;
+  social_discord: string;
 }
 
 const defaultSettings: SiteSettings = {
@@ -50,6 +54,11 @@ const defaultSettings: SiteSettings = {
   stat_wins_label: "Total Wins Streamed",
   stat_giveaways_value: "500+",
   stat_giveaways_label: "Giveaways Hosted",
+  footer_copyright: "",
+  social_twitter: "#",
+  social_youtube: "#",
+  social_instagram: "#",
+  social_discord: "#",
 };
 
 interface SiteSettingsContextType {
@@ -66,10 +75,7 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("key, value");
-
+      const { data, error } = await supabase.from("site_settings").select("key, value");
       if (error) throw error;
 
       const loadedSettings: SiteSettings = { ...defaultSettings };
@@ -86,18 +92,11 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
       });
 
       setSettings(loadedSettings);
-
-      // Update document title
-      if (loadedSettings.site_title) {
-        document.title = loadedSettings.site_title;
-      }
-
-      // Update favicon
+      if (loadedSettings.site_title) document.title = loadedSettings.site_title;
       if (loadedSettings.favicon_url) {
-        const existingFavicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-        if (existingFavicon) {
-          existingFavicon.href = loadedSettings.favicon_url;
-        } else {
+        const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+        if (favicon) favicon.href = loadedSettings.favicon_url;
+        else {
           const link = document.createElement("link");
           link.rel = "icon";
           link.href = loadedSettings.favicon_url;
@@ -113,20 +112,11 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchSettings();
-
-    // Subscribe to changes
     const channel = supabase
       .channel("site_settings_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "site_settings" },
-        () => fetchSettings()
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "site_settings" }, () => fetchSettings())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   return (
@@ -138,8 +128,6 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
 
 export function useSiteSettings() {
   const context = useContext(SiteSettingsContext);
-  if (!context) {
-    throw new Error("useSiteSettings must be used within a SiteSettingsProvider");
-  }
+  if (!context) throw new Error("useSiteSettings must be used within a SiteSettingsProvider");
   return context;
 }

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Search, Image, Film, Upload, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -34,11 +34,14 @@ export default function AdminNews() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
     excerpt: "",
     content: "",
+    content_html: "",
     category: "Updates",
     image_url: "",
     is_published: true,
@@ -109,6 +112,7 @@ export default function AdminNews() {
       slug: "",
       excerpt: "",
       content: "",
+      content_html: "",
       category: "Updates",
       image_url: "",
       is_published: true,
@@ -124,6 +128,7 @@ export default function AdminNews() {
       slug: article.slug,
       excerpt: article.excerpt || "",
       content: article.content,
+      content_html: article.content_html || "",
       category: article.category || "Updates",
       image_url: article.image_url || "",
       is_published: article.is_published ?? true,
@@ -148,6 +153,74 @@ export default function AdminNews() {
       .replace(/(^-|-$)/g, "");
   };
 
+  const uploadMedia = async (file: File, type: "image" | "video") => {
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `article-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("media")
+        .upload(fileName, file, { upsert: true });
+      
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName);
+      
+      return publicUrl;
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+      return null;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const insertMediaAtCursor = async (type: "image" | "video" | "gif") => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = type === "video" ? "video/*" : "image/*";
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+
+      const url = await uploadMedia(file, type === "video" ? "video" : "image");
+      if (!url) return;
+
+      let mediaHtml = "";
+      if (type === "video") {
+        mediaHtml = `\n<video controls class="w-full rounded-lg my-4"><source src="${url}" type="${file.type}"></video>\n`;
+      } else {
+        mediaHtml = `\n<img src="${url}" alt="Article image" class="w-full rounded-lg my-4" />\n`;
+      }
+
+      // Insert at cursor position in content
+      const textarea = contentRef.current;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newContent = formData.content.substring(0, start) + mediaHtml + formData.content.substring(end);
+        const newContentHtml = formData.content_html + mediaHtml;
+        setFormData({ 
+          ...formData, 
+          content: newContent,
+          content_html: newContentHtml 
+        });
+      } else {
+        setFormData({ 
+          ...formData, 
+          content: formData.content + mediaHtml,
+          content_html: formData.content_html + mediaHtml 
+        });
+      }
+
+      toast({ title: `${type === "video" ? "Video" : "Image"} uploaded and inserted` });
+    };
+
+    input.click();
+  };
+
   const filteredArticles = articles?.filter(
     (article) =>
       article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -168,7 +241,7 @@ export default function AdminNews() {
               Add Article
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingArticle ? "Edit Article" : "Add New Article"}</DialogTitle>
             </DialogHeader>
@@ -211,7 +284,7 @@ export default function AdminNews() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Image URL</Label>
+                  <Label>Featured Image URL</Label>
                   <Input
                     value={formData.image_url}
                     onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
@@ -227,13 +300,60 @@ export default function AdminNews() {
                   rows={2}
                 />
               </div>
+              
+              {/* Media Upload Buttons */}
               <div className="space-y-2">
-                <Label>Content</Label>
+                <Label>Insert Media</Label>
+                <div className="flex gap-2 flex-wrap">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => insertMediaAtCursor("image")}
+                    disabled={isUploading}
+                    className="gap-2"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Image className="w-4 h-4" />}
+                    Upload Image
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => insertMediaAtCursor("gif")}
+                    disabled={isUploading}
+                    className="gap-2"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Image className="w-4 h-4" />}
+                    Upload GIF
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => insertMediaAtCursor("video")}
+                    disabled={isUploading}
+                    className="gap-2"
+                  >
+                    {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
+                    Upload Video
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Click a button to upload and insert media at the cursor position in the content below.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Content (supports HTML for embedded media)</Label>
                 <Textarea
+                  ref={contentRef}
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  rows={8}
+                  rows={12}
                   required
+                  placeholder="Write your article content here. HTML tags for images and videos will be rendered.&#10;&#10;Example embedded image:&#10;<img src='https://...' alt='description' class='w-full rounded-lg my-4' />&#10;&#10;Example embedded video:&#10;<video controls class='w-full rounded-lg my-4'><source src='https://...' type='video/mp4'></video>"
+                  className="font-mono text-sm"
                 />
               </div>
               <div className="flex gap-6">
