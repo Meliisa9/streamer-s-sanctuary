@@ -1,0 +1,47 @@
+import { useState, useEffect } from "react";
+import { Outlet } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sidebar } from "./Sidebar";
+import { Footer } from "./Footer";
+
+export function MainLayout() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Listen for sidebar collapse state changes
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const sidebar = document.querySelector("aside");
+      if (sidebar) {
+        setSidebarCollapsed(sidebar.clientWidth < 100);
+      }
+    };
+
+    const observer = new ResizeObserver(checkSidebarState);
+    const sidebar = document.querySelector("aside");
+    if (sidebar) {
+      observer.observe(sidebar);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div className="min-h-screen flex">
+      <Sidebar />
+      <motion.main
+        className="flex-1 flex flex-col min-h-screen"
+        animate={{
+          marginLeft: sidebarCollapsed ? 80 : 260,
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+      >
+        <div className="flex-1">
+          <AnimatePresence mode="wait">
+            <Outlet />
+          </AnimatePresence>
+        </div>
+        <Footer />
+      </motion.main>
+    </div>
+  );
+}
