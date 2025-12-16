@@ -80,25 +80,21 @@ function GuessTheWin() {
     mutationFn: async (amount: number) => {
       if (!user || !currentSession) throw new Error("Not authenticated or no active session");
       
+      // Users cannot update their guess once submitted
       if (userGuess) {
-        // Update existing guess
-        const { error } = await supabase
-          .from("gtw_guesses")
-          .update({ guess_amount: amount })
-          .eq("id", userGuess.id);
-        if (error) throw error;
-      } else {
-        // Insert new guess
-        const { error } = await supabase
-          .from("gtw_guesses")
-          .insert([{ session_id: currentSession.id, user_id: user.id, guess_amount: amount }]);
-        if (error) throw error;
+        throw new Error("You have already submitted a guess. Guesses cannot be changed.");
       }
+      
+      // Insert new guess
+      const { error } = await supabase
+        .from("gtw_guesses")
+        .insert([{ session_id: currentSession.id, user_id: user.id, guess_amount: amount }]);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-gtw-guess"] });
       queryClient.invalidateQueries({ queryKey: ["gtw-entry-count"] });
-      toast({ title: userGuess ? "Guess updated!" : "Guess submitted!" });
+      toast({ title: "Guess submitted! Good luck!" });
       setGuessAmount("");
     },
     onError: (error) => {
@@ -120,6 +116,7 @@ function GuessTheWin() {
   };
 
   const isLocked = currentSession?.status === "locked" || currentSession?.status === "ended";
+  const hasSubmittedGuess = !!userGuess;
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -186,43 +183,52 @@ function GuessTheWin() {
                   <label className="text-sm font-medium mb-2 block">
                     Your Guess (Total Winnings in $)
                   </label>
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                      <input
-                        type="number"
-                        value={guessAmount}
-                        onChange={(e) => setGuessAmount(e.target.value)}
-                        disabled={isLocked || currentSession.status === "upcoming"}
-                        placeholder={userGuess ? `Current: $${userGuess.guess_amount}` : "Enter your guess..."}
-                        className="w-full pl-8 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
+                  {hasSubmittedGuess ? (
+                    <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                      <div className="flex items-center gap-2 text-green-500 mb-2">
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span className="font-semibold">Guess Submitted!</span>
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">
+                        ${Number(userGuess.guess_amount).toLocaleString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Your guess is locked and cannot be changed. Good luck!
+                      </p>
                     </div>
-                    <Button
-                      variant="gold"
-                      size="lg"
-                      disabled={isLocked || currentSession.status === "upcoming" || !guessAmount || submitGuessMutation.isPending}
-                      onClick={handleSubmitGuess}
-                      className="gap-2"
-                    >
-                      {isLocked ? (
-                        <>
-                          <Lock className="w-4 h-4" />
-                          Locked
-                        </>
-                      ) : (
-                        <>
-                          <Target className="w-4 h-4" />
-                          {userGuess ? "Update" : "Submit"}
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                  {userGuess && (
-                    <p className="mt-3 text-sm text-muted-foreground flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      Your guess: ${Number(userGuess.guess_amount).toLocaleString()}
-                    </p>
+                  ) : (
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                        <input
+                          type="number"
+                          value={guessAmount}
+                          onChange={(e) => setGuessAmount(e.target.value)}
+                          disabled={isLocked || currentSession.status === "upcoming"}
+                          placeholder="Enter your guess..."
+                          className="w-full pl-8 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <Button
+                        variant="gold"
+                        size="lg"
+                        disabled={isLocked || currentSession.status === "upcoming" || !guessAmount || submitGuessMutation.isPending}
+                        onClick={handleSubmitGuess}
+                        className="gap-2"
+                      >
+                        {isLocked ? (
+                          <>
+                            <Lock className="w-4 h-4" />
+                            Locked
+                          </>
+                        ) : (
+                          <>
+                            <Target className="w-4 h-4" />
+                            Submit Guess
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
 

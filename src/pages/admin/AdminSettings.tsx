@@ -16,7 +16,7 @@ interface SiteSettings {
   twitch_url: string;
   twitch_follow_url: string;
   is_live: boolean;
-  live_viewer_count: string;
+  live_platform: "twitch" | "kick";
   nav_videos_visible: boolean;
   nav_bonuses_visible: boolean;
   nav_news_visible: boolean;
@@ -41,7 +41,7 @@ const defaultSettings: SiteSettings = {
   twitch_url: "https://twitch.tv",
   twitch_follow_url: "https://twitch.tv",
   is_live: false,
-  live_viewer_count: "0",
+  live_platform: "twitch",
   nav_videos_visible: true,
   nav_bonuses_visible: true,
   nav_news_visible: true,
@@ -289,28 +289,41 @@ export default function AdminSettings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Currently Live</p>
+                <p className="font-medium">Live on Twitch</p>
                 <p className="text-sm text-muted-foreground">
-                  {settings.is_live ? 'Shows "Live on Twitch"' : 'Shows "Offline"'}
+                  Show "Live on Twitch" badge
                 </p>
               </div>
               <Switch
-                checked={settings.is_live}
-                onCheckedChange={(checked) => setSettings({ ...settings, is_live: checked })}
+                checked={settings.is_live && settings.live_platform === "twitch"}
+                onCheckedChange={(checked) => setSettings({ 
+                  ...settings, 
+                  is_live: checked, 
+                  live_platform: checked ? "twitch" : settings.live_platform 
+                })}
               />
             </div>
-            {settings.is_live && (
+            <div className="flex items-center justify-between">
               <div>
-                <label className="text-sm font-medium">Viewer Count (optional)</label>
-                <input
-                  type="text"
-                  value={settings.live_viewer_count}
-                  onChange={(e) => setSettings({ ...settings, live_viewer_count: e.target.value })}
-                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                  placeholder="e.g. 12.5K"
-                />
+                <p className="font-medium">Live on Kick</p>
+                <p className="text-sm text-muted-foreground">
+                  Show "Live on Kick" badge (green)
+                </p>
               </div>
-            )}
+              <Switch
+                checked={settings.is_live && settings.live_platform === "kick"}
+                onCheckedChange={(checked) => setSettings({ 
+                  ...settings, 
+                  is_live: checked, 
+                  live_platform: checked ? "kick" : settings.live_platform 
+                })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {settings.is_live 
+                ? `Currently showing: Live on ${settings.live_platform === "kick" ? "Kick" : "Twitch"}` 
+                : "Currently showing: Offline"}
+            </p>
           </div>
         </motion.div>
 
