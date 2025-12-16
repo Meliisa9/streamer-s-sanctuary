@@ -157,13 +157,13 @@ function Auth() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       {/* Background Effects */}
       <div className="fixed inset-0 bg-hero-pattern pointer-events-none" />
-      <div className="fixed top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px]" />
-      <div className="fixed bottom-1/4 right-1/4 w-72 h-72 bg-purple-neon/10 rounded-full blur-[100px]" />
+      <div className="fixed top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed bottom-1/4 right-1/4 w-72 h-72 bg-purple-neon/10 rounded-full blur-[100px] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-md"
+        className="relative z-50 w-full max-w-md pointer-events-auto"
       >
         {/* Back Button */}
         <button
@@ -174,7 +174,7 @@ function Auth() {
           Back to Home
         </button>
 
-        <div className="glass rounded-2xl p-8 neon-border">
+        <div className="glass rounded-2xl p-8 neon-border relative">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center mb-4">
