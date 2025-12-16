@@ -1,10 +1,19 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Shield, User as UserIcon, Loader2, Plus, Pencil, Save, X, Coins } from "lucide-react";
+import { Search, Shield, User as UserIcon, Loader2, Plus, Pencil, Save, X, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface UserProfile {
   id: string;
@@ -46,6 +55,7 @@ export default function AdminUsers() {
     display_name: "",
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
@@ -162,21 +172,52 @@ export default function AdminUsers() {
 
   const createManualUser = async () => {
     if (!isAdmin) return;
-    setIsSaving(true);
+    
+    if (!newUserForm.email || !newUserForm.password) {
+      toast({ title: "Email and password are required", variant: "destructive" });
+      return;
+    }
+
+    if (newUserForm.password.length < 6) {
+      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+
+    setIsCreatingUser(true);
 
     try {
-      // Note: Creating users requires admin/service role access
-      // This creates a profile entry - the user would need to set up auth separately
-      toast({ 
-        title: "Note", 
-        description: "Manual user creation requires backend service role. Users should sign up through the auth page.",
-        variant: "destructive"
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+
+      if (!token) {
+        throw new Error("No authentication token available");
+      }
+
+      const response = await supabase.functions.invoke("create-user", {
+        body: {
+          email: newUserForm.email,
+          password: newUserForm.password,
+          username: newUserForm.username,
+          display_name: newUserForm.display_name,
+        },
       });
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to create user");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast({ title: "User created successfully" });
       setShowAddModal(false);
+      setNewUserForm({ email: "", password: "", username: "", display_name: "" });
+      fetchUsers();
+    } catch (error: any) {
+      toast({ title: "Error creating user", description: error.message, variant: "destructive" });
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -208,6 +249,59 @@ export default function AdminUsers() {
               className="pl-9 pr-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary w-64"
             />
           </div>
+          <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="w-4 h-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={newUserForm.email}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password *</Label>
+                  <Input
+                    type="password"
+                    value={newUserForm.password}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
+                    placeholder="Minimum 6 characters"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Username</Label>
+                  <Input
+                    value={newUserForm.username}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })}
+                    placeholder="username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Display Name</Label>
+                  <Input
+                    value={newUserForm.display_name}
+                    onChange={(e) => setNewUserForm({ ...newUserForm, display_name: e.target.value })}
+                    placeholder="Display Name"
+                  />
+                </div>
+                <Button onClick={createManualUser} disabled={isCreatingUser} className="w-full gap-2">
+                  {isCreatingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Create User
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

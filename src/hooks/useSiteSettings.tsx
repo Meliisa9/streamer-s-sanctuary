@@ -10,7 +10,7 @@ export interface SiteSettings {
   twitch_url: string;
   twitch_follow_url: string;
   is_live: boolean;
-  live_viewer_count: string;
+  live_platform: "twitch" | "kick";
   nav_videos_visible: boolean;
   nav_bonuses_visible: boolean;
   nav_news_visible: boolean;
@@ -36,7 +36,7 @@ const defaultSettings: SiteSettings = {
   twitch_url: "https://twitch.tv",
   twitch_follow_url: "https://twitch.tv",
   is_live: false,
-  live_viewer_count: "0",
+  live_platform: "twitch",
   nav_videos_visible: true,
   nav_bonuses_visible: true,
   nav_news_visible: true,

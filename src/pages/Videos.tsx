@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Eye, Heart, Filter, Search, Clock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Video = Tables<"videos">;
@@ -12,6 +13,7 @@ type Category = Tables<"video_categories">;
 export default function Videos() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
   const { data: categories } = useQuery({
     queryKey: ["video-categories"],
@@ -61,8 +63,29 @@ export default function Videos() {
     return "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=800&h=450&fit=crop";
   };
 
-  const openVideo = (url: string) => {
-    window.open(url, "_blank");
+  const handleVideoClick = (video: Video) => {
+    // If it's an external video (YouTube etc) and NOT a local file, check if we should play in modal or redirect
+    const isLocalVideo = video.video_file_url && !video.is_external;
+    const isYouTube = extractYouTubeId(video.video_url);
+    
+    if (isLocalVideo) {
+      // Play local video in modal
+      setSelectedVideo(video);
+    } else if (isYouTube) {
+      // Play YouTube in modal
+      setSelectedVideo(video);
+    } else {
+      // External non-YouTube link - open in new tab
+      window.open(video.video_url, "_blank");
+    }
+  };
+
+  const getVideoUrl = (video: Video) => {
+    // Prefer local file if available
+    if (video.video_file_url && !video.is_external) {
+      return video.video_file_url;
+    }
+    return video.video_url;
   };
 
   return (
@@ -147,7 +170,7 @@ export default function Videos() {
                   {featuredVideos.slice(0, 2).map((video) => (
                     <div
                       key={video.id}
-                      onClick={() => openVideo(video.video_url)}
+                      onClick={() => handleVideoClick(video)}
                       className="glass rounded-2xl overflow-hidden card-hover neon-border group cursor-pointer"
                     >
                       <div className="relative aspect-video">
@@ -172,6 +195,11 @@ export default function Videos() {
                             {video.duration && (
                               <span className="px-2 py-1 bg-background/80 text-xs rounded">
                                 {video.duration}
+                              </span>
+                            )}
+                            {!video.is_external && video.video_file_url && (
+                              <span className="px-2 py-1 bg-green-500/80 text-white text-xs rounded">
+                                HD
                               </span>
                             )}
                           </div>
@@ -219,7 +247,7 @@ export default function Videos() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 * index }}
-                      onClick={() => openVideo(video.video_url)}
+                      onClick={() => handleVideoClick(video)}
                       className="glass rounded-2xl overflow-hidden card-hover group cursor-pointer"
                     >
                       <div className="relative aspect-video">
@@ -242,6 +270,11 @@ export default function Videos() {
                         {video.multiplier && (
                           <div className="absolute top-2 left-2 px-2 py-1 bg-accent text-accent-foreground text-xs font-bold rounded">
                             {video.multiplier}
+                          </div>
+                        )}
+                        {!video.is_external && video.video_file_url && (
+                          <div className="absolute top-2 right-2 px-2 py-1 bg-green-500/80 text-white text-xs rounded">
+                            HD
                           </div>
                         )}
                       </div>
@@ -278,6 +311,17 @@ export default function Videos() {
           </>
         )}
       </div>
+
+      {/* Video Player Modal */}
+      {selectedVideo && (
+        <VideoPlayerModal
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          videoUrl={getVideoUrl(selectedVideo)}
+          title={selectedVideo.title}
+          isExternal={selectedVideo.is_external ?? true}
+        />
+      )}
     </div>
   );
 }

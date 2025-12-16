@@ -175,13 +175,20 @@ export default function Index() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-destructive/20 border border-destructive/50 rounded-full mb-8"
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8 ${
+                  settings.live_platform === "kick" 
+                    ? "bg-green-500/20 border border-green-500/50" 
+                    : "bg-destructive/20 border border-destructive/50"
+                }`}
               >
-                <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-destructive">Live on Twitch</span>
-                {settings.live_viewer_count && settings.live_viewer_count !== "0" && (
-                  <span className="text-xs text-muted-foreground">• {settings.live_viewer_count} viewers</span>
-                )}
+                <span className={`w-2 h-2 rounded-full animate-pulse ${
+                  settings.live_platform === "kick" ? "bg-green-500" : "bg-destructive"
+                }`} />
+                <span className={`text-sm font-medium ${
+                  settings.live_platform === "kick" ? "text-green-500" : "text-destructive"
+                }`}>
+                  Live on {settings.live_platform === "kick" ? "Kick" : "Twitch"}
+                </span>
               </motion.div>
             ) : (
               <motion.div
