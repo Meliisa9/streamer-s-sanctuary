@@ -1,4 +1,4 @@
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type GTWSession = Tables<"gtw_sessions">;
 type GTWGuess = Tables<"gtw_guesses">;
 
-const GuessTheWin = forwardRef<HTMLDivElement>(function GuessTheWin(_, ref) {
+function GuessTheWin() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -392,6 +392,6 @@ const GuessTheWin = forwardRef<HTMLDivElement>(function GuessTheWin(_, ref) {
       </div>
     </div>
   );
-});
+}
 
 export default GuessTheWin;
