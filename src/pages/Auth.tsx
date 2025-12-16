@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Twitch, MessageCircle, Mail, Lock, User, ArrowLeft, Loader2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { z } from "zod";
 const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
-export default function Auth() {
+const Auth = forwardRef<HTMLDivElement>(function Auth(_, ref) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -304,4 +304,6 @@ export default function Auth() {
       </motion.div>
     </div>
   );
-}
+});
+
+export default Auth;
