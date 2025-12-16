@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Play, Eye, Heart, Filter, Search, Clock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayerModal } from "@/components/VideoPlayerModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Video = Tables<"videos">;
@@ -14,6 +16,9 @@ export default function Videos() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: categories } = useQuery({
     queryKey: ["video-categories"],
@@ -40,6 +45,59 @@ export default function Videos() {
     },
   });
 
+  const { data: userLikes } = useQuery({
+    queryKey: ["video-likes", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("video_likes")
+        .select("video_id")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data.map((l) => l.video_id);
+    },
+    enabled: !!user,
+  });
+
+  const likeMutation = useMutation({
+    mutationFn: async ({ videoId, isLiked }: { videoId: string; isLiked: boolean }) => {
+      if (!user) throw new Error("Must be logged in");
+      
+      if (isLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from("video_likes")
+          .delete()
+          .eq("video_id", videoId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        // Like
+        const { error } = await supabase
+          .from("video_likes")
+          .insert({ video_id: videoId, user_id: user.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
+      queryClient.invalidateQueries({ queryKey: ["video-likes"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleLike = (e: React.MouseEvent, videoId: string) => {
+    e.stopPropagation();
+    if (!user) {
+      toast({ title: "Please sign in to like videos" });
+      return;
+    }
+    const isLiked = userLikes?.includes(videoId) || false;
+    likeMutation.mutate({ videoId, isLiked });
+  };
+
   const categoryNames = ["All", ...(categories?.map((c) => c.name) || [])];
 
   const filteredVideos = videos?.filter((video) => {
@@ -64,29 +122,26 @@ export default function Videos() {
   };
 
   const handleVideoClick = (video: Video) => {
-    // If it's an external video (YouTube etc) and NOT a local file, check if we should play in modal or redirect
     const isLocalVideo = video.video_file_url && !video.is_external;
     const isYouTube = extractYouTubeId(video.video_url);
     
     if (isLocalVideo) {
-      // Play local video in modal
       setSelectedVideo(video);
     } else if (isYouTube) {
-      // Play YouTube in modal
       setSelectedVideo(video);
     } else {
-      // External non-YouTube link - open in new tab
       window.open(video.video_url, "_blank");
     }
   };
 
   const getVideoUrl = (video: Video) => {
-    // Prefer local file if available
     if (video.video_file_url && !video.is_external) {
       return video.video_file_url;
     }
     return video.video_url;
   };
+
+  const isVideoLiked = (videoId: string) => userLikes?.includes(videoId) || false;
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -214,10 +269,15 @@ export default function Videos() {
                             <Eye className="w-4 h-4" />
                             {video.views?.toLocaleString() || 0}
                           </span>
-                          <span className="flex items-center gap-1">
-                            <Heart className="w-4 h-4" />
+                          <button
+                            onClick={(e) => handleLike(e, video.id)}
+                            className={`flex items-center gap-1 transition-colors ${
+                              isVideoLiked(video.id) ? "text-destructive" : "hover:text-destructive"
+                            }`}
+                          >
+                            <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
                             {video.likes_count?.toLocaleString() || 0}
-                          </span>
+                          </button>
                         </div>
                         <span className="text-sm text-muted-foreground">
                           {new Date(video.created_at).toLocaleDateString()}
@@ -291,10 +351,15 @@ export default function Videos() {
                               <Eye className="w-4 h-4" />
                               {video.views?.toLocaleString() || 0}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Heart className="w-4 h-4" />
+                            <button
+                              onClick={(e) => handleLike(e, video.id)}
+                              className={`flex items-center gap-1 transition-colors ${
+                                isVideoLiked(video.id) ? "text-destructive" : "hover:text-destructive"
+                              }`}
+                            >
+                              <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
                               {video.likes_count?.toLocaleString() || 0}
-                            </span>
+                            </button>
                           </div>
                           <span>{new Date(video.created_at).toLocaleDateString()}</span>
                         </div>

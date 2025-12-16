@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Shield, User as UserIcon, Loader2, Plus, Pencil, Save, X, UserPlus } from "lucide-react";
+import { Search, Shield, User as UserIcon, Loader2, Plus, Pencil, Save, X, UserPlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -56,8 +66,10 @@ export default function AdminUsers() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user: currentUser } = useAuth();
 
   useEffect(() => {
     fetchUsers();
@@ -218,6 +230,44 @@ export default function AdminUsers() {
       toast({ title: "Error creating user", description: error.message, variant: "destructive" });
     } finally {
       setIsCreatingUser(false);
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!isAdmin || !userToDelete) return;
+
+    // Prevent deleting yourself
+    if (userToDelete.user_id === currentUser?.id) {
+      toast({ title: "Cannot delete yourself", variant: "destructive" });
+      setUserToDelete(null);
+      return;
+    }
+
+    setIsDeletingUser(true);
+
+    try {
+      const response = await supabase.functions.invoke("create-user", {
+        body: {
+          action: "delete",
+          user_id: userToDelete.user_id,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to delete user");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast({ title: "User deleted successfully" });
+      setUserToDelete(null);
+      fetchUsers();
+    } catch (error: any) {
+      toast({ title: "Error deleting user", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -384,6 +434,30 @@ export default function AdminUsers() {
         </motion.div>
       )}
 
+      {/* Delete User Confirmation */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {userToDelete?.display_name || userToDelete?.username || "this user"}? 
+              This action cannot be undone and will permanently remove all their data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={deleteUser} 
+              disabled={isDeletingUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingUser ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Users Table */}
       <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full">
@@ -471,6 +545,14 @@ export default function AdminUsers() {
                       <div className="flex items-center justify-end gap-2 flex-wrap">
                         <Button variant="ghost" size="sm" onClick={() => startEditing(user)}>
                           <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setUserToDelete(user)}
+                          disabled={user.user_id === currentUser?.id}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                         {!isUserMod ? (
                           <Button variant="ghost" size="sm" onClick={() => updateUserRole(user.user_id, "moderator", "add")}>

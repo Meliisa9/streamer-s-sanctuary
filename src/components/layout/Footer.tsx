@@ -1,14 +1,8 @@
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { motion } from "framer-motion";
-import { Twitter, Youtube, Instagram, MessageCircle, Mail, Heart } from "lucide-react";
+import { Twitter, Youtube, Instagram, MessageCircle, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const socialLinks = [
-  { icon: Twitter, href: "#", label: "Twitter" },
-  { icon: Youtube, href: "#", label: "YouTube" },
-  { icon: Instagram, href: "#", label: "Instagram" },
-  { icon: MessageCircle, href: "#", label: "Discord" },
-];
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const quickLinks = [
   { label: "Videos", href: "/videos" },
@@ -27,11 +21,19 @@ const legalLinks = [
 export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">>(
   function Footer(props, ref) {
     const { className, ...rest } = props;
+    const { settings } = useSiteSettings();
+
+    const socialLinks = [
+      { icon: Twitter, href: settings.social_twitter || "#", label: "Twitter" },
+      { icon: Youtube, href: settings.social_youtube || "#", label: "YouTube" },
+      { icon: Instagram, href: settings.social_instagram || "#", label: "Instagram" },
+      { icon: MessageCircle, href: settings.social_discord || "#", label: "Discord" },
+    ];
 
     return (
       <footer ref={ref} className={`bg-card/50 border-t border-border mt-auto ${className ?? ""}`.trim()} {...rest}>
       <div className="container mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
           {/* Brand */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -40,10 +42,14 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
             transition={{ duration: 0.5 }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center">
-                <span className="text-xl font-bold text-primary-foreground">S</span>
-              </div>
-              <span className="font-space-grotesk font-bold text-xl">StreamerX</span>
+              {settings.logo_url ? (
+                <img src={settings.logo_url} alt={settings.site_name} className="w-10 h-10 rounded-xl object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center">
+                  <span className="text-xl font-bold text-primary-foreground">{settings.site_name[0]}</span>
+                </div>
+              )}
+              <span className="font-space-grotesk font-bold text-xl">{settings.site_name}</span>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
               Your premium destination for casino streaming entertainment, exclusive
@@ -54,6 +60,8 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
                 <a
                   key={social.label}
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-10 h-10 rounded-lg bg-secondary hover:bg-primary/20 hover:text-primary flex items-center justify-center transition-all duration-300"
                   aria-label={social.label}
                 >
@@ -106,29 +114,6 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
               ))}
             </ul>
           </motion.div>
-
-          {/* Newsletter */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <h3 className="font-space-grotesk font-semibold text-lg mb-4">Stay Updated</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Get notified about new giveaways and exclusive bonuses.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 bg-secondary border border-border rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors"
-              />
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-                <Mail className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
         </div>
 
         {/* Bottom Bar */}
@@ -141,7 +126,7 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
         >
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
-              © 2024 StreamerX. All rights reserved.
+              {settings.footer_copyright || `© ${new Date().getFullYear()} ${settings.site_name}. All rights reserved.`}
             </p>
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               Made with <Heart className="w-4 h-4 text-destructive" /> for the community
