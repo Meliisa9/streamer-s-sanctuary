@@ -1,7 +1,42 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Play, Users, Trophy, Gift, ArrowRight, Twitch, Clock, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Bonus {
+  id: string;
+  name: string;
+  bonus_text: string;
+  logo_url: string | null;
+  affiliate_url: string | null;
+}
+
+interface Event {
+  id: string;
+  title: string;
+  event_date: string;
+  event_time: string | null;
+  event_type: string | null;
+  expected_viewers: string | null;
+}
+
+interface Video {
+  id: string;
+  title: string;
+  thumbnail_url: string | null;
+  duration: string | null;
+  multiplier: string | null;
+  views: number | null;
+}
+
+interface Giveaway {
+  id: string;
+  title: string;
+  prize: string;
+  end_date: string;
+}
 
 const stats = [
   { icon: Users, value: "150K+", label: "Community Members" },
@@ -9,24 +44,97 @@ const stats = [
   { icon: Gift, value: "500+", label: "Giveaways Hosted" },
 ];
 
-const featuredCasinos = [
-  { name: "Stake Casino", bonus: "200% up to $3000", image: "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=400&h=200&fit=crop" },
-  { name: "Roobet", bonus: "Free $5 No Deposit", image: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=200&fit=crop" },
-  { name: "Duelbits", bonus: "100% Bonus + Rakeback", image: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?w=400&h=200&fit=crop" },
-];
-
-const upcomingStreams = [
-  { title: "Bonus Hunt Sunday", date: "Sun, 8 PM CET", game: "Slots", viewers: "5.2K" },
-  { title: "High Roller Session", date: "Mon, 10 PM CET", game: "Live Casino", viewers: "3.8K" },
-  { title: "Community Giveaway", date: "Wed, 9 PM CET", game: "Mixed", viewers: "8.1K" },
-];
-
 export default function Index() {
+  const [featuredBonuses, setFeaturedBonuses] = useState<Bonus[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [latestVideos, setLatestVideos] = useState<Video[]>([]);
+  const [activeGiveaway, setActiveGiveaway] = useState<Giveaway | null>(null);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (!activeGiveaway) return;
+    
+    const updateCountdown = () => {
+      const end = new Date(activeGiveaway.end_date).getTime();
+      const now = Date.now();
+      const diff = end - now;
+      
+      if (diff <= 0) {
+        setCountdown({ days: 0, hours: 0, minutes: 0 });
+        return;
+      }
+      
+      setCountdown({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+        minutes: Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)),
+      });
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000);
+    return () => clearInterval(interval);
+  }, [activeGiveaway]);
+
+  const fetchData = async () => {
+    // Fetch featured bonuses
+    const { data: bonuses } = await supabase
+      .from("casino_bonuses")
+      .select("id, name, bonus_text, logo_url, affiliate_url")
+      .eq("is_published", true)
+      .eq("is_featured", true)
+      .order("sort_order")
+      .limit(3);
+    
+    if (bonuses) setFeaturedBonuses(bonuses);
+
+    // Fetch upcoming events
+    const { data: events } = await supabase
+      .from("events")
+      .select("id, title, event_date, event_time, event_type, expected_viewers")
+      .gte("event_date", new Date().toISOString().split("T")[0])
+      .order("event_date")
+      .limit(3);
+    
+    if (events) setUpcomingEvents(events);
+
+    // Fetch latest videos
+    const { data: videos } = await supabase
+      .from("videos")
+      .select("id, title, thumbnail_url, duration, multiplier, views")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .limit(4);
+    
+    if (videos) setLatestVideos(videos);
+
+    // Fetch active giveaway
+    const { data: giveaway } = await supabase
+      .from("giveaways")
+      .select("id, title, prize, end_date")
+      .eq("status", "active")
+      .gte("end_date", new Date().toISOString())
+      .order("end_date")
+      .limit(1)
+      .maybeSingle();
+    
+    if (giveaway) setActiveGiveaway(giveaway);
+  };
+
+  const formatEventDate = (date: string, time: string | null) => {
+    const d = new Date(date);
+    const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+    return time ? `${dayName}, ${time}` : dayName;
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Background Effects */}
         <div className="absolute inset-0 bg-hero-pattern" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px] animate-pulse-slow" />
         <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-purple-neon/15 rounded-full blur-[100px] animate-pulse-slow" />
@@ -38,7 +146,6 @@ export default function Index() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="max-w-4xl mx-auto text-center"
           >
-            {/* Live Badge */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
@@ -76,19 +183,22 @@ export default function Index() {
               transition={{ delay: 0.6, duration: 0.8 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <Button variant="glow" size="xl" className="group">
-                <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                Watch Live Stream
+              <Button variant="glow" size="xl" className="group" asChild>
+                <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer">
+                  <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  Watch Live Stream
+                </a>
               </Button>
-              <Button variant="glass" size="xl" className="group">
-                <Twitch className="w-5 h-5" />
-                Follow on Twitch
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <Button variant="glass" size="xl" className="group" asChild>
+                <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer">
+                  <Twitch className="w-5 h-5" />
+                  Follow on Twitch
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </a>
               </Button>
             </motion.div>
           </motion.div>
 
-          {/* Stats */}
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
@@ -136,32 +246,58 @@ export default function Index() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredCasinos.map((casino, index) => (
+            {featuredBonuses.length > 0 ? featuredBonuses.map((bonus, index) => (
               <motion.div
-                key={casino.name}
+                key={bonus.id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 className="glass rounded-2xl overflow-hidden card-hover neon-border group"
               >
-                <div className="relative h-40 overflow-hidden">
-                  <img
-                    src={casino.image}
-                    alt={casino.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                <div className="relative h-40 overflow-hidden bg-secondary">
+                  {bonus.logo_url ? (
+                    <img
+                      src={bonus.logo_url}
+                      alt={bonus.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Trophy className="w-16 h-16 text-primary/30" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
                 </div>
                 <div className="p-6">
-                  <h3 className="text-xl font-bold mb-2">{casino.name}</h3>
-                  <p className="text-accent font-semibold mb-4">{casino.bonus}</p>
-                  <Button variant="gold" className="w-full">
-                    Claim Bonus
+                  <h3 className="text-xl font-bold mb-2">{bonus.name}</h3>
+                  <p className="text-accent font-semibold mb-4">{bonus.bonus_text}</p>
+                  <Button variant="gold" className="w-full" asChild>
+                    <a href={bonus.affiliate_url || "#"} target="_blank" rel="noopener noreferrer">
+                      Claim Bonus
+                    </a>
                   </Button>
                 </div>
               </motion.div>
-            ))}
+            )) : (
+              [1, 2, 3].map((_, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="glass rounded-2xl overflow-hidden card-hover neon-border"
+                >
+                  <div className="h-40 bg-secondary animate-pulse" />
+                  <div className="p-6 space-y-3">
+                    <div className="h-6 bg-secondary rounded animate-pulse" />
+                    <div className="h-4 bg-secondary rounded w-2/3 animate-pulse" />
+                    <div className="h-10 bg-secondary rounded animate-pulse" />
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </section>
@@ -176,7 +312,7 @@ export default function Index() {
             className="text-center mb-12"
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Upcoming <span className="gradient-text">Streams</span>
+              Upcoming <span className="gradient-text">Events</span>
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               Don't miss out on our scheduled streams and special events
@@ -184,9 +320,9 @@ export default function Index() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {upcomingStreams.map((stream, index) => (
+            {upcomingEvents.length > 0 ? upcomingEvents.map((event, index) => (
               <motion.div
-                key={stream.title}
+                key={event.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
@@ -195,18 +331,24 @@ export default function Index() {
               >
                 <div className="flex items-center gap-2 text-sm text-primary mb-3">
                   <Clock className="w-4 h-4" />
-                  {stream.date}
+                  {formatEventDate(event.event_date, event.event_time)}
                 </div>
-                <h3 className="text-xl font-bold mb-2">{stream.title}</h3>
+                <h3 className="text-xl font-bold mb-2">{event.title}</h3>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{stream.game}</span>
-                  <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    ~{stream.viewers}
-                  </span>
+                  <span>{event.event_type || "Stream"}</span>
+                  {event.expected_viewers && (
+                    <span className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      ~{event.expected_viewers}
+                    </span>
+                  )}
                 </div>
               </motion.div>
-            ))}
+            )) : (
+              <div className="col-span-3 text-center py-12 text-muted-foreground">
+                No upcoming events scheduled
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -235,88 +377,121 @@ export default function Index() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((_, index) => (
+            {latestVideos.length > 0 ? latestVideos.map((video, index) => (
               <motion.div
-                key={index}
+                key={video.id}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 className="glass rounded-2xl overflow-hidden card-hover group cursor-pointer"
               >
-                <div className="relative aspect-video bg-secondary">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/40 transition-colors">
-                      <Play className="w-6 h-6 text-primary" />
+                <Link to="/videos">
+                  <div className="relative aspect-video bg-secondary">
+                    {video.thumbnail_url ? (
+                      <img
+                        src={video.thumbnail_url}
+                        alt={video.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center group-hover:bg-primary/40 transition-colors">
+                          <Play className="w-6 h-6 text-primary" />
+                        </div>
+                      </div>
+                    )}
+                    {video.duration && (
+                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-background/80 rounded text-xs">
+                        {video.duration}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold mb-1 line-clamp-2">{video.title}</h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {video.multiplier && (
+                        <>
+                          <Star className="w-4 h-4 text-accent" />
+                          <span>{video.multiplier}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      <span>{(video.views || 0).toLocaleString()} views</span>
                     </div>
                   </div>
-                  <div className="absolute bottom-2 right-2 px-2 py-1 bg-background/80 rounded text-xs">
-                    12:34
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold mb-1 line-clamp-2">
-                    Crazy Max Win on Sweet Bonanza! 🎰
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Star className="w-4 h-4 text-accent" />
-                    <span>50,000x</span>
-                    <span>•</span>
-                    <span>2.5K views</span>
-                  </div>
-                </div>
+                </Link>
               </motion.div>
-            ))}
+            )) : (
+              [1, 2, 3, 4].map((_, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="glass rounded-2xl overflow-hidden"
+                >
+                  <div className="aspect-video bg-secondary animate-pulse" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 bg-secondary rounded animate-pulse" />
+                    <div className="h-3 bg-secondary rounded w-2/3 animate-pulse" />
+                  </div>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="relative rounded-3xl overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-purple-neon/20" />
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/30 rounded-full blur-[100px]" />
-            
-            <div className="relative z-10 py-16 px-8 md:px-16 text-center">
-              <Gift className="w-16 h-16 mx-auto mb-6 text-accent" />
-              <h2 className="text-3xl md:text-5xl font-bold mb-4">
-                Active <span className="gradient-text-gold">Giveaway</span>
-              </h2>
-              <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-                Win $5,000 in cash! Join now for a chance to win exclusive prizes.
-              </p>
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <div className="text-center">
-                  <p className="text-4xl font-bold text-accent">23</p>
-                  <p className="text-sm text-muted-foreground">Days</p>
+      {activeGiveaway && (
+        <section className="py-20 px-6">
+          <div className="container mx-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative rounded-3xl overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-purple-neon/20" />
+              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/30 rounded-full blur-[100px]" />
+              
+              <div className="relative z-10 py-16 px-8 md:px-16 text-center">
+                <Gift className="w-16 h-16 mx-auto mb-6 text-accent" />
+                <h2 className="text-3xl md:text-5xl font-bold mb-4">
+                  Active <span className="gradient-text-gold">Giveaway</span>
+                </h2>
+                <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+                  {activeGiveaway.title} - Win {activeGiveaway.prize}!
+                </p>
+                <div className="flex items-center justify-center gap-4 mb-8">
+                  <div className="text-center">
+                    <p className="text-4xl font-bold text-accent">{countdown.days}</p>
+                    <p className="text-sm text-muted-foreground">Days</p>
+                  </div>
+                  <span className="text-2xl text-muted-foreground">:</span>
+                  <div className="text-center">
+                    <p className="text-4xl font-bold text-accent">{countdown.hours}</p>
+                    <p className="text-sm text-muted-foreground">Hours</p>
+                  </div>
+                  <span className="text-2xl text-muted-foreground">:</span>
+                  <div className="text-center">
+                    <p className="text-4xl font-bold text-accent">{countdown.minutes}</p>
+                    <p className="text-sm text-muted-foreground">Minutes</p>
+                  </div>
                 </div>
-                <span className="text-2xl text-muted-foreground">:</span>
-                <div className="text-center">
-                  <p className="text-4xl font-bold text-accent">14</p>
-                  <p className="text-sm text-muted-foreground">Hours</p>
-                </div>
-                <span className="text-2xl text-muted-foreground">:</span>
-                <div className="text-center">
-                  <p className="text-4xl font-bold text-accent">52</p>
-                  <p className="text-sm text-muted-foreground">Minutes</p>
-                </div>
+                <Link to="/giveaways">
+                  <Button variant="gold" size="xl" className="group">
+                    Enter Giveaway
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
               </div>
-              <Link to="/giveaways">
-                <Button variant="gold" size="xl" className="group">
-                  Enter Giveaway
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+            </motion.div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
