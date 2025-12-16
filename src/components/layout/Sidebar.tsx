@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -10,20 +10,25 @@ import {
   Calendar,
   Target,
   Users,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Twitch,
   LogIn,
+  LogOut,
+  Settings,
+  Shield,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NavItem {
   icon: React.ElementType;
   label: string;
   path: string;
   badge?: string;
+  adminOnly?: boolean;
 }
 
 const mainNavItems: NavItem[] = [
@@ -40,17 +45,29 @@ const communityNavItems: NavItem[] = [
   { icon: Users, label: "Leaderboard", path: "/leaderboard" },
 ];
 
+const adminNavItems: NavItem[] = [
+  { icon: Shield, label: "Admin Panel", path: "/admin", adminOnly: true },
+];
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, isAdmin, isModerator, signOut } = useAuth();
 
   const sidebarVariants = {
     expanded: { width: 260 },
     collapsed: { width: 80 },
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
   const NavItemComponent = ({ item }: { item: NavItem }) => {
-    const isActive = location.pathname === item.path;
+    const isActive = location.pathname === item.path || 
+      (item.path !== "/" && location.pathname.startsWith(item.path));
     const Icon = item.icon;
 
     return (
@@ -153,37 +170,130 @@ export function Sidebar() {
             ))}
           </div>
         </div>
+
+        {/* Admin Section */}
+        {isModerator && (
+          <div className="pt-6">
+            {!collapsed && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3"
+              >
+                Admin
+              </motion.p>
+            )}
+            <div className="space-y-1">
+              {adminNavItems.map((item) => (
+                <NavItemComponent key={item.path} item={item} />
+              ))}
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* User Section */}
       <div className="p-4 border-t border-sidebar-border">
         <AnimatePresence mode="wait">
-          {!collapsed ? (
+          {user ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="space-y-3"
             >
-              <Button variant="glow" className="w-full gap-2">
-                <Twitch className="w-4 h-4" />
-                Login with Twitch
-              </Button>
-              <Button variant="glass" className="w-full gap-2">
-                <LogIn className="w-4 h-4" />
-                Discord Login
-              </Button>
+              {!collapsed ? (
+                <>
+                  <div className="flex items-center gap-3 p-2 bg-secondary/50 rounded-xl">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Avatar"
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {profile?.display_name || profile?.username || "User"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {isAdmin ? "Admin" : isModerator ? "Moderator" : "Member"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => navigate("/profile")}
+                    >
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  {profile?.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt="Avatar"
+                      className="w-10 h-10 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex flex-col items-center gap-2"
+              className="space-y-3"
             >
-              <Button variant="glow" size="icon">
-                <Twitch className="w-4 h-4" />
-              </Button>
+              {!collapsed ? (
+                <>
+                  <Button
+                    variant="glow"
+                    className="w-full gap-2"
+                    onClick={() => navigate("/auth")}
+                  >
+                    <Twitch className="w-4 h-4" />
+                    Login with Twitch
+                  </Button>
+                  <Button
+                    variant="glass"
+                    className="w-full gap-2"
+                    onClick={() => navigate("/auth")}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Discord Login
+                  </Button>
+                </>
+              ) : (
+                <Button variant="glow" size="icon" onClick={() => navigate("/auth")}>
+                  <Twitch className="w-4 h-4" />
+                </Button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
