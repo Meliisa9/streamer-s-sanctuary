@@ -187,3 +187,12 @@
     text-wrap: balance;
   }
 }
+
+/* Override element.style transform: none */
+[style*="transform: none"] {
+  transform: unset !important;
+}
+
+.force-transform-unset {
+  transform: unset !important;
+}

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Users, Trophy, Gift, ArrowRight, Twitch, Clock, Star } from "lucide-react";
+import { Play, Users, Trophy, Gift, ArrowRight, Twitch, Clock, Star, Newspaper } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface Bonus {
   id: string;
@@ -38,18 +39,30 @@ interface Giveaway {
   end_date: string;
 }
 
-const stats = [
-  { icon: Users, value: "150K+", label: "Community Members" },
-  { icon: Trophy, value: "$2.5M", label: "Total Wins Streamed" },
-  { icon: Gift, value: "500+", label: "Giveaways Hosted" },
-];
+interface NewsArticle {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  image_url: string | null;
+  category: string | null;
+  created_at: string;
+}
 
 export default function Index() {
+  const { settings } = useSiteSettings();
   const [featuredBonuses, setFeaturedBonuses] = useState<Bonus[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [latestVideos, setLatestVideos] = useState<Video[]>([]);
+  const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [activeGiveaway, setActiveGiveaway] = useState<Giveaway | null>(null);
   const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
+
+  const stats = [
+    { icon: Users, value: settings.stat_community_value, label: settings.stat_community_label },
+    { icon: Trophy, value: settings.stat_wins_value, label: settings.stat_wins_label },
+    { icon: Gift, value: settings.stat_giveaways_value, label: settings.stat_giveaways_label },
+  ];
 
   useEffect(() => {
     fetchData();
@@ -112,6 +125,16 @@ export default function Index() {
     
     if (videos) setLatestVideos(videos);
 
+    // Fetch latest news
+    const { data: news } = await supabase
+      .from("news_articles")
+      .select("id, title, slug, excerpt, image_url, category, created_at")
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    
+    if (news) setLatestNews(news);
+
     // Fetch active giveaway
     const { data: giveaway } = await supabase
       .from("giveaways")
@@ -146,16 +169,31 @@ export default function Index() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="max-w-4xl mx-auto text-center"
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-destructive/20 border border-destructive/50 rounded-full mb-8"
-            >
-              <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
-              <span className="text-sm font-medium text-destructive">Live on Twitch</span>
-              <span className="text-xs text-muted-foreground">• 12.5K viewers</span>
-            </motion.div>
+            {/* Live Status Badge */}
+            {settings.is_live ? (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-destructive/20 border border-destructive/50 rounded-full mb-8"
+              >
+                <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-destructive">Live on Twitch</span>
+                {settings.live_viewer_count && settings.live_viewer_count !== "0" && (
+                  <span className="text-xs text-muted-foreground">• {settings.live_viewer_count} viewers</span>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-muted/20 border border-muted/50 rounded-full mb-8"
+              >
+                <span className="w-2 h-2 bg-muted-foreground rounded-full" />
+                <span className="text-sm font-medium text-muted-foreground">Offline</span>
+              </motion.div>
+            )}
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -164,7 +202,7 @@ export default function Index() {
               className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
             >
               Welcome to{" "}
-              <span className="gradient-text">StreamerX</span>
+              <span className="gradient-text">{settings.site_name}</span>
             </motion.h1>
 
             <motion.p
@@ -184,13 +222,13 @@ export default function Index() {
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <Button variant="glow" size="xl" className="group" asChild>
-                <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer">
+                <a href={settings.twitch_url} target="_blank" rel="noopener noreferrer">
                   <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   Watch Live Stream
                 </a>
               </Button>
               <Button variant="glass" size="xl" className="group" asChild>
-                <a href="https://twitch.tv" target="_blank" rel="noopener noreferrer">
+                <a href={settings.twitch_follow_url} target="_blank" rel="noopener noreferrer">
                   <Twitch className="w-5 h-5" />
                   Follow on Twitch
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -302,8 +340,79 @@ export default function Index() {
         </div>
       </section>
 
+      {/* Latest News - Only show if news is visible */}
+      {settings.nav_news_visible && latestNews.length > 0 && (
+        <section className="py-20 px-6 bg-card/30">
+          <div className="container mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="flex items-center justify-between mb-10"
+            >
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                  Latest <span className="gradient-text">News</span>
+                </h2>
+                <p className="text-muted-foreground">Stay updated with the latest</p>
+              </div>
+              <Link to="/news">
+                <Button variant="outline" className="group">
+                  All News
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {latestNews.map((article, index) => (
+                <motion.div
+                  key={article.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link to={`/news/${article.slug}`} className="block glass rounded-2xl overflow-hidden card-hover group">
+                    <div className="relative h-48 bg-secondary overflow-hidden">
+                      {article.image_url ? (
+                        <img
+                          src={article.image_url}
+                          alt={article.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Newspaper className="w-12 h-12 text-muted-foreground/30" />
+                        </div>
+                      )}
+                      {article.category && (
+                        <span className="absolute top-3 left-3 px-2 py-1 bg-primary/80 text-primary-foreground text-xs font-medium rounded">
+                          {article.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                        {article.title}
+                      </h3>
+                      {article.excerpt && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">{article.excerpt}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-3">
+                        {new Date(article.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Upcoming Streams */}
-      <section className="py-20 px-6 bg-card/30">
+      <section className="py-20 px-6">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -354,7 +463,7 @@ export default function Index() {
       </section>
 
       {/* Latest Wins */}
-      <section className="py-20 px-6">
+      <section className="py-20 px-6 bg-card/30">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -444,50 +553,45 @@ export default function Index() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Active Giveaway */}
       {activeGiveaway && (
         <section className="py-20 px-6">
           <div className="container mx-auto">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="relative rounded-3xl overflow-hidden"
+              className="glass rounded-3xl p-8 md:p-12 neon-border max-w-4xl mx-auto text-center relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-purple-neon/20" />
-              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/30 rounded-full blur-[100px]" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary" />
               
-              <div className="relative z-10 py-16 px-8 md:px-16 text-center">
-                <Gift className="w-16 h-16 mx-auto mb-6 text-accent" />
-                <h2 className="text-3xl md:text-5xl font-bold mb-4">
-                  Active <span className="gradient-text-gold">Giveaway</span>
-                </h2>
-                <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-                  {activeGiveaway.title} - Win {activeGiveaway.prize}!
-                </p>
-                <div className="flex items-center justify-center gap-4 mb-8">
-                  <div className="text-center">
-                    <p className="text-4xl font-bold text-accent">{countdown.days}</p>
-                    <p className="text-sm text-muted-foreground">Days</p>
+              <span className="inline-block px-4 py-1 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
+                🎉 Active Giveaway
+              </span>
+              
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">{activeGiveaway.title}</h2>
+              <p className="text-2xl gradient-text-gold font-bold mb-8">{activeGiveaway.prize}</p>
+              
+              <div className="flex justify-center gap-4 md:gap-8 mb-8">
+                {[
+                  { value: countdown.days, label: "Days" },
+                  { value: countdown.hours, label: "Hours" },
+                  { value: countdown.minutes, label: "Minutes" },
+                ].map((item) => (
+                  <div key={item.label} className="glass rounded-xl p-4 min-w-[80px]">
+                    <p className="text-3xl font-bold text-primary">{item.value}</p>
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
                   </div>
-                  <span className="text-2xl text-muted-foreground">:</span>
-                  <div className="text-center">
-                    <p className="text-4xl font-bold text-accent">{countdown.hours}</p>
-                    <p className="text-sm text-muted-foreground">Hours</p>
-                  </div>
-                  <span className="text-2xl text-muted-foreground">:</span>
-                  <div className="text-center">
-                    <p className="text-4xl font-bold text-accent">{countdown.minutes}</p>
-                    <p className="text-sm text-muted-foreground">Minutes</p>
-                  </div>
-                </div>
-                <Link to="/giveaways">
-                  <Button variant="gold" size="xl" className="group">
-                    Enter Giveaway
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
+                ))}
               </div>
+              
+              <Link to="/giveaways">
+                <Button variant="glow" size="xl" className="group">
+                  <Gift className="w-5 h-5" />
+                  Enter Now
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
             </motion.div>
           </div>
         </section>
