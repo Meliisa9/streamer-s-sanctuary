@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Calendar, MessageCircle, User, Clock, Search, Tag, ArrowRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -118,46 +119,45 @@ export default function News() {
                 </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {featuredArticles.map((article) => (
-                    <div
-                      key={article.id}
-                      className="glass rounded-2xl overflow-hidden card-hover neon-border group cursor-pointer"
-                    >
-                      <div className="relative h-48 overflow-hidden">
-                        {article.image_url ? (
-                          <img
-                            src={article.image_url}
-                            alt={article.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-secondary" />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
-                        <span className="absolute top-4 left-4 px-3 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-full">
-                          {article.category}
-                        </span>
-                      </div>
-                      <div className="p-6">
-                        <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                          {article.title}
-                        </h3>
-                        <p className="text-muted-foreground mb-4 line-clamp-2">{article.excerpt}</p>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              {new Date(article.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Heart className="w-4 h-4" />
-                              {article.likes_count || 0}
-                            </span>
+                    <Link to={`/news/${article.slug}`} key={article.id}>
+                      <div className="glass rounded-2xl overflow-hidden card-hover neon-border group cursor-pointer h-full">
+                        <div className="relative h-48 overflow-hidden">
+                          {article.image_url ? (
+                            <img
+                              src={article.image_url}
+                              alt={article.title}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-secondary" />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
+                          <span className="absolute top-4 left-4 px-3 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-full">
+                            {article.category}
+                          </span>
+                        </div>
+                        <div className="p-6">
+                          <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                            {article.title}
+                          </h3>
+                          <p className="text-muted-foreground mb-4 line-clamp-2">{article.excerpt}</p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                {new Date(article.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Heart className="w-4 h-4" />
+                                {article.likes_count || 0}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </motion.div>
@@ -176,52 +176,53 @@ export default function News() {
               {regularArticles && regularArticles.length > 0 ? (
                 <div className="space-y-6">
                   {regularArticles.map((article, index) => (
-                    <motion.div
-                      key={article.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.1 * index }}
-                      className="glass rounded-2xl overflow-hidden card-hover group cursor-pointer"
-                    >
-                      <div className="flex flex-col md:flex-row">
-                        <div className="md:w-64 h-48 md:h-auto overflow-hidden flex-shrink-0">
-                          {article.image_url ? (
-                            <img
-                              src={article.image_url}
-                              alt={article.title}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-secondary" />
-                          )}
-                        </div>
-                        <div className="flex-1 p-6">
-                          <div className="flex items-center gap-3 mb-3">
-                            <span className="px-3 py-1 bg-secondary text-xs font-medium rounded-full">
-                              {article.category}
-                            </span>
-                            <span className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {getReadTime(article.content)}
-                            </span>
+                    <Link to={`/news/${article.slug}`} key={article.id}>
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 * index }}
+                        className="glass rounded-2xl overflow-hidden card-hover group cursor-pointer"
+                      >
+                        <div className="flex flex-col md:flex-row">
+                          <div className="md:w-64 h-48 md:h-auto overflow-hidden flex-shrink-0">
+                            {article.image_url ? (
+                              <img
+                                src={article.image_url}
+                                alt={article.title}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-secondary" />
+                            )}
                           </div>
-                          <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
-                            {article.title}
-                          </h3>
-                          <p className="text-muted-foreground mb-4 line-clamp-2">{article.excerpt}</p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>{new Date(article.created_at).toLocaleDateString()}</span>
-                              <span>{article.views || 0} views</span>
+                          <div className="flex-1 p-6">
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="px-3 py-1 bg-secondary text-xs font-medium rounded-full">
+                                {article.category}
+                              </span>
+                              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {getReadTime(article.content)}
+                              </span>
                             </div>
-                            <Button variant="ghost" size="sm" className="group/btn">
-                              Read More
-                              <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                            </Button>
+                            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                              {article.title}
+                            </h3>
+                            <p className="text-muted-foreground mb-4 line-clamp-2">{article.excerpt}</p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                                <span>{article.views || 0} views</span>
+                              </div>
+                              <Button variant="ghost" size="sm" className="group/btn">
+                                Read More
+                                <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
+                      </motion.div>
+                    </Link>
                   ))}
                 </div>
               ) : (

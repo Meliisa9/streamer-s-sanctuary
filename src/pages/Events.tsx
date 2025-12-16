@@ -229,7 +229,21 @@ export default function Events() {
                 )}
 
                 <div className="mt-6 pt-6 border-t border-border">
-                  <Button variant="glow" className="w-full gap-2">
+                  <Button 
+                    variant="glow" 
+                    className="w-full gap-2"
+                    onClick={() => {
+                      if ("Notification" in window) {
+                        Notification.requestPermission().then((permission) => {
+                          if (permission === "granted") {
+                            new Notification("Notifications enabled!", {
+                              body: "You'll be notified about upcoming events.",
+                            });
+                          }
+                        });
+                      }
+                    }}
+                  >
                     <Bell className="w-4 h-4" />
                     Enable Notifications
                   </Button>

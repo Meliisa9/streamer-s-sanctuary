@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 interface NavItem {
   icon: React.ElementType;
@@ -29,20 +30,21 @@ interface NavItem {
   path: string;
   badge?: string;
   adminOnly?: boolean;
+  settingKey?: string;
 }
 
 const mainNavItems: NavItem[] = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Video, label: "Videos", path: "/videos" },
-  { icon: Trophy, label: "Bonuses", path: "/bonuses" },
-  { icon: Newspaper, label: "News", path: "/news" },
-  { icon: Gift, label: "Giveaways", path: "/giveaways", badge: "LIVE" },
+  { icon: Video, label: "Videos", path: "/videos", settingKey: "nav_videos_visible" },
+  { icon: Trophy, label: "Bonuses", path: "/bonuses", settingKey: "nav_bonuses_visible" },
+  { icon: Newspaper, label: "News", path: "/news", settingKey: "nav_news_visible" },
+  { icon: Gift, label: "Giveaways", path: "/giveaways", badge: "LIVE", settingKey: "nav_giveaways_visible" },
 ];
 
 const communityNavItems: NavItem[] = [
-  { icon: Calendar, label: "Events", path: "/events" },
-  { icon: Target, label: "Guess The Win", path: "/guess-the-win" },
-  { icon: Users, label: "Leaderboard", path: "/leaderboard" },
+  { icon: Calendar, label: "Events", path: "/events", settingKey: "nav_events_visible" },
+  { icon: Target, label: "Guess The Win", path: "/guess-the-win", settingKey: "nav_gtw_visible" },
+  { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -54,6 +56,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, isModerator, signOut } = useAuth();
+  const { settings } = useSiteSettings();
 
   const sidebarVariants = {
     expanded: { width: 260 },
@@ -63,6 +66,11 @@ export function Sidebar() {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const isNavItemVisible = (item: NavItem) => {
+    if (!item.settingKey) return true;
+    return settings[item.settingKey as keyof typeof settings] !== false;
   };
 
   const NavItemComponent = ({ item }: { item: NavItem }) => {
@@ -116,6 +124,9 @@ export function Sidebar() {
     );
   };
 
+  const visibleMainItems = mainNavItems.filter(isNavItemVisible);
+  const visibleCommunityItems = communityNavItems.filter(isNavItemVisible);
+
   return (
     <motion.aside
       variants={sidebarVariants}
@@ -125,9 +136,13 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center flex-shrink-0">
-          <span className="text-xl font-bold text-primary-foreground">S</span>
-        </div>
+        {settings.logo_url ? (
+          <img src={settings.logo_url} alt={settings.site_name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center flex-shrink-0">
+            <span className="text-xl font-bold text-primary-foreground">{settings.site_name.charAt(0)}</span>
+          </div>
+        )}
         <AnimatePresence mode="wait">
           {!collapsed && (
             <motion.div
@@ -137,9 +152,9 @@ export function Sidebar() {
               className="overflow-hidden"
             >
               <h1 className="font-space-grotesk font-bold text-lg text-foreground">
-                StreamerX
+                {settings.site_name}
               </h1>
-              <p className="text-xs text-muted-foreground">Casino Streams</p>
+              <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -148,28 +163,30 @@ export function Sidebar() {
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
         <div className="space-y-1">
-          {mainNavItems.map((item) => (
+          {visibleMainItems.map((item) => (
             <NavItemComponent key={item.path} item={item} />
           ))}
         </div>
 
         {/* Community Section */}
-        <div className="pt-6">
-          {!collapsed && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3"
-            >
-              Community
-            </motion.p>
-          )}
-          <div className="space-y-1">
-            {communityNavItems.map((item) => (
-              <NavItemComponent key={item.path} item={item} />
-            ))}
+        {visibleCommunityItems.length > 0 && (
+          <div className="pt-6">
+            {!collapsed && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3"
+              >
+                Community
+              </motion.p>
+            )}
+            <div className="space-y-1">
+              {visibleCommunityItems.map((item) => (
+                <NavItemComponent key={item.path} item={item} />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Admin Section */}
         {isModerator && (
