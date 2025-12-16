@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 export interface SiteSettings {
   site_name: string;
   site_tagline: string;
+  site_title: string;
+  favicon_url: string | null;
   logo_url: string | null;
   twitch_url: string;
   twitch_follow_url: string;
@@ -16,11 +18,20 @@ export interface SiteSettings {
   nav_events_visible: boolean;
   nav_gtw_visible: boolean;
   nav_leaderboard_visible: boolean;
+  // Homepage stats
+  stat_community_value: string;
+  stat_community_label: string;
+  stat_wins_value: string;
+  stat_wins_label: string;
+  stat_giveaways_value: string;
+  stat_giveaways_label: string;
 }
 
 const defaultSettings: SiteSettings = {
   site_name: "StreamerX",
   site_tagline: "Casino Streams",
+  site_title: "StreamerX - Casino Streams",
+  favicon_url: null,
   logo_url: null,
   twitch_url: "https://twitch.tv",
   twitch_follow_url: "https://twitch.tv",
@@ -33,6 +44,12 @@ const defaultSettings: SiteSettings = {
   nav_events_visible: true,
   nav_gtw_visible: true,
   nav_leaderboard_visible: true,
+  stat_community_value: "150K+",
+  stat_community_label: "Community Members",
+  stat_wins_value: "$2.5M",
+  stat_wins_label: "Total Wins Streamed",
+  stat_giveaways_value: "500+",
+  stat_giveaways_label: "Giveaways Hosted",
 };
 
 interface SiteSettingsContextType {
@@ -63,12 +80,30 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           if (typeof defaultSettings[key] === "boolean") {
             (loadedSettings as Record<string, any>)[key] = value === true || value === "true";
           } else {
-            (loadedSettings as Record<string, any>)[key] = value;
+            (loadedSettings as Record<string, any>)[key] = value ?? defaultSettings[key];
           }
         }
       });
 
       setSettings(loadedSettings);
+
+      // Update document title
+      if (loadedSettings.site_title) {
+        document.title = loadedSettings.site_title;
+      }
+
+      // Update favicon
+      if (loadedSettings.favicon_url) {
+        const existingFavicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+        if (existingFavicon) {
+          existingFavicon.href = loadedSettings.favicon_url;
+        } else {
+          const link = document.createElement("link");
+          link.rel = "icon";
+          link.href = loadedSettings.favicon_url;
+          document.head.appendChild(link);
+        }
+      }
     } catch (error) {
       console.error("Error fetching site settings:", error);
     } finally {

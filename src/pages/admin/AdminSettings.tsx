@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Upload, Eye, EyeOff, Loader2, Globe, Twitch, Image as ImageIcon, Type, Radio, Layout, ExternalLink } from "lucide-react";
+import { Save, Upload, Loader2, ExternalLink, Type, Radio, Layout, BarChart3, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 interface SiteSettings {
   site_name: string;
   site_tagline: string;
+  site_title: string;
+  favicon_url: string | null;
   logo_url: string | null;
   twitch_url: string;
   twitch_follow_url: string;
@@ -22,11 +24,19 @@ interface SiteSettings {
   nav_events_visible: boolean;
   nav_gtw_visible: boolean;
   nav_leaderboard_visible: boolean;
+  stat_community_value: string;
+  stat_community_label: string;
+  stat_wins_value: string;
+  stat_wins_label: string;
+  stat_giveaways_value: string;
+  stat_giveaways_label: string;
 }
 
 const defaultSettings: SiteSettings = {
   site_name: "StreamerX",
   site_tagline: "Casino Streams",
+  site_title: "StreamerX - Casino Streams",
+  favicon_url: null,
   logo_url: null,
   twitch_url: "https://twitch.tv",
   twitch_follow_url: "https://twitch.tv",
@@ -39,6 +49,12 @@ const defaultSettings: SiteSettings = {
   nav_events_visible: true,
   nav_gtw_visible: true,
   nav_leaderboard_visible: true,
+  stat_community_value: "150K+",
+  stat_community_label: "Community Members",
+  stat_wins_value: "$2.5M",
+  stat_wins_label: "Total Wins Streamed",
+  stat_giveaways_value: "500+",
+  stat_giveaways_label: "Giveaways Hosted",
 };
 
 export default function AdminSettings() {
@@ -47,6 +63,8 @@ export default function AdminSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
@@ -70,15 +88,14 @@ export default function AdminSettings() {
           if (typeof defaultSettings[key] === "boolean") {
             (loadedSettings as Record<string, any>)[key] = value === true || value === "true";
           } else {
-            (loadedSettings as Record<string, any>)[key] = value;
+            (loadedSettings as Record<string, any>)[key] = value ?? defaultSettings[key];
           }
         }
       });
 
       setSettings(loadedSettings);
-      if (loadedSettings.logo_url) {
-        setLogoPreview(loadedSettings.logo_url);
-      }
+      if (loadedSettings.logo_url) setLogoPreview(loadedSettings.logo_url);
+      if (loadedSettings.favicon_url) setFaviconPreview(loadedSettings.favicon_url);
     } catch (error: any) {
       console.error("Error fetching settings:", error);
     } finally {
@@ -86,12 +103,16 @@ export default function AdminSettings() {
     }
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFile: (f: File | null) => void,
+    setPreview: (p: string | null) => void
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
-      setLogoFile(file);
+      setFile(file);
       const reader = new FileReader();
-      reader.onload = () => setLogoPreview(reader.result as string);
+      reader.onload = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -106,41 +127,48 @@ export default function AdminSettings() {
 
     try {
       let logoUrl = settings.logo_url;
+      let faviconUrl = settings.favicon_url;
 
       // Upload logo if changed
       if (logoFile) {
         const fileExt = logoFile.name.split(".").pop();
         const fileName = `logo-${Date.now()}.${fileExt}`;
-
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from("media")
           .upload(fileName, logoFile, { upsert: true });
-
         if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("media")
-          .getPublicUrl(fileName);
-
+        const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName);
         logoUrl = publicUrl;
       }
 
+      // Upload favicon if changed
+      if (faviconFile) {
+        const fileExt = faviconFile.name.split(".").pop();
+        const fileName = `favicon-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(fileName, faviconFile, { upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName);
+        faviconUrl = publicUrl;
+      }
+
       // Save all settings
-      const settingsToSave = { ...settings, logo_url: logoUrl };
+      const settingsToSave = { ...settings, logo_url: logoUrl, favicon_url: faviconUrl };
 
       for (const [key, value] of Object.entries(settingsToSave)) {
         const { error } = await supabase
           .from("site_settings")
-          .upsert(
-            { key, value: value },
-            { onConflict: "key" }
-          );
-
+          .upsert({ key, value: value }, { onConflict: "key" });
         if (error) throw error;
       }
 
       toast({ title: "Settings saved successfully" });
       setLogoFile(null);
+      setFaviconFile(null);
+
+      // Update document title immediately
+      document.title = settingsToSave.site_title;
     } catch (error: any) {
       toast({ title: "Error saving settings", description: error.message, variant: "destructive" });
     } finally {
@@ -168,11 +196,7 @@ export default function AdminSettings() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Branding Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-2xl p-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Type className="w-5 h-5 text-primary" />
             Branding
@@ -202,22 +226,14 @@ export default function AdminSettings() {
                 {logoPreview ? (
                   <img src={logoPreview} alt="Logo" className="w-16 h-16 rounded-xl object-cover" />
                 ) : (
-                  <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center">
-                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                  <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground text-xs">
+                    No logo
                   </div>
                 )}
                 <label className="cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    className="hidden"
-                  />
+                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setLogoFile, setLogoPreview)} className="hidden" />
                   <Button variant="outline" type="button" asChild>
-                    <span>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Upload Logo
-                    </span>
+                    <span><Upload className="w-4 h-4 mr-2" />Upload Logo</span>
                   </Button>
                 </label>
               </div>
@@ -225,13 +241,47 @@ export default function AdminSettings() {
           </div>
         </motion.div>
 
+        {/* Website Title & Favicon */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Globe className="w-5 h-5 text-primary" />
+            Website Title & Favicon
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Browser Tab Title</label>
+              <input
+                type="text"
+                value={settings.site_title}
+                onChange={(e) => setSettings({ ...settings, site_title: e.target.value })}
+                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                placeholder="StreamerX - Casino Streams"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Favicon</label>
+              <div className="mt-1 flex items-center gap-4">
+                {faviconPreview ? (
+                  <img src={faviconPreview} alt="Favicon" className="w-10 h-10 rounded object-cover" />
+                ) : (
+                  <div className="w-10 h-10 rounded bg-secondary flex items-center justify-center text-muted-foreground text-xs">
+                    None
+                  </div>
+                )}
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setFaviconFile, setFaviconPreview)} className="hidden" />
+                  <Button variant="outline" type="button" asChild>
+                    <span><Upload className="w-4 h-4 mr-2" />Upload Favicon</span>
+                  </Button>
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Recommended: 32x32 or 64x64 PNG/ICO</p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Live Status Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass rounded-2xl p-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass rounded-2xl p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Radio className="w-5 h-5 text-destructive" />
             Live Status
@@ -239,34 +289,33 @@ export default function AdminSettings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Live on Twitch</p>
-                <p className="text-sm text-muted-foreground">Show "Live on Twitch" banner</p>
+                <p className="font-medium">Currently Live</p>
+                <p className="text-sm text-muted-foreground">
+                  {settings.is_live ? 'Shows "Live on Twitch"' : 'Shows "Offline"'}
+                </p>
               </div>
               <Switch
                 checked={settings.is_live}
                 onCheckedChange={(checked) => setSettings({ ...settings, is_live: checked })}
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">Viewer Count</label>
-              <input
-                type="text"
-                value={settings.live_viewer_count}
-                onChange={(e) => setSettings({ ...settings, live_viewer_count: e.target.value })}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                placeholder="e.g. 12.5K"
-              />
-            </div>
+            {settings.is_live && (
+              <div>
+                <label className="text-sm font-medium">Viewer Count (optional)</label>
+                <input
+                  type="text"
+                  value={settings.live_viewer_count}
+                  onChange={(e) => setSettings({ ...settings, live_viewer_count: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="e.g. 12.5K"
+                />
+              </div>
+            )}
           </div>
         </motion.div>
 
         {/* External Links Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="glass rounded-2xl p-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass rounded-2xl p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <ExternalLink className="w-5 h-5 text-primary" />
             External Links
@@ -295,18 +344,89 @@ export default function AdminSettings() {
           </div>
         </motion.div>
 
+        {/* Homepage Stats Section */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass rounded-2xl p-6 lg:col-span-2">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            Homepage Stats
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Stat 1 Value</label>
+                <input
+                  type="text"
+                  value={settings.stat_community_value}
+                  onChange={(e) => setSettings({ ...settings, stat_community_value: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="150K+"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Stat 1 Label</label>
+                <input
+                  type="text"
+                  value={settings.stat_community_label}
+                  onChange={(e) => setSettings({ ...settings, stat_community_label: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="Community Members"
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Stat 2 Value</label>
+                <input
+                  type="text"
+                  value={settings.stat_wins_value}
+                  onChange={(e) => setSettings({ ...settings, stat_wins_value: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="$2.5M"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Stat 2 Label</label>
+                <input
+                  type="text"
+                  value={settings.stat_wins_label}
+                  onChange={(e) => setSettings({ ...settings, stat_wins_label: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="Total Wins Streamed"
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium">Stat 3 Value</label>
+                <input
+                  type="text"
+                  value={settings.stat_giveaways_value}
+                  onChange={(e) => setSettings({ ...settings, stat_giveaways_value: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="500+"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Stat 3 Label</label>
+                <input
+                  type="text"
+                  value={settings.stat_giveaways_label}
+                  onChange={(e) => setSettings({ ...settings, stat_giveaways_label: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="Giveaways Hosted"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Navigation Visibility Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="glass rounded-2xl p-6"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="glass rounded-2xl p-6 lg:col-span-2">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Layout className="w-5 h-5 text-primary" />
             Navigation Visibility
           </h3>
-          <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { key: "nav_videos_visible", label: "Videos" },
               { key: "nav_bonuses_visible", label: "Bonuses" },
@@ -316,8 +436,8 @@ export default function AdminSettings() {
               { key: "nav_gtw_visible", label: "Guess The Win" },
               { key: "nav_leaderboard_visible", label: "Leaderboard" },
             ].map((item) => (
-              <div key={item.key} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                <span className="font-medium">{item.label}</span>
+              <div key={item.key} className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
+                <span className="text-sm font-medium">{item.label}</span>
                 <Switch
                   checked={settings[item.key as keyof SiteSettings] as boolean}
                   onCheckedChange={(checked) => setSettings({ ...settings, [item.key]: checked })}
