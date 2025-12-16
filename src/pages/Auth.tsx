@@ -29,6 +29,23 @@ function Auth() {
     }
   }, [user, navigate]);
 
+  // Safety: if an auth request gets stuck (network/adblock/provider misconfig),
+  // auto-unlock the UI so the user can try again.
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const t = window.setTimeout(() => {
+      setIsLoading(false);
+      toast({
+        title: "Auth timed out",
+        description: "That took too long. Please try again (and disable adblock/VPN if enabled).",
+        variant: "destructive",
+      });
+    }, 15000);
+
+    return () => window.clearTimeout(t);
+  }, [isLoading, toast]);
+
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
     
@@ -176,6 +193,7 @@ function Auth() {
           {/* OAuth Buttons */}
           <div className="space-y-3 mb-6">
             <Button
+              type="button"
               variant="glow"
               className="w-full gap-3"
               onClick={() => handleOAuthLogin("twitch")}
@@ -185,6 +203,7 @@ function Auth() {
               Continue with Twitch
             </Button>
             <Button
+              type="button"
               variant="glass"
               className="w-full gap-3"
               onClick={() => handleOAuthLogin("discord")}
@@ -282,6 +301,7 @@ function Auth() {
           <p className="text-center text-sm text-muted-foreground mt-6">
             {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
             <button
+              type="button"
               onClick={() => setMode(mode === "login" ? "signup" : "login")}
               className="text-primary hover:underline font-medium"
             >
