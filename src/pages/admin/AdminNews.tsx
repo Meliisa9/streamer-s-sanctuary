@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Search, Image, Film, Upload, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Search, Image, Film, Upload, Loader2, Bold, Italic, Link2, Type } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type NewsArticle = Tables<"news_articles">;
 
@@ -31,10 +32,12 @@ const categories = ["Updates", "Giveaways", "Tutorials", "Reviews", "Community"]
 export default function AdminNews() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<NewsArticle | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFontSize, setSelectedFontSize] = useState("normal");
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -46,6 +49,7 @@ export default function AdminNews() {
     image_url: "",
     is_published: true,
     is_featured: false,
+    author_id: "",
   });
 
   const { data: articles, isLoading } = useQuery({
@@ -62,7 +66,11 @@ export default function AdminNews() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("news_articles").insert([data]);
+      const { author_id, ...articleData } = data;
+      const { error } = await supabase.from("news_articles").insert([{
+        ...articleData,
+        author_id: user?.id || null,
+      }]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -117,8 +125,10 @@ export default function AdminNews() {
       image_url: "",
       is_published: true,
       is_featured: false,
+      author_id: "",
     });
     setEditingArticle(null);
+    setSelectedFontSize("normal");
   };
 
   const handleEdit = (article: NewsArticle) => {
@@ -133,6 +143,7 @@ export default function AdminNews() {
       image_url: article.image_url || "",
       is_published: article.is_published ?? true,
       is_featured: article.is_featured ?? false,
+      author_id: article.author_id || "",
     });
     setIsDialogOpen(true);
   };
@@ -190,9 +201,9 @@ export default function AdminNews() {
 
       let mediaHtml = "";
       if (type === "video") {
-        mediaHtml = `\n<video controls class="w-full rounded-lg my-4"><source src="${url}" type="${file.type}"></video>\n`;
+        mediaHtml = `\n<video controls class="max-w-lg max-h-80 rounded-lg my-4 mx-auto block"><source src="${url}" type="${file.type}"></video>\n`;
       } else {
-        mediaHtml = `\n<img src="${url}" alt="Article image" class="w-full rounded-lg my-4" />\n`;
+        mediaHtml = `\n<img src="${url}" alt="Article image" class="max-w-full rounded-lg my-4" />\n`;
       }
 
       // Insert at cursor position in content
@@ -219,6 +230,70 @@ export default function AdminNews() {
     };
 
     input.click();
+  };
+
+  const insertFormatting = (format: string) => {
+    const textarea = contentRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = formData.content.substring(start, end);
+    
+    let formattedText = "";
+    let htmlTag = "";
+    
+    switch (format) {
+      case "bold":
+        formattedText = `<strong>${selectedText || "bold text"}</strong>`;
+        htmlTag = formattedText;
+        break;
+      case "italic":
+        formattedText = `<em>${selectedText || "italic text"}</em>`;
+        htmlTag = formattedText;
+        break;
+      case "link":
+        const url = prompt("Enter URL:", "https://");
+        if (!url) return;
+        formattedText = `<a href="${url}" class="text-primary hover:underline">${selectedText || "link text"}</a>`;
+        htmlTag = formattedText;
+        break;
+      case "h1":
+        formattedText = `<h1 class="text-3xl font-bold my-4">${selectedText || "Heading 1"}</h1>`;
+        htmlTag = formattedText;
+        break;
+      case "h2":
+        formattedText = `<h2 class="text-2xl font-bold my-3">${selectedText || "Heading 2"}</h2>`;
+        htmlTag = formattedText;
+        break;
+      case "h3":
+        formattedText = `<h3 class="text-xl font-semibold my-2">${selectedText || "Heading 3"}</h3>`;
+        htmlTag = formattedText;
+        break;
+      case "small":
+        formattedText = `<span class="text-sm">${selectedText || "small text"}</span>`;
+        htmlTag = formattedText;
+        break;
+      case "large":
+        formattedText = `<span class="text-lg">${selectedText || "large text"}</span>`;
+        htmlTag = formattedText;
+        break;
+      default:
+        return;
+    }
+
+    const newContent = formData.content.substring(0, start) + formattedText + formData.content.substring(end);
+    setFormData({ 
+      ...formData, 
+      content: newContent,
+      content_html: formData.content_html + htmlTag 
+    });
+
+    // Refocus textarea
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + formattedText.length, start + formattedText.length);
+    }, 0);
   };
 
   const filteredArticles = articles?.filter(
@@ -339,8 +414,93 @@ export default function AdminNews() {
                     Upload Video
                   </Button>
                 </div>
+              </div>
+
+              {/* Text Formatting Toolbar */}
+              <div className="space-y-2">
+                <Label>Text Formatting</Label>
+                <div className="flex gap-2 flex-wrap p-2 bg-secondary/50 rounded-lg">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("bold")}
+                    title="Bold"
+                  >
+                    <Bold className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("italic")}
+                    title="Italic"
+                  >
+                    <Italic className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("link")}
+                    title="Insert Link"
+                  >
+                    <Link2 className="w-4 h-4" />
+                  </Button>
+                  <div className="h-6 w-px bg-border mx-1" />
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("h1")}
+                    title="Heading 1"
+                    className="text-xs font-bold"
+                  >
+                    H1
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("h2")}
+                    title="Heading 2"
+                    className="text-xs font-bold"
+                  >
+                    H2
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("h3")}
+                    title="Heading 3"
+                    className="text-xs font-bold"
+                  >
+                    H3
+                  </Button>
+                  <div className="h-6 w-px bg-border mx-1" />
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("small")}
+                    title="Small Text"
+                    className="text-xs"
+                  >
+                    <Type className="w-3 h-3" />
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => insertFormatting("large")}
+                    title="Large Text"
+                  >
+                    <Type className="w-5 h-5" />
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  Click a button to upload and insert media at the cursor position in the content below.
+                  Select text in the content area and click a formatting button, or click to insert formatted placeholder text.
                 </p>
               </div>
 

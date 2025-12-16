@@ -63,6 +63,15 @@ export default function Videos() {
     mutationFn: async ({ videoId, isLiked }: { videoId: string; isLiked: boolean }) => {
       if (!user) throw new Error("Must be logged in");
       
+      // Get current video to get likes_count
+      const { data: currentVideo } = await supabase
+        .from("videos")
+        .select("likes_count")
+        .eq("id", videoId)
+        .single();
+      
+      const currentLikes = currentVideo?.likes_count || 0;
+      
       if (isLiked) {
         // Unlike
         const { error } = await supabase
@@ -71,12 +80,24 @@ export default function Videos() {
           .eq("video_id", videoId)
           .eq("user_id", user.id);
         if (error) throw error;
+        
+        // Update likes count
+        await supabase
+          .from("videos")
+          .update({ likes_count: Math.max(0, currentLikes - 1) })
+          .eq("id", videoId);
       } else {
         // Like
         const { error } = await supabase
           .from("video_likes")
           .insert({ video_id: videoId, user_id: user.id });
         if (error) throw error;
+        
+        // Update likes count
+        await supabase
+          .from("videos")
+          .update({ likes_count: currentLikes + 1 })
+          .eq("id", videoId);
       }
     },
     onSuccess: () => {

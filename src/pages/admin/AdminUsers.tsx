@@ -40,7 +40,7 @@ interface UserProfile {
 
 interface UserRole {
   user_id: string;
-  role: "user" | "moderator" | "admin";
+  role: "user" | "moderator" | "admin" | "writer";
 }
 
 export default function AdminUsers() {
@@ -100,7 +100,7 @@ export default function AdminUsers() {
     }
   };
 
-  const updateUserRole = async (userId: string, role: "user" | "moderator" | "admin", action: "add" | "remove") => {
+  const updateUserRole = async (userId: string, role: "user" | "moderator" | "admin" | "writer", action: "add" | "remove") => {
     if (!isAdmin) {
       toast({ title: "Access denied", description: "Only admins can manage roles", variant: "destructive" });
       return;
@@ -475,6 +475,7 @@ export default function AdminUsers() {
               const userRoles = roles[user.user_id] || ["user"];
               const isUserAdmin = userRoles.includes("admin");
               const isUserMod = userRoles.includes("moderator");
+              const isUserWriter = userRoles.includes("writer");
 
               return (
                 <tr key={user.id} className="border-b border-border/50 last:border-0">
@@ -528,7 +529,12 @@ export default function AdminUsers() {
                           Moderator
                         </span>
                       )}
-                      {!isUserAdmin && !isUserMod && (
+                      {isUserWriter && (
+                        <span className="px-2 py-0.5 text-xs bg-accent/20 text-accent rounded-full">
+                          Writer
+                        </span>
+                      )}
+                      {!isUserAdmin && !isUserMod && !isUserWriter && (
                         <span className="px-2 py-0.5 text-xs bg-secondary text-muted-foreground rounded-full">
                           User
                         </span>
@@ -554,6 +560,15 @@ export default function AdminUsers() {
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
+                        {!isUserWriter ? (
+                          <Button variant="ghost" size="sm" onClick={() => updateUserRole(user.user_id, "writer", "add")}>
+                            +Writer
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" onClick={() => updateUserRole(user.user_id, "writer", "remove")}>
+                            -Writer
+                          </Button>
+                        )}
                         {!isUserMod ? (
                           <Button variant="ghost" size="sm" onClick={() => updateUserRole(user.user_id, "moderator", "add")}>
                             +Mod

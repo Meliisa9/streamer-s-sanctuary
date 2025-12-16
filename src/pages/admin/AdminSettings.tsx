@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Upload, Loader2, ExternalLink, Type, Radio, Layout, BarChart3, Globe } from "lucide-react";
+import { Save, Upload, Loader2, ExternalLink, Type, Radio, Layout, BarChart3, Globe, Share2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface SiteSettings {
   site_name: string;
@@ -30,6 +31,18 @@ interface SiteSettings {
   stat_wins_label: string;
   stat_giveaways_value: string;
   stat_giveaways_label: string;
+  footer_copyright: string;
+  social_twitter: string;
+  social_youtube: string;
+  social_instagram: string;
+  social_discord: string;
+}
+
+interface RolePermission {
+  id: string;
+  role: string;
+  permission: string;
+  allowed: boolean;
 }
 
 const defaultSettings: SiteSettings = {
@@ -55,6 +68,25 @@ const defaultSettings: SiteSettings = {
   stat_wins_label: "Total Wins Streamed",
   stat_giveaways_value: "500+",
   stat_giveaways_label: "Giveaways Hosted",
+  footer_copyright: "",
+  social_twitter: "#",
+  social_youtube: "#",
+  social_instagram: "#",
+  social_discord: "#",
+};
+
+const permissionLabels: Record<string, string> = {
+  create_articles: "Create Articles",
+  edit_own_articles: "Edit Own Articles",
+  delete_own_articles: "Delete Own Articles",
+  manage_videos: "Manage Videos",
+  manage_bonuses: "Manage Bonuses",
+  manage_giveaways: "Manage Giveaways",
+  manage_events: "Manage Events",
+  manage_gtw: "Manage Guess The Win",
+  manage_users: "Manage Users",
+  manage_settings: "Manage Settings",
+  change_live_status: "Change Live Status",
 };
 
 export default function AdminSettings() {
@@ -66,7 +98,38 @@ export default function AdminSettings() {
   const [faviconFile, setFaviconFile] = useState<File | null>(null);
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isModerator } = useAuth();
+  const queryClient = useQueryClient();
+
+  // Fetch role permissions
+  const { data: rolePermissions = [] } = useQuery({
+    queryKey: ["role-permissions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("role_permissions")
+        .select("*")
+        .order("role", { ascending: true });
+      if (error) throw error;
+      return data as RolePermission[];
+    },
+  });
+
+  const permissionMutation = useMutation({
+    mutationFn: async ({ id, allowed }: { id: string; allowed: boolean }) => {
+      const { error } = await supabase
+        .from("role_permissions")
+        .update({ allowed })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
+      toast({ title: "Permission updated" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -118,6 +181,11 @@ export default function AdminSettings() {
   };
 
   const saveSettings = async () => {
+    // Moderators can only save live status
+    if (!isAdmin && isModerator) {
+      return saveLiveStatusOnly();
+    }
+
     if (!isAdmin) {
       toast({ title: "Only admins can change settings", variant: "destructive" });
       return;
@@ -176,10 +244,86 @@ export default function AdminSettings() {
     }
   };
 
+  const saveLiveStatusOnly = async () => {
+    setIsSaving(true);
+    try {
+      await supabase.from("site_settings").upsert({ key: "is_live", value: settings.is_live }, { onConflict: "key" });
+      await supabase.from("site_settings").upsert({ key: "live_platform", value: settings.live_platform }, { onConflict: "key" });
+      toast({ title: "Live status saved" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Group permissions by role
+  const permissionsByRole = rolePermissions.reduce((acc, perm) => {
+    if (!acc[perm.role]) acc[perm.role] = [];
+    acc[perm.role].push(perm);
+    return acc;
+  }, {} as Record<string, RolePermission[]>);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Moderator-only view - just live status
+  if (!isAdmin && isModerator) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Live Status</h2>
+          <Button variant="glow" onClick={saveLiveStatusOnly} disabled={isSaving} className="gap-2">
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save
+          </Button>
+        </div>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Radio className="w-5 h-5 text-destructive" />
+            Live Status
+          </h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Live on Twitch</p>
+                <p className="text-sm text-muted-foreground">Show "Live on Twitch" badge</p>
+              </div>
+              <Switch
+                checked={settings.is_live && settings.live_platform === "twitch"}
+                onCheckedChange={(checked) => setSettings({ 
+                  ...settings, 
+                  is_live: checked, 
+                  live_platform: checked ? "twitch" : settings.live_platform 
+                })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Live on Kick</p>
+                <p className="text-sm text-muted-foreground">Show "Live on Kick" badge (green)</p>
+              </div>
+              <Switch
+                checked={settings.is_live && settings.live_platform === "kick"}
+                onCheckedChange={(checked) => setSettings({ 
+                  ...settings, 
+                  is_live: checked, 
+                  live_platform: checked ? "kick" : settings.live_platform 
+                })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {settings.is_live 
+                ? `Currently showing: Live on ${settings.live_platform === "kick" ? "Kick" : "Twitch"}` 
+                : "Currently showing: Offline"}
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -277,6 +421,16 @@ export default function AdminSettings() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">Recommended: 32x32 or 64x64 PNG/ICO</p>
             </div>
+            <div>
+              <label className="text-sm font-medium">Footer Copyright Text</label>
+              <input
+                type="text"
+                value={settings.footer_copyright}
+                onChange={(e) => setSettings({ ...settings, footer_copyright: e.target.value })}
+                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                placeholder="© 2024 StreamerX. All rights reserved."
+              />
+            </div>
           </div>
         </motion.div>
 
@@ -290,9 +444,7 @@ export default function AdminSettings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Live on Twitch</p>
-                <p className="text-sm text-muted-foreground">
-                  Show "Live on Twitch" badge
-                </p>
+                <p className="text-sm text-muted-foreground">Show "Live on Twitch" badge</p>
               </div>
               <Switch
                 checked={settings.is_live && settings.live_platform === "twitch"}
@@ -306,9 +458,7 @@ export default function AdminSettings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Live on Kick</p>
-                <p className="text-sm text-muted-foreground">
-                  Show "Live on Kick" badge (green)
-                </p>
+                <p className="text-sm text-muted-foreground">Show "Live on Kick" badge (green)</p>
               </div>
               <Switch
                 checked={settings.is_live && settings.live_platform === "kick"}
@@ -352,6 +502,56 @@ export default function AdminSettings() {
                 onChange={(e) => setSettings({ ...settings, twitch_follow_url: e.target.value })}
                 className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
                 placeholder="https://twitch.tv/yourname"
+              />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Social Media Links */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }} className="glass rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Share2 className="w-5 h-5 text-primary" />
+            Footer Social Links
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Twitter/X URL</label>
+              <input
+                type="url"
+                value={settings.social_twitter}
+                onChange={(e) => setSettings({ ...settings, social_twitter: e.target.value })}
+                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                placeholder="https://twitter.com/yourname"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">YouTube URL</label>
+              <input
+                type="url"
+                value={settings.social_youtube}
+                onChange={(e) => setSettings({ ...settings, social_youtube: e.target.value })}
+                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                placeholder="https://youtube.com/@yourname"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Instagram URL</label>
+              <input
+                type="url"
+                value={settings.social_instagram}
+                onChange={(e) => setSettings({ ...settings, social_instagram: e.target.value })}
+                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                placeholder="https://instagram.com/yourname"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Discord URL</label>
+              <input
+                type="url"
+                value={settings.social_discord}
+                onChange={(e) => setSettings({ ...settings, social_discord: e.target.value })}
+                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                placeholder="https://discord.gg/yourserver"
               />
             </div>
           </div>
@@ -459,6 +659,37 @@ export default function AdminSettings() {
             ))}
           </div>
         </motion.div>
+
+        {/* Role Permissions Section */}
+        {isAdmin && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass rounded-2xl p-6 lg:col-span-2">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              Role Permissions
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure what each role can do. Admin always has full access.
+            </p>
+            <div className="space-y-6">
+              {["writer", "moderator"].map((role) => (
+                <div key={role} className="space-y-3">
+                  <h4 className="font-semibold capitalize text-primary">{role}</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {permissionsByRole[role]?.map((perm) => (
+                      <div key={perm.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
+                        <span className="text-sm">{permissionLabels[perm.permission] || perm.permission}</span>
+                        <Switch
+                          checked={perm.allowed}
+                          onCheckedChange={(checked) => permissionMutation.mutate({ id: perm.id, allowed: checked })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     </div>
   );
