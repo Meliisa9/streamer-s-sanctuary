@@ -37,14 +37,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const buildProfileInsert = (supabaseUser: User) => {
+    const meta = (supabaseUser.user_metadata || {}) as Record<string, any>;
+    const provider = (supabaseUser.app_metadata || {})?.provider as string | undefined;
+
+    const username =
+      meta.preferred_username ||
+      meta.user_name ||
+      meta.name ||
+      (supabaseUser.email ? supabaseUser.email.split("@")[0] : null);
+
+    const displayName = meta.full_name || meta.name || username;
+
+    return {
+      user_id: supabaseUser.id,
+      username: username ?? null,
+      display_name: displayName ?? null,
+      avatar_url: (meta.avatar_url as string | undefined) ?? null,
+      twitch_username: provider === "twitch" ? (username ?? null) : null,
+      // Discord often exposes full_name (e.g. DisplayName#1234) rather than a clean username
+      discord_tag: provider === "discord" ? ((meta.full_name as string | undefined) ?? (username ?? null)) : null,
+    };
+  };
+
+  const fetchProfile = async (supabaseUser: User) => {
+    const userId = supabaseUser.id;
+
     const { data: profileData } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (profileData) {
+    // If the user signed in via OAuth and the DB trigger didn't create the profile (common in local dev), create it client-side.
+    if (!profileData) {
+      const { error: insertError } = await supabase.from("profiles").insert(buildProfileInsert(supabaseUser));
+      // If it was created by a parallel process, ignore conflict-like failures.
+      if (!insertError) {
+        const { data: createdProfile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (createdProfile) setProfile(createdProfile as Profile);
+      }
+    } else {
       setProfile(profileData as Profile);
     }
 
@@ -60,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      await fetchProfile(user);
     }
   };
 
@@ -74,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Defer profile fetch to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            fetchProfile(session.user);
           }, 0);
         } else {
           setProfile(null);
@@ -89,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => {
+        fetchProfile(session.user).finally(() => {
           setIsLoading(false);
         });
       } else {
