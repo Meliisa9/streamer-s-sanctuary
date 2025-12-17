@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 interface BrandingSettings {
   site_name: string;
@@ -134,6 +135,8 @@ export default function AdminBranding() {
 
   return (
     <div className="space-y-6">
+      <AdminSettingsNav />
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Branding</h2>

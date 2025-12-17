@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 interface RolePermission {
   id: string;
@@ -87,6 +88,8 @@ export default function AdminPermissions() {
 
   return (
     <div className="space-y-6">
+      <AdminSettingsNav />
+      
       <div>
         <h2 className="text-2xl font-bold">Role Permissions</h2>
         <p className="text-muted-foreground">Configure what each role can do</p>

@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 interface LiveSettings {
   is_live: boolean;
@@ -29,14 +29,6 @@ const defaultSettings: LiveSettings = {
   social_instagram: "#",
   social_discord: "#",
 };
-
-const settingsSubcategories = [
-  { path: "/admin/settings/branding", label: "Branding", adminOnly: true },
-  { path: "/admin/settings/navigation", label: "Navigation", adminOnly: true },
-  { path: "/admin/settings/statistics", label: "Statistics", adminOnly: true },
-  { path: "/admin/settings/permissions", label: "Permissions", adminOnly: true },
-  { path: "/admin/settings/about", label: "About Page", adminOnly: true },
-];
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState<LiveSettings>(defaultSettings);
@@ -119,19 +111,8 @@ export default function AdminSettings() {
         </Button>
       </div>
 
-      {/* Subcategories for Admin only */}
-      {isAdmin && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-4">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">More Settings</h3>
-          <div className="flex flex-wrap gap-2">
-            {settingsSubcategories.map((item) => (
-              <Link key={item.path} to={item.path}>
-                <Button variant="outline" size="sm">{item.label}</Button>
-              </Link>
-            ))}
-          </div>
-        </motion.div>
-      )}
+      {/* Settings Categories Navigation */}
+      <AdminSettingsNav />
 
       {/* Live Status - Available to Moderators */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">

@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 interface NavSettings {
   nav_videos_visible: boolean;
@@ -107,6 +108,8 @@ export default function AdminNavigation() {
 
   return (
     <div className="space-y-6">
+      <AdminSettingsNav />
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Navigation</h2>

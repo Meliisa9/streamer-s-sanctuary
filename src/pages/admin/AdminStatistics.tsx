@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 interface StatSettings {
   stat_community_value: string;
@@ -88,6 +89,8 @@ export default function AdminStatistics() {
 
   return (
     <div className="space-y-6">
+      <AdminSettingsNav />
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Homepage Statistics</h2>
