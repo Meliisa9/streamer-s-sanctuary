@@ -134,10 +134,10 @@ export default function AdminStream() {
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50">
             <div className="flex items-center gap-3">
-              <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
+              <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
               <div>
                 <p className="font-medium">Live on Twitch</p>
-                <p className="text-sm text-muted-foreground">Show purple "Live on Twitch" badge</p>
+                <p className="text-sm text-muted-foreground">Show red "Live on Twitch" badge</p>
               </div>
             </div>
             <Switch

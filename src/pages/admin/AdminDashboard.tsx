@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Video, Newspaper, Gift, Users, TrendingUp, Eye, Calendar, Trophy } from "lucide-react";
+import { Video, Newspaper, Gift, Users, TrendingUp, Calendar, Trophy, Activity, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
 
 interface Stats {
   totalVideos: number;
@@ -10,6 +11,13 @@ interface Stats {
   totalUsers: number;
   activeGiveaways: number;
   totalEntries: number;
+}
+
+interface RecentActivity {
+  id: string;
+  action: string;
+  created_at: string;
+  details: any;
 }
 
 export default function AdminDashboard() {
@@ -21,10 +29,12 @@ export default function AdminDashboard() {
     activeGiveaways: 0,
     totalEntries: 0,
   });
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchStats();
+    fetchRecentActivities();
   }, []);
 
   const fetchStats = async () => {
@@ -58,6 +68,31 @@ export default function AdminDashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("user_activities")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setRecentActivities(data || []);
+    } catch (error) {
+      console.error("Error fetching activities:", error);
+    }
+  };
+
+  const getActivityIcon = (action: string) => {
+    if (action.includes("login")) return "🔐";
+    if (action.includes("signup") || action.includes("register")) return "👤";
+    if (action.includes("video")) return "📹";
+    if (action.includes("article") || action.includes("news")) return "📰";
+    if (action.includes("giveaway")) return "🎁";
+    if (action.includes("vote") || action.includes("poll")) return "📊";
+    return "📌";
   };
 
   const statCards = [
@@ -138,45 +173,81 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="glass rounded-2xl p-6"
-      >
-        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <a
-            href="/admin/videos"
-            className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
-          >
-            <Video className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <p className="font-medium">Add Video</p>
-          </a>
-          <a
-            href="/admin/news"
-            className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
-          >
-            <Newspaper className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <p className="font-medium">Write Article</p>
-          </a>
-          <a
-            href="/admin/giveaways"
-            className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
-          >
-            <Gift className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <p className="font-medium">Create Giveaway</p>
-          </a>
-          <a
-            href="/admin/events"
-            className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
-          >
-            <Calendar className="w-6 h-6 mx-auto mb-2 text-primary" />
-            <p className="font-medium">Add Event</p>
-          </a>
-        </div>
-      </motion.div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="glass rounded-2xl p-6"
+        >
+          <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <a
+              href="/admin/videos"
+              className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
+            >
+              <Video className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="font-medium">Add Video</p>
+            </a>
+            <a
+              href="/admin/news"
+              className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
+            >
+              <Newspaper className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="font-medium">Write Article</p>
+            </a>
+            <a
+              href="/admin/giveaways"
+              className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
+            >
+              <Gift className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="font-medium">Create Giveaway</p>
+            </a>
+            <a
+              href="/admin/events"
+              className="p-4 bg-secondary/50 rounded-xl hover:bg-secondary transition-colors text-center"
+            >
+              <Calendar className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="font-medium">Add Event</p>
+            </a>
+          </div>
+        </motion.div>
+
+        {/* Recent Activity Widget */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="glass rounded-2xl p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />
+              Recent Activity
+            </h2>
+            <a href="/admin/activity" className="text-sm text-primary hover:underline">View All</a>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {recentActivities.length > 0 ? (
+              recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
+                  <span className="text-xl">{getActivityIcon(activity.action)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{activity.action}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-4">No recent activity</p>
+            )}
+          </div>
+        </motion.div>
+      </div>
 
       {/* Welcome Message */}
       <motion.div
