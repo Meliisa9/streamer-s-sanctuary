@@ -62,8 +62,8 @@ export default function Stream() {
   const getSizeClasses = () => {
     switch (streamSize) {
       case "small":
-        // Slightly larger than before, but still clearly smaller than theater mode
-        return "max-w-4xl mx-auto";
+        // Medium size - larger than before, but still clearly smaller than theater mode
+        return "max-w-5xl mx-auto";
       case "fullscreen":
         return "fixed inset-0 z-50 bg-black";
       case "theater":

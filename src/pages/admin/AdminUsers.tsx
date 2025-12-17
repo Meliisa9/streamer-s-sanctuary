@@ -49,6 +49,7 @@ export default function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editingEmail, setEditingEmail] = useState<{ userId: string; email: string } | null>(null);
   const [editForm, setEditForm] = useState({
     username: "",
     display_name: "",
@@ -68,8 +69,10 @@ export default function AdminUsers() {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const { toast } = useToast();
   const { isAdmin, user: currentUser } = useAuth();
+  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchUsers();
@@ -159,6 +162,39 @@ export default function AdminUsers() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const updateUserEmail = async () => {
+    if (!isAdmin || !editingEmail) return;
+    
+    setIsUpdatingEmail(true);
+
+    try {
+      const response = await supabase.functions.invoke("create-user", {
+        body: {
+          action: "update_email",
+          user_id: editingEmail.userId,
+          new_email: editingEmail.email,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to update email");
+      }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      toast({ title: "Email updated successfully" });
+      setEditingEmail(null);
+      // Update local state
+      setUserEmails(prev => ({ ...prev, [editingEmail.userId]: editingEmail.email }));
+    } catch (error: any) {
+      toast({ title: "Error updating email", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUpdatingEmail(false);
     }
   };
 
