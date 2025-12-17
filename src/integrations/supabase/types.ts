@@ -150,6 +150,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          end_time: string | null
           event_date: string
           event_time: string | null
           event_type: string | null
@@ -158,12 +159,14 @@ export type Database = {
           is_featured: boolean | null
           is_recurring: boolean | null
           platform: string | null
+          streamer_id: string | null
           title: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          end_time?: string | null
           event_date: string
           event_time?: string | null
           event_type?: string | null
@@ -172,12 +175,14 @@ export type Database = {
           is_featured?: boolean | null
           is_recurring?: boolean | null
           platform?: string | null
+          streamer_id?: string | null
           title: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          end_time?: string | null
           event_date?: string
           event_time?: string | null
           event_type?: string | null
@@ -186,9 +191,18 @@ export type Database = {
           is_featured?: boolean | null
           is_recurring?: boolean | null
           platform?: string | null
+          streamer_id?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "streamers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       giveaway_entries: {
         Row: {
@@ -603,6 +617,60 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: Json | null
+        }
+        Relationships: []
+      }
+      streamers: {
+        Row: {
+          created_at: string
+          description: string | null
+          discord_url: string | null
+          id: string
+          image_url: string | null
+          instagram_url: string | null
+          is_active: boolean | null
+          is_main_streamer: boolean | null
+          kick_url: string | null
+          name: string
+          sort_order: number | null
+          twitch_url: string | null
+          twitter_url: string | null
+          updated_at: string
+          youtube_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discord_url?: string | null
+          id?: string
+          image_url?: string | null
+          instagram_url?: string | null
+          is_active?: boolean | null
+          is_main_streamer?: boolean | null
+          kick_url?: string | null
+          name: string
+          sort_order?: number | null
+          twitch_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          youtube_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discord_url?: string | null
+          id?: string
+          image_url?: string | null
+          instagram_url?: string | null
+          is_active?: boolean | null
+          is_main_streamer?: boolean | null
+          kick_url?: string | null
+          name?: string
+          sort_order?: number | null
+          twitch_url?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          youtube_url?: string | null
         }
         Relationships: []
       }

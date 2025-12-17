@@ -22,9 +22,27 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import type { Tables } from "@/integrations/supabase/types";
 
-type Event = Tables<"events">;
+interface Event {
+  id: string;
+  title: string;
+  description: string | null;
+  event_date: string;
+  event_time: string | null;
+  end_time: string | null;
+  event_type: string | null;
+  platform: string | null;
+  streamer_id: string | null;
+  is_featured: boolean | null;
+  is_recurring: boolean | null;
+  created_at: string;
+}
+
+interface Streamer {
+  id: string;
+  name: string;
+  image_url: string | null;
+}
 
 const eventTypes = ["Stream", "Special Event", "Community", "Giveaway"];
 const platforms = ["Twitch", "Kick", "YouTube", "Discord"];
@@ -40,9 +58,10 @@ export default function AdminEvents() {
     description: "",
     event_date: "",
     event_time: "",
+    end_time: "",
     event_type: "Stream",
     platform: "Twitch",
-    expected_viewers: "",
+    streamer_id: "",
     is_featured: false,
     is_recurring: false,
   });
@@ -56,6 +75,19 @@ export default function AdminEvents() {
         .order("event_date", { ascending: true });
       if (error) throw error;
       return data as Event[];
+    },
+  });
+
+  const { data: streamers } = useQuery({
+    queryKey: ["streamers-list"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("streamers")
+        .select("id, name, image_url")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data as Streamer[];
     },
   });
 
@@ -111,9 +143,10 @@ export default function AdminEvents() {
       description: "",
       event_date: "",
       event_time: "",
+      end_time: "",
       event_type: "Stream",
       platform: "Twitch",
-      expected_viewers: "",
+      streamer_id: "",
       is_featured: false,
       is_recurring: false,
     });
@@ -127,13 +160,19 @@ export default function AdminEvents() {
       description: event.description || "",
       event_date: event.event_date,
       event_time: event.event_time || "",
+      end_time: event.end_time || "",
       event_type: event.event_type || "Stream",
       platform: event.platform || "Twitch",
-      expected_viewers: event.expected_viewers || "",
+      streamer_id: event.streamer_id || "",
       is_featured: event.is_featured ?? false,
       is_recurring: event.is_recurring ?? false,
     });
     setIsDialogOpen(true);
+  };
+
+  const getStreamerName = (streamerId: string | null) => {
+    if (!streamerId) return null;
+    return streamers?.find((s) => s.id === streamerId)?.name;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -235,11 +274,28 @@ export default function AdminEvents() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Expected Viewers</Label>
+                <Label>Streamer</Label>
+                <Select
+                  value={formData.streamer_id}
+                  onValueChange={(value) => setFormData({ ...formData, streamer_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a streamer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No specific streamer</SelectItem>
+                    {streamers?.map((streamer) => (
+                      <SelectItem key={streamer.id} value={streamer.id}>{streamer.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>End Time</Label>
                 <Input
-                  value={formData.expected_viewers}
-                  onChange={(e) => setFormData({ ...formData, expected_viewers: e.target.value })}
-                  placeholder="10K+"
+                  value={formData.end_time}
+                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  placeholder="23:00 CET"
                 />
               </div>
               <div className="space-y-2">
@@ -304,11 +360,12 @@ export default function AdminEvents() {
                           <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded">Featured</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span>{new Date(event.event_date).toLocaleDateString()}</span>
-                        {event.event_time && <span>• {event.event_time}</span>}
+                        {event.event_time && <span>• {event.event_time}{event.end_time && ` - ${event.end_time}`}</span>}
                         <span>• {event.event_type}</span>
                         <span>• {event.platform}</span>
+                        {event.streamer_id && <span>• {getStreamerName(event.streamer_id)}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
