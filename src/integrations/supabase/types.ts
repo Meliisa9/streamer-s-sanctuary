@@ -545,6 +545,48 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          achievement_notifications: boolean
+          created_at: string
+          email_notifications: boolean
+          event_notifications: boolean
+          giveaway_notifications: boolean
+          id: string
+          push_enabled: boolean
+          push_subscription: Json | null
+          system_notifications: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_notifications?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          event_notifications?: boolean
+          giveaway_notifications?: boolean
+          id?: string
+          push_enabled?: boolean
+          push_subscription?: Json | null
+          system_notifications?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_notifications?: boolean
+          created_at?: string
+          email_notifications?: boolean
+          event_notifications?: boolean
+          giveaway_notifications?: boolean
+          id?: string
+          push_enabled?: boolean
+          push_subscription?: Json | null
+          system_notifications?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       poll_votes: {
         Row: {
           created_at: string

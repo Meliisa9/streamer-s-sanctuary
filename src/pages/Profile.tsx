@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { useAchievements, ACHIEVEMENTS } from "@/hooks/useAchievements";
 import { 
   User, Trophy, Gift, Target, Save, LogOut, 
@@ -477,6 +478,9 @@ export default function Profile() {
                 </div>
               ))}
             </div>
+
+            {/* Notification Preferences */}
+            <NotificationPreferences />
           </motion.div>
 
           {/* Right Column - Sidebar */}

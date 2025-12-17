@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bell, Check, CheckCheck, Trash2, X, Trophy, Gift, Calendar, Megaphone, ExternalLink } from "lucide-react";
+import { Bell, Check, CheckCheck, Trash2, X, Trophy, Gift, Calendar, Megaphone, ExternalLink, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface UserNotification {
   id: string;
@@ -25,6 +26,7 @@ export function UserNotifications() {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showNotification, isSubscribed } = usePushNotifications();
 
   useEffect(() => {
     if (!user) return;
@@ -47,6 +49,15 @@ export function UserNotifications() {
           setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
           toast({ title: newNotification.title, description: newNotification.message || undefined });
+          
+          // Show push notification if enabled
+          if (isSubscribed) {
+            showNotification(newNotification.title, {
+              body: newNotification.message || undefined,
+              tag: newNotification.id,
+              data: { url: newNotification.link || '/profile' },
+            });
+          }
         }
       )
       .subscribe();
@@ -308,15 +319,24 @@ export function UserNotifications() {
               </div>
 
               {notifications.length > 0 && (
-                <div className="p-3 border-t border-border">
+                <div className="p-3 border-t border-border flex gap-2">
+                  <Link to="/profile" className="flex-1" onClick={() => setIsOpen(false)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full gap-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Notification Settings
+                    </Button>
+                  </Link>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearAll}
-                    className="w-full text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive"
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Clear all notifications
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               )}
