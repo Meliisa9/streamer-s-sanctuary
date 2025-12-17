@@ -188,7 +188,12 @@ export function UserNotifications() {
   const handleNotificationClick = (notification: UserNotification) => {
     markAsRead(notification.id);
     if (notification.link) {
-      navigate(notification.link);
+      // Check if it's an external link (starts with http:// or https://)
+      if (notification.link.startsWith('http://') || notification.link.startsWith('https://')) {
+        window.open(notification.link, '_blank', 'noopener,noreferrer');
+      } else {
+        navigate(notification.link);
+      }
       setIsOpen(false);
     }
   };
