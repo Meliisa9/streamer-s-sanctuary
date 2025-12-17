@@ -292,14 +292,14 @@ export default function AdminEvents() {
               <div className="space-y-2">
                 <Label>Streamer</Label>
                 <Select
-                  value={formData.streamer_id}
-                  onValueChange={(value) => setFormData({ ...formData, streamer_id: value })}
+                  value={formData.streamer_id || "none"}
+                  onValueChange={(value) => setFormData({ ...formData, streamer_id: value === "none" ? "" : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a streamer" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific streamer</SelectItem>
+                    <SelectItem value="none">No specific streamer</SelectItem>
                     {streamers?.map((streamer) => (
                       <SelectItem key={streamer.id} value={streamer.id}>{streamer.name}</SelectItem>
                     ))}

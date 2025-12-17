@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Tv, Loader2 } from "lucide-react";
+import { Save, Tv, Loader2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,12 +92,12 @@ export default function AdminStream() {
   const getPreviewUrl = () => {
     if (!settings.stream_channel) return null;
     const hostname = window.location.hostname;
+    
     if (settings.stream_platform === "twitch") {
-      // Twitch requires the parent parameter to match the embedding domain
       return `https://player.twitch.tv/?channel=${encodeURIComponent(settings.stream_channel)}&parent=${hostname}&muted=false`;
     } else if (settings.stream_platform === "kick") {
-      // Kick uses a different embed format
-      return `https://kick.com/${encodeURIComponent(settings.stream_channel)}/embed`;
+      // Kick uses player subdomain for embeds
+      return `https://player.kick.com/${encodeURIComponent(settings.stream_channel)}`;
     }
     return null;
   };
@@ -157,9 +157,18 @@ export default function AdminStream() {
               placeholder={settings.stream_platform === "twitch" ? "your_twitch_channel" : "your_kick_channel"}
             />
             <p className="text-xs text-muted-foreground">
-              Just the channel name, not the full URL
+              Just the channel name, not the full URL (e.g., "ninja" not "twitch.tv/ninja")
             </p>
           </div>
+
+          {settings.stream_platform === "kick" && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Info className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-200">
+                Kick embeds use player.kick.com. Enter just the channel name (e.g., "xqc").
+              </p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Page Title</Label>
@@ -189,13 +198,14 @@ export default function AdminStream() {
                 src={getPreviewUrl() || ""}
                 className="w-full h-full"
                 allowFullScreen
+                allow="autoplay; encrypted-media; fullscreen"
               />
             </div>
           ) : (
             <div className="aspect-video rounded-xl bg-secondary flex items-center justify-center">
               <div className="text-center text-muted-foreground">
                 <Tv className="w-12 h-12 mx-auto mb-2" />
-                <p>Enter a channel name to preview</p>
+                <p>Enter a channel name and enable to preview</p>
               </div>
             </div>
           )}
