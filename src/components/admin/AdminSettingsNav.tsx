@@ -10,6 +10,7 @@ const settingsSubcategories = [
   { path: "/admin/settings/statistics", label: "Statistics" },
   { path: "/admin/settings/permissions", label: "Permissions" },
   { path: "/admin/settings/about", label: "About Page" },
+  { path: "/admin/settings/notifications", label: "Send Notifications" },
 ];
 
 export function AdminSettingsNav() {

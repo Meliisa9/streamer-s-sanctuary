@@ -105,9 +105,9 @@ const App = () => (
                   <Route path="settings/statistics" element={<AdminStatistics />} />
                   <Route path="settings/permissions" element={<AdminPermissions />} />
                   <Route path="settings/about" element={<AdminAbout />} />
+                  <Route path="settings/notifications" element={<AdminSendNotifications />} />
                   <Route path="audit" element={<AdminAuditLog />} />
                   <Route path="activity" element={<AdminActivityLog />} />
-                  <Route path="notifications" element={<AdminSendNotifications />} />
                 </Route>
               </Route>
 

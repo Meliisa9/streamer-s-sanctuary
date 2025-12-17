@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 export default function AdminSendNotifications() {
   const [title, setTitle] = useState("");
@@ -117,19 +118,14 @@ export default function AdminSendNotifications() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3"
-      >
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center">
-          <Send className="w-6 h-6 text-primary-foreground" />
-        </div>
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Send Notifications</h1>
+          <h2 className="text-2xl font-bold">Send Notifications</h2>
           <p className="text-muted-foreground">Send system notifications to users</p>
         </div>
-      </motion.div>
+      </div>
+
+      <AdminSettingsNav />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

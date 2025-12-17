@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Tv,
   Activity,
-  Send,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -41,7 +40,6 @@ const adminNavItems = [
   { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin", "moderator"] },
   { icon: Users, label: "Users", path: "/admin/users", roles: ["admin"] },
   { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
-  { icon: Send, label: "Send Notifications", path: "/admin/notifications", roles: ["admin", "moderator"] },
   { icon: FileText, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
   { icon: Settings, label: "Settings", path: "/admin/settings", roles: ["admin"] },
 ];

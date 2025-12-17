@@ -233,9 +233,9 @@ export default function Stream() {
                 transition={{ delay: 0.1 }}
               >
               {streamSize === "theater" && chatUrl ? (
-                  <div className="flex flex-col xl:flex-row gap-4" style={{ height: "700px" }}>
-                    {/* Main Player - Bigger in theater mode */}
-                    <div className="flex-[2] min-w-0">
+                  <div className="flex flex-col xl:flex-row gap-4" style={{ height: "800px" }}>
+                    {/* Main Player - Much wider in theater mode */}
+                    <div className="flex-[3] min-w-0">
                       <div className="glass rounded-2xl overflow-hidden h-full">
                         <iframe
                           src={embedUrl || ""}
@@ -247,7 +247,7 @@ export default function Stream() {
                     </div>
 
                     {/* Chat Sidebar - Same height as player */}
-                    <div className="hidden xl:block flex-1 min-w-[350px]">
+                    <div className="hidden xl:block flex-1 min-w-[320px] max-w-[380px]">
                       <div className="glass rounded-2xl overflow-hidden h-full flex flex-col">
                         <div className="p-4 border-b border-border bg-secondary/30">
                           <div className="flex items-center gap-2">
