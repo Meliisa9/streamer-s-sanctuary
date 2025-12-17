@@ -17,6 +17,12 @@ import GuessTheWin from "./pages/GuessTheWin";
 import Leaderboard from "./pages/Leaderboard";
 import Polls from "./pages/Polls";
 import About from "./pages/About";
+import Streamers from "./pages/Streamers";
+import Stream from "./pages/Stream";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+import ResponsibleGambling from "./pages/ResponsibleGambling";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -36,6 +42,9 @@ import AdminStatistics from "./pages/admin/AdminStatistics";
 import AdminPermissions from "./pages/admin/AdminPermissions";
 import AdminPolls from "./pages/admin/AdminPolls";
 import AdminAbout from "./pages/admin/AdminAbout";
+import AdminStreamers from "./pages/admin/AdminStreamers";
+import AdminStream from "./pages/admin/AdminStream";
+import AdminLegal from "./pages/admin/AdminLegal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +72,12 @@ const App = () => (
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/polls" element={<Polls />} />
                 <Route path="/about" element={<About />} />
+                <Route path="/streamers" element={<Streamers />} />
+                <Route path="/stream" element={<Stream />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/cookies" element={<CookiePolicy />} />
+                <Route path="/responsible-gambling" element={<ResponsibleGambling />} />
                 <Route path="/profile" element={<Profile />} />
                 
                 <Route path="/admin" element={<AdminLayout />}>
@@ -74,6 +89,9 @@ const App = () => (
                   <Route path="events" element={<AdminEvents />} />
                   <Route path="gtw" element={<AdminGTW />} />
                   <Route path="polls" element={<AdminPolls />} />
+                  <Route path="streamers" element={<AdminStreamers />} />
+                  <Route path="stream" element={<AdminStream />} />
+                  <Route path="legal" element={<AdminLegal />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="settings/branding" element={<AdminBranding />} />

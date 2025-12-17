@@ -181,13 +181,30 @@ export default function AdminBranding() {
                 ) : (
                   <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground text-xs">No logo</div>
                 )}
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setLogoFile, setLogoPreview)} className="hidden" />
-                  <Button variant="outline" type="button" asChild>
-                    <span><Upload className="w-4 h-4 mr-2" />Upload Logo</span>
-                  </Button>
-                </label>
+                <div className="flex gap-2">
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setLogoFile, setLogoPreview)} className="hidden" />
+                    <Button variant="outline" type="button" asChild>
+                      <span><Upload className="w-4 h-4 mr-2" />Upload Logo</span>
+                    </Button>
+                  </label>
+                  {(logoPreview || settings.logo_url) && (
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={() => {
+                        setLogoPreview(null);
+                        setLogoFile(null);
+                        setSettings({ ...settings, logo_url: null });
+                      }}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      Remove Logo
+                    </Button>
+                  )}
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground mt-1">Remove logo to show text-only header</p>
             </div>
           </div>
         </motion.div>

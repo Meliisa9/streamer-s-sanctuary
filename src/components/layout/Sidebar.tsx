@@ -39,6 +39,8 @@ const mainNavItems: NavItem[] = [
   { icon: Trophy, label: "Bonuses", path: "/bonuses", settingKey: "nav_bonuses_visible" },
   { icon: Newspaper, label: "News", path: "/news", settingKey: "nav_news_visible" },
   { icon: Gift, label: "Giveaways", path: "/giveaways", badge: "LIVE", settingKey: "nav_giveaways_visible" },
+  { icon: Users, label: "Streamers", path: "/streamers", settingKey: "nav_streamers_visible" },
+  { icon: Twitch, label: "Stream", path: "/stream", settingKey: "nav_stream_visible" },
 ];
 
 import { BarChart, Info } from "lucide-react";
@@ -139,7 +141,7 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-50 flex flex-col"
     >
       {/* Logo */}
-      <div className="p-4 flex items-center gap-3">
+      <NavLink to="/" className="p-4 flex items-center gap-3 hover:opacity-80 transition-opacity">
         {settings.logo_url ? (
           <img src={settings.logo_url} alt={settings.site_name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
         ) : (
@@ -162,7 +164,7 @@ export function Sidebar() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </NavLink>
 
       {/* Main Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">

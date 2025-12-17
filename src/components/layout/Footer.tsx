@@ -1,6 +1,6 @@
 import { forwardRef, type ComponentPropsWithoutRef } from "react";
 import { motion } from "framer-motion";
-import { Twitter, Youtube, Instagram, MessageCircle, Heart } from "lucide-react";
+import { Twitter, Youtube, Instagram, MessageCircle, Heart, Twitch, Globe } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
@@ -18,16 +18,30 @@ const legalLinks = [
   { label: "Responsible Gambling", href: "/responsible-gambling" },
 ];
 
+const iconMap: Record<string, React.ElementType> = {
+  twitter: Twitter,
+  youtube: Youtube,
+  instagram: Instagram,
+  discord: MessageCircle,
+  twitch: Twitch,
+  default: Globe,
+};
+
 export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">>(
   function Footer(props, ref) {
     const { className, ...rest } = props;
     const { settings } = useSiteSettings();
 
+    const getIcon = (iconName: string | undefined) => {
+      if (!iconName) return Globe;
+      return iconMap[iconName.toLowerCase()] || Globe;
+    };
+
     const socialLinks = [
-      { icon: Twitter, href: settings.social_twitter || "#", label: "Twitter" },
-      { icon: Youtube, href: settings.social_youtube || "#", label: "YouTube" },
-      { icon: Instagram, href: settings.social_instagram || "#", label: "Instagram" },
-      { icon: MessageCircle, href: settings.social_discord || "#", label: "Discord" },
+      { icon: getIcon(settings.social_twitter_icon as string), href: settings.social_twitter || "#", label: "Twitter" },
+      { icon: getIcon(settings.social_youtube_icon as string), href: settings.social_youtube || "#", label: "YouTube" },
+      { icon: getIcon(settings.social_instagram_icon as string), href: settings.social_instagram || "#", label: "Instagram" },
+      { icon: getIcon(settings.social_discord_icon as string), href: settings.social_discord || "#", label: "Discord" },
     ];
 
     return (
