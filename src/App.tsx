@@ -48,6 +48,7 @@ import AdminLegal from "./pages/admin/AdminLegal";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminProfileSync from "./pages/admin/AdminProfileSync";
 import AdminActivityLog from "./pages/admin/AdminActivityLog";
+import AdminSendNotifications from "./pages/admin/AdminSendNotifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -106,6 +107,7 @@ const App = () => (
                   <Route path="settings/about" element={<AdminAbout />} />
                   <Route path="audit" element={<AdminAuditLog />} />
                   <Route path="activity" element={<AdminActivityLog />} />
+                  <Route path="notifications" element={<AdminSendNotifications />} />
                 </Route>
               </Route>
 
