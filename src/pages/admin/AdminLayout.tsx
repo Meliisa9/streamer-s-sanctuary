@@ -17,14 +17,17 @@ import {
   BarChart3,
   RefreshCw,
   Tv,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { AdminCodeGate } from "@/components/admin/AdminCodeGate";
+import { AdminNotifications } from "@/components/admin/AdminNotifications";
 
 const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["admin", "moderator"] },
   { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["admin"] },
+  { icon: Activity, label: "Activity Log", path: "/admin/activity", roles: ["admin"] },
   { icon: Video, label: "Videos", path: "/admin/videos", roles: ["admin", "moderator"] },
   { icon: Newspaper, label: "News", path: "/admin/news", roles: ["admin", "moderator", "writer"] },
   { icon: Trophy, label: "Bonuses", path: "/admin/bonuses", roles: ["admin", "moderator"] },
@@ -92,9 +95,12 @@ function AdminLayoutContent() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold">Admin Panel</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Shield className="w-8 h-8 text-primary" />
+              <h1 className="text-3xl font-bold">Admin Panel</h1>
+            </div>
+            {isAdmin && <AdminNotifications />}
           </div>
           <p className="text-muted-foreground">
             {isWriter && !isModerator && !isAdmin 

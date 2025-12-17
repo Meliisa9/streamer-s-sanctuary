@@ -147,9 +147,13 @@ export function Sidebar() {
       {/* Logo */}
       <NavLink to="/" className="p-4 flex items-center gap-3 hover:opacity-80 transition-opacity">
         {settings.logo_url ? (
-          <>
-            <img src={settings.logo_url} alt={settings.site_name} className={`${collapsed ? "w-10 h-10" : "h-10 w-auto max-w-[180px]"} rounded-xl object-contain flex-shrink-0`} />
-          </>
+          <motion.img 
+            src={settings.logo_url} 
+            alt={settings.site_name} 
+            className={`${collapsed ? "w-10 h-10 rounded-xl object-contain" : "h-12 w-auto max-w-[200px] object-contain"} flex-shrink-0`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          />
         ) : (
           <>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center flex-shrink-0">
@@ -163,7 +167,7 @@ export function Sidebar() {
                   exit={{ opacity: 0, x: -10 }}
                   className="overflow-hidden"
                 >
-                  <h1 className="font-space-grotesk font-bold text-lg text-foreground">
+                  <h1 className="font-space-grotesk font-bold text-lg text-foreground leading-tight">
                     {settings.site_name}
                   </h1>
                   <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
