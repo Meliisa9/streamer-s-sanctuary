@@ -14,27 +14,56 @@ import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { useAchievements, ACHIEVEMENTS } from "@/hooks/useAchievements";
 import { 
   User, Trophy, Gift, Target, Save, LogOut, 
-  Calendar, Clock, Edit2, Shield, Star, TrendingUp,
-  MessageSquare, Heart, Award, ExternalLink, Link2, CheckCircle2, Lock, Bell, Settings
+  Calendar, Edit2, Shield, TrendingUp,
+  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2
 } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 
 export default function Profile() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const { achievements, getAchievementProgress, stats, refreshAchievements } = useAchievements();
   
   const [formData, setFormData] = useState({
     username: "",
     display_name: "",
     bio: "",
-    twitch_username: "",
-    discord_tag: "",
     avatar_url: "",
   });
+
+  // Handle Kick OAuth callback
+  useEffect(() => {
+    const kickUsername = searchParams.get("kick_username");
+    const kickSuccess = searchParams.get("kick_success");
+    const kickError = searchParams.get("kick_error");
+
+    if (kickSuccess && kickUsername && user) {
+      // Update profile with kick username
+      supabase
+        .from("profiles")
+        .update({ kick_username: kickUsername })
+        .eq("user_id", user.id)
+        .then(({ error }) => {
+          if (error) {
+            toast({ title: "Failed to link Kick account", description: error.message, variant: "destructive" });
+          } else {
+            toast({ title: "Kick account connected!", description: `Linked as ${kickUsername}` });
+            refreshProfile();
+          }
+        });
+      
+      // Clear URL params
+      setSearchParams({});
+    } else if (kickError) {
+      toast({ title: "Failed to connect Kick", description: kickError, variant: "destructive" });
+      setSearchParams({});
+    }
+  }, [searchParams, user]);
 
   useEffect(() => {
     if (profile) {
@@ -42,8 +71,6 @@ export default function Profile() {
         username: profile.username || "",
         display_name: profile.display_name || "",
         bio: profile.bio || "",
-        twitch_username: profile.twitch_username || "",
-        discord_tag: profile.discord_tag || "",
         avatar_url: profile.avatar_url || "",
       });
     }
@@ -75,6 +102,48 @@ export default function Profile() {
     navigate("/");
   };
 
+  const handleConnectTwitch = async () => {
+    setConnectingProvider("twitch");
+    try {
+      const { error } = await supabase.auth.linkIdentity({ provider: "twitch" });
+      if (error) throw error;
+    } catch (error: any) {
+      toast({ title: "Failed to connect Twitch", description: error.message, variant: "destructive" });
+      setConnectingProvider(null);
+    }
+  };
+
+  const handleConnectDiscord = async () => {
+    setConnectingProvider("discord");
+    try {
+      const { error } = await supabase.auth.linkIdentity({ provider: "discord" });
+      if (error) throw error;
+    } catch (error: any) {
+      toast({ title: "Failed to connect Discord", description: error.message, variant: "destructive" });
+      setConnectingProvider(null);
+    }
+  };
+
+  const handleConnectKick = async () => {
+    setConnectingProvider("kick");
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize`,
+        { headers: { "Content-Type": "application/json" } }
+      );
+      const data = await response.json();
+      
+      if (data.authorize_url) {
+        window.location.href = data.authorize_url;
+      } else {
+        throw new Error(data.error || "Failed to get authorization URL");
+      }
+    } catch (error: any) {
+      toast({ title: "Failed to connect Kick", description: error.message, variant: "destructive" });
+      setConnectingProvider(null);
+    }
+  };
+
   if (!user) {
     navigate("/auth");
     return null;
@@ -101,6 +170,7 @@ export default function Profile() {
   const identities = user.identities || [];
   const twitchConnected = identities.some(i => i.provider === "twitch");
   const discordConnected = identities.some(i => i.provider === "discord");
+  const kickConnected = !!profile?.kick_username;
 
   // Group achievements by category
   const achievementsByCategory = ACHIEVEMENTS.reduce((acc, achievement) => {
@@ -355,21 +425,28 @@ export default function Profile() {
                               <CheckCircle2 className="w-3 h-3" />
                               Connected
                             </span>
-                          ) : formData.twitch_username ? (
-                            <span>@{formData.twitch_username}</span>
+                          ) : profile?.twitch_username ? (
+                            <span>@{profile.twitch_username}</span>
                           ) : (
                             "Not connected"
                           )}
                         </p>
                       </div>
                     </div>
-                    {!twitchConnected && isEditing && (
-                      <Input
-                        value={formData.twitch_username}
-                        onChange={(e) => setFormData({ ...formData, twitch_username: e.target.value })}
-                        placeholder="Username"
-                        className="w-28 h-8 text-xs"
-                      />
+                    {!twitchConnected && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConnectTwitch}
+                        disabled={connectingProvider === "twitch"}
+                        className="h-8 text-xs"
+                      >
+                        {connectingProvider === "twitch" ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          "Connect"
+                        )}
+                      </Button>
                     )}
                   </div>
 
@@ -389,21 +466,28 @@ export default function Profile() {
                               <CheckCircle2 className="w-3 h-3" />
                               Connected
                             </span>
-                          ) : formData.discord_tag ? (
-                            <span>{formData.discord_tag}</span>
+                          ) : profile?.discord_tag ? (
+                            <span>{profile.discord_tag}</span>
                           ) : (
                             "Not connected"
                           )}
                         </p>
                       </div>
                     </div>
-                    {!discordConnected && isEditing && (
-                      <Input
-                        value={formData.discord_tag}
-                        onChange={(e) => setFormData({ ...formData, discord_tag: e.target.value })}
-                        placeholder="Tag"
-                        className="w-28 h-8 text-xs"
-                      />
+                    {!discordConnected && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConnectDiscord}
+                        disabled={connectingProvider === "discord"}
+                        className="h-8 text-xs"
+                      >
+                        {connectingProvider === "discord" ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          "Connect"
+                        )}
+                      </Button>
                     )}
                   </div>
 
@@ -416,14 +500,36 @@ export default function Profile() {
                       <div>
                         <p className="font-medium text-sm">Kick</p>
                         <p className="text-xs text-muted-foreground">
-                          Manual entry only
+                          {kickConnected ? (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <CheckCircle2 className="w-3 h-3" />
+                              @{profile?.kick_username}
+                            </span>
+                          ) : (
+                            "Not connected"
+                          )}
                         </p>
                       </div>
                     </div>
+                    {!kickConnected && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleConnectKick}
+                        disabled={connectingProvider === "kick"}
+                        className="h-8 text-xs"
+                      >
+                        {connectingProvider === "kick" ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          "Connect"
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground mt-3">
-                  Enter your usernames manually in edit mode to link your accounts.
+                  Click "Connect" to link your accounts via OAuth.
                 </p>
               </div>
             </TabsContent>

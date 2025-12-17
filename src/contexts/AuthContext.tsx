@@ -12,6 +12,7 @@ interface Profile {
   avatar_url: string | null;
   twitch_username: string | null;
   discord_tag: string | null;
+  kick_username: string | null;
   bio: string | null;
   points: number;
 }
@@ -56,8 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       display_name: displayName ?? null,
       avatar_url: (meta.avatar_url as string | undefined) ?? null,
       twitch_username: provider === "twitch" ? (username ?? null) : null,
-      // Discord often exposes full_name (e.g. DisplayName#1234) rather than a clean username
       discord_tag: provider === "discord" ? ((meta.full_name as string | undefined) ?? (username ?? null)) : null,
+      kick_username: provider === "kick" ? (username ?? null) : null,
     };
   };
 

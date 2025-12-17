@@ -666,6 +666,7 @@ export type Database = {
           discord_tag: string | null
           display_name: string | null
           id: string
+          kick_username: string | null
           points: number | null
           twitch_username: string | null
           updated_at: string
@@ -679,6 +680,7 @@ export type Database = {
           discord_tag?: string | null
           display_name?: string | null
           id?: string
+          kick_username?: string | null
           points?: number | null
           twitch_username?: string | null
           updated_at?: string
@@ -692,6 +694,7 @@ export type Database = {
           discord_tag?: string | null
           display_name?: string | null
           id?: string
+          kick_username?: string | null
           points?: number | null
           twitch_username?: string | null
           updated_at?: string
