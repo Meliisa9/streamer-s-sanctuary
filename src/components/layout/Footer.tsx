@@ -1,8 +1,9 @@
-import { forwardRef, type ComponentPropsWithoutRef } from "react";
+import { forwardRef, type ComponentPropsWithoutRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Twitter, Youtube, Instagram, MessageCircle, Heart, Twitch, Globe } from "lucide-react";
+import { Twitter, Youtube, Instagram, MessageCircle, Heart, Twitch, Globe, Facebook, Linkedin, Github, Send, Mail, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { supabase } from "@/integrations/supabase/client";
 
 const quickLinks = [
   { label: "Videos", href: "/videos" },
@@ -24,25 +25,61 @@ const iconMap: Record<string, React.ElementType> = {
   instagram: Instagram,
   discord: MessageCircle,
   twitch: Twitch,
+  facebook: Facebook,
+  linkedin: Linkedin,
+  github: Github,
+  telegram: Send,
+  mail: Mail,
+  globe: Globe,
+  link: LinkIcon,
+  tiktok: Globe, // fallback for tiktok
+  reddit: Globe, // fallback for reddit
+  whatsapp: MessageCircle,
+  snapchat: Globe,
+  pinterest: Globe,
+  spotify: Globe,
+  kick: Globe,
+  patreon: Heart,
   default: Globe,
 };
+
+interface SocialLink {
+  id: string;
+  title: string;
+  url: string;
+  icon: string;
+}
 
 export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">>(
   function Footer(props, ref) {
     const { className, ...rest } = props;
     const { settings } = useSiteSettings();
+    const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+
+    useEffect(() => {
+      fetchSocialLinks();
+    }, []);
+
+    const fetchSocialLinks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "footer_social_links")
+          .single();
+
+        if (!error && data?.value && Array.isArray(data.value)) {
+          setSocialLinks(data.value as unknown as SocialLink[]);
+        }
+      } catch (error) {
+        console.error("Error fetching social links:", error);
+      }
+    };
 
     const getIcon = (iconName: string | undefined) => {
       if (!iconName) return Globe;
       return iconMap[iconName.toLowerCase()] || Globe;
     };
-
-    const socialLinks = [
-      { icon: getIcon((settings as any).social_twitter_icon || "twitter"), href: settings.social_twitter || "#", label: "Twitter" },
-      { icon: getIcon((settings as any).social_youtube_icon || "youtube"), href: settings.social_youtube || "#", label: "YouTube" },
-      { icon: getIcon((settings as any).social_instagram_icon || "instagram"), href: settings.social_instagram || "#", label: "Instagram" },
-      { icon: getIcon((settings as any).social_discord_icon || "discord"), href: settings.social_discord || "#", label: "Discord" },
-    ];
 
     return (
       <footer ref={ref} className={`bg-card/50 border-t border-border mt-auto ${className ?? ""}`.trim()} {...rest}>
@@ -69,19 +106,23 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
               Your premium destination for casino streaming entertainment, exclusive
               bonuses, and exciting giveaways.
             </p>
-            <div className="flex gap-3">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-lg bg-secondary hover:bg-primary/20 hover:text-primary flex items-center justify-center transition-all duration-300"
-                  aria-label={social.label}
-                >
-                  <social.icon className="w-5 h-5" />
-                </a>
-              ))}
+            <div className="flex flex-wrap gap-3">
+              {socialLinks.map((social) => {
+                const IconComponent = getIcon(social.icon);
+                return (
+                  <a
+                    key={social.id}
+                    href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-10 h-10 rounded-lg bg-secondary hover:bg-primary/20 hover:text-primary flex items-center justify-center transition-all duration-300"
+                    aria-label={social.title}
+                    title={social.title}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                  </a>
+                );
+              })}
             </div>
           </motion.div>
 

@@ -11,11 +11,6 @@ interface AdminCodeGateProps {
   children: React.ReactNode;
 }
 
-const SESSION_KEY = "admin_code_verified";
-const SESSION_EXPIRY_KEY = "admin_code_expiry";
-const SESSION_USER_KEY = "admin_code_user";
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-
 export function AdminCodeGate({ children }: AdminCodeGateProps) {
   const [isVerified, setIsVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,25 +33,7 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     if (!user) return;
 
     try {
-      // First check if there's a valid session for this user
-      const storedVerified = sessionStorage.getItem(SESSION_KEY);
-      const storedExpiry = sessionStorage.getItem(SESSION_EXPIRY_KEY);
-      const storedUser = sessionStorage.getItem(SESSION_USER_KEY);
-      
-      if (storedVerified === "true" && storedExpiry && storedUser === user.id) {
-        const expiryTime = parseInt(storedExpiry, 10);
-        if (Date.now() < expiryTime) {
-          setIsVerified(true);
-          setIsLoading(false);
-          return;
-        }
-        // Session expired, clear it
-        sessionStorage.removeItem(SESSION_KEY);
-        sessionStorage.removeItem(SESSION_EXPIRY_KEY);
-        sessionStorage.removeItem(SESSION_USER_KEY);
-      }
-
-      // Fetch the user's personal access code
+      // Always require code entry - no session storage
       const { data, error } = await supabase
         .from("admin_access_codes")
         .select("access_code")
@@ -109,11 +86,6 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
 
       if (error) throw error;
 
-      // Store verification in session storage
-      sessionStorage.setItem(SESSION_KEY, "true");
-      sessionStorage.setItem(SESSION_EXPIRY_KEY, (Date.now() + SESSION_DURATION).toString());
-      sessionStorage.setItem(SESSION_USER_KEY, user.id);
-      
       setIsVerified(true);
       toast({ title: "Access code created", description: "Your personal admin access code has been set" });
     } catch (error: any) {
@@ -140,10 +112,6 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       if (error) throw error;
 
       if (code === data.access_code) {
-        // Store verification in session storage
-        sessionStorage.setItem(SESSION_KEY, "true");
-        sessionStorage.setItem(SESSION_EXPIRY_KEY, (Date.now() + SESSION_DURATION).toString());
-        sessionStorage.setItem(SESSION_USER_KEY, user.id);
         setIsVerified(true);
         toast({ title: "Access granted" });
       } else {
