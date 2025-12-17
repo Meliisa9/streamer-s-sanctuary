@@ -45,7 +45,7 @@ serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { action, user_id, email, password, username, display_name } = await req.json();
+    const { action, user_id, email, password, username, display_name, new_email } = await req.json();
 
     // Handle delete user
     if (action === "delete") {
@@ -65,6 +65,27 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Handle update email
+    if (action === "update_email") {
+      if (!user_id || !new_email) {
+        return new Response(JSON.stringify({ error: "user_id and new_email are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        user_id,
+        { email: new_email, email_confirm: true }
+      );
+
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true, user: { id: updatedUser.user.id, email: updatedUser.user.email } }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

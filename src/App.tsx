@@ -45,6 +45,8 @@ import AdminAbout from "./pages/admin/AdminAbout";
 import AdminStreamers from "./pages/admin/AdminStreamers";
 import AdminStream from "./pages/admin/AdminStream";
 import AdminLegal from "./pages/admin/AdminLegal";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminProfileSync from "./pages/admin/AdminProfileSync";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -83,6 +85,7 @@ const App = () => (
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="videos" element={<AdminVideos />} />
+                  <Route path="analytics" element={<AdminAnalytics />} />
                   <Route path="bonuses" element={<AdminBonuses />} />
                   <Route path="giveaways" element={<AdminGiveaways />} />
                   <Route path="news" element={<AdminNews />} />
@@ -93,6 +96,7 @@ const App = () => (
                   <Route path="stream" element={<AdminStream />} />
                   <Route path="legal" element={<AdminLegal />} />
                   <Route path="users" element={<AdminUsers />} />
+                  <Route path="profile-sync" element={<AdminProfileSync />} />
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="settings/branding" element={<AdminBranding />} />
                   <Route path="settings/navigation" element={<AdminNavigation />} />

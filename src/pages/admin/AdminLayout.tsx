@@ -14,37 +14,44 @@ import {
   Shield,
   FileText,
   BarChart,
+  BarChart3,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const adminNavItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
-  { icon: Video, label: "Videos", path: "/admin/videos" },
-  { icon: Newspaper, label: "News", path: "/admin/news" },
-  { icon: Trophy, label: "Bonuses", path: "/admin/bonuses" },
-  { icon: Gift, label: "Giveaways", path: "/admin/giveaways" },
-  { icon: Calendar, label: "Events", path: "/admin/events" },
-  { icon: Target, label: "GTW Sessions", path: "/admin/gtw" },
-  { icon: BarChart, label: "Polls", path: "/admin/polls" },
-  { icon: Users, label: "Streamers", path: "/admin/streamers" },
-  { icon: Video, label: "Stream", path: "/admin/stream" },
-  { icon: FileText, label: "Legal Pages", path: "/admin/legal" },
-  { icon: Users, label: "Users", path: "/admin/users" },
-  { icon: FileText, label: "Audit Log", path: "/admin/audit" },
-  { icon: Settings, label: "Settings", path: "/admin/settings" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["admin", "moderator"] },
+  { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["admin"] },
+  { icon: Video, label: "Videos", path: "/admin/videos", roles: ["admin", "moderator"] },
+  { icon: Newspaper, label: "News", path: "/admin/news", roles: ["admin", "moderator", "writer"] },
+  { icon: Trophy, label: "Bonuses", path: "/admin/bonuses", roles: ["admin", "moderator"] },
+  { icon: Gift, label: "Giveaways", path: "/admin/giveaways", roles: ["admin", "moderator"] },
+  { icon: Calendar, label: "Events", path: "/admin/events", roles: ["admin", "moderator"] },
+  { icon: Target, label: "GTW Sessions", path: "/admin/gtw", roles: ["admin", "moderator"] },
+  { icon: BarChart, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
+  { icon: Users, label: "Streamers", path: "/admin/streamers", roles: ["admin", "moderator"] },
+  { icon: Video, label: "Stream", path: "/admin/stream", roles: ["admin", "moderator"] },
+  { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin", "moderator"] },
+  { icon: Users, label: "Users", path: "/admin/users", roles: ["admin"] },
+  { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
+  { icon: FileText, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
+  { icon: Settings, label: "Settings", path: "/admin/settings", roles: ["admin"] },
 ];
 
 export default function AdminLayout() {
-  const { user, isAdmin, isModerator, isLoading } = useAuth();
+  const { user, isAdmin, isModerator, isWriter, isLoading, roles } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Check if user can access admin panel (admin, moderator, or writer)
+  const canAccessAdmin = isAdmin || isModerator || isWriter;
+
   useEffect(() => {
-    if (!isLoading && (!user || !isModerator)) {
+    if (!isLoading && (!user || !canAccessAdmin)) {
       navigate("/auth");
     }
-  }, [user, isModerator, isLoading, navigate]);
+  }, [user, canAccessAdmin, isLoading, navigate]);
 
   if (isLoading) {
     return (
@@ -54,9 +61,17 @@ export default function AdminLayout() {
     );
   }
 
-  if (!isModerator) {
+  if (!canAccessAdmin) {
     return null;
   }
+
+  // Filter nav items based on user roles
+  const visibleNavItems = adminNavItems.filter((item) => {
+    if (isAdmin) return true; // Admins see everything
+    if (isModerator) return item.roles.includes("moderator");
+    if (isWriter) return item.roles.includes("writer");
+    return false;
+  });
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -72,7 +87,9 @@ export default function AdminLayout() {
             <h1 className="text-3xl font-bold">Admin Panel</h1>
           </div>
           <p className="text-muted-foreground">
-            Manage your site content, users, and settings
+            {isWriter && !isModerator && !isAdmin 
+              ? "Manage news articles" 
+              : "Manage your site content, users, and settings"}
           </p>
         </motion.div>
 
@@ -84,16 +101,11 @@ export default function AdminLayout() {
             transition={{ delay: 0.1 }}
             className="space-y-1"
           >
-            {adminNavItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive =
                 location.pathname === item.path ||
                 (item.path !== "/admin" && location.pathname.startsWith(item.path));
               const Icon = item.icon;
-
-              // Hide audit log for non-admins
-              if (item.path === "/admin/audit" && !isAdmin) {
-                return null;
-              }
 
               return (
                 <NavLink key={item.path} to={item.path}>
