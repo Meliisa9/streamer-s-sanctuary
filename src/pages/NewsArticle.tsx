@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Heart, Eye, Clock, Share2, Send, Loader2, User, Shield, ShieldCheck, Pen, Bookmark, MessageCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Heart, Eye, Clock, Share2, Send, Loader2, User, Shield, ShieldCheck, Pen, MessageCircle, ThumbsUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { EmojiPicker } from "@/components/EmojiPicker";
 import type { Tables } from "@/integrations/supabase/types";
 
 type NewsArticle = Tables<"news_articles">;
@@ -27,12 +28,14 @@ interface Comment {
   content: string;
   created_at: string;
   user_id: string;
+  likes_count: number;
   profile?: {
     username: string | null;
     display_name: string | null;
     avatar_url: string | null;
   };
   roles?: UserRole[];
+  hasLiked?: boolean;
 }
 
 const getRoleBadge = (roles: UserRole[] | undefined) => {
@@ -63,21 +66,14 @@ const getRoleBadge = (roles: UserRole[] | undefined) => {
 
 // Process content to ensure proper rendering
 const processContent = (content: string, contentHtml: string | null): string => {
-  // If we have HTML content, use it but ensure proper formatting
   if (contentHtml && contentHtml.trim()) {
-    // Check if content contains HTML tags
     const hasHtmlTags = /<[^>]+>/.test(contentHtml);
     if (hasHtmlTags) {
-      // Process the HTML content to ensure proper paragraph wrapping
       let processed = contentHtml;
-      
-      // Split by double line breaks and wrap plain text in paragraphs
       const parts = processed.split(/\n\n+/);
       processed = parts.map(part => {
         const trimmed = part.trim();
         if (!trimmed) return '';
-        
-        // If it's already wrapped in a block element, keep it as is
         if (trimmed.startsWith('<div') || trimmed.startsWith('<p') || 
             trimmed.startsWith('<h1') || trimmed.startsWith('<h2') || 
             trimmed.startsWith('<h3') || trimmed.startsWith('<img') ||
@@ -86,16 +82,12 @@ const processContent = (content: string, contentHtml: string | null): string => 
             trimmed.startsWith('<blockquote')) {
           return trimmed;
         }
-        
-        // Wrap in paragraph
         return `<p class="mb-4 text-muted-foreground leading-relaxed">${trimmed}</p>`;
       }).join('\n');
-      
       return processed;
     }
   }
   
-  // Plain text content - convert line breaks to paragraphs
   if (content && content.trim()) {
     const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
     return paragraphs.map(p => 
@@ -113,6 +105,7 @@ export default function NewsArticlePage() {
   const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState("");
   const [hasLiked, setHasLiked] = useState(false);
+  const [commentLikes, setCommentLikes] = useState<Record<string, boolean>>({});
 
   const { data: article, isLoading, error } = useQuery({
     queryKey: ["news-article", slug],
@@ -127,7 +120,6 @@ export default function NewsArticlePage() {
       if (error) throw error;
       if (!data) throw new Error("Article not found");
 
-      // Increment view count
       await supabase
         .from("news_articles")
         .update({ views: (data.views || 0) + 1 })
@@ -149,10 +141,7 @@ export default function NewsArticlePage() {
         .eq("user_id", article.author_id)
         .maybeSingle();
 
-      if (error) {
-        console.error("Error fetching author:", error);
-        return null;
-      }
+      if (error) return null;
       return data as AuthorProfile;
     },
     enabled: !!article?.author_id,
@@ -173,28 +162,36 @@ export default function NewsArticlePage() {
       if (error) throw error;
 
       const userIds = [...new Set(data.map((c) => c.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", userIds);
+      const [profilesRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("user_id, username, display_name, avatar_url").in("user_id", userIds),
+        supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
+      ]);
 
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("user_id", userIds);
-
-      const profileMap = new Map(profiles?.map((p) => [p.user_id, p]));
+      const profileMap = new Map(profilesRes.data?.map((p) => [p.user_id, p]));
       const rolesMap = new Map<string, UserRole[]>();
-      roles?.forEach((r) => {
+      rolesRes.data?.forEach((r) => {
         const existing = rolesMap.get(r.user_id) || [];
         existing.push({ role: r.role });
         rolesMap.set(r.user_id, existing);
       });
 
+      // Check which comments the user has liked
+      let userLikes: string[] = [];
+      if (user) {
+        const { data: likesData } = await supabase
+          .from("comment_likes")
+          .select("comment_id")
+          .eq("user_id", user.id)
+          .in("comment_id", data.map(c => c.id));
+        userLikes = likesData?.map(l => l.comment_id) || [];
+      }
+
       return data.map((comment) => ({
         ...comment,
+        likes_count: comment.likes_count || 0,
         profile: profileMap.get(comment.user_id),
         roles: rolesMap.get(comment.user_id),
+        hasLiked: userLikes.includes(comment.id),
       })) as Comment[];
     },
     enabled: !!article?.id,
@@ -216,6 +213,15 @@ export default function NewsArticlePage() {
 
     checkLike();
   }, [user, article]);
+
+  // Update local comment likes state when comments change
+  useEffect(() => {
+    const likesState: Record<string, boolean> = {};
+    comments.forEach(comment => {
+      likesState[comment.id] = comment.hasLiked || false;
+    });
+    setCommentLikes(likesState);
+  }, [comments]);
 
   const likeMutation = useMutation({
     mutationFn: async () => {
@@ -252,6 +258,51 @@ export default function NewsArticlePage() {
     },
   });
 
+  const commentLikeMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      if (!user) throw new Error("Not authenticated");
+      
+      const isLiked = commentLikes[commentId];
+      
+      if (isLiked) {
+        await supabase
+          .from("comment_likes")
+          .delete()
+          .eq("comment_id", commentId)
+          .eq("user_id", user.id);
+
+        const comment = comments.find(c => c.id === commentId);
+        if (comment) {
+          await supabase
+            .from("news_comments")
+            .update({ likes_count: Math.max(0, (comment.likes_count || 0) - 1) })
+            .eq("id", commentId);
+        }
+      } else {
+        await supabase
+          .from("comment_likes")
+          .insert({ comment_id: commentId, user_id: user.id });
+
+        const comment = comments.find(c => c.id === commentId);
+        if (comment) {
+          await supabase
+            .from("news_comments")
+            .update({ likes_count: (comment.likes_count || 0) + 1 })
+            .eq("id", commentId);
+        }
+      }
+      
+      return { commentId, wasLiked: isLiked };
+    },
+    onSuccess: ({ commentId, wasLiked }) => {
+      setCommentLikes(prev => ({ ...prev, [commentId]: !wasLiked }));
+      queryClient.invalidateQueries({ queryKey: ["article-comments", article?.id] });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update like", variant: "destructive" });
+    },
+  });
+
   const commentMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!user || !article) throw new Error("Not authenticated");
@@ -271,6 +322,10 @@ export default function NewsArticlePage() {
       toast({ title: "Error", description: "Failed to add comment", variant: "destructive" });
     },
   });
+
+  const handleEmojiSelect = (emoji: string) => {
+    setCommentText(prev => prev + emoji);
+  };
 
   const getReadTime = (content: string) => {
     const words = content.replace(/<[^>]*>/g, '').split(/\s+/).length;
@@ -471,11 +526,12 @@ export default function NewsArticlePage() {
               <textarea
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Write a comment..."
+                placeholder="Write a comment... 😊"
                 rows={3}
                 className="w-full px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none transition-colors"
               />
-              <div className="flex justify-end mt-3">
+              <div className="flex items-center justify-between mt-3">
+                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
                 <Button
                   onClick={() => commentText.trim() && commentMutation.mutate(commentText)}
                   disabled={!commentText.trim() || commentMutation.isPending}
@@ -520,7 +576,23 @@ export default function NewsArticlePage() {
                         {new Date(comment.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-muted-foreground leading-relaxed">{comment.content}</p>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                    
+                    {/* Comment Like Button */}
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={() => user && commentLikeMutation.mutate(comment.id)}
+                        disabled={!user || commentLikeMutation.isPending}
+                        className={`flex items-center gap-1.5 text-sm transition-colors ${
+                          commentLikes[comment.id]
+                            ? "text-primary"
+                            : "text-muted-foreground hover:text-primary"
+                        } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <ThumbsUp className={`w-4 h-4 ${commentLikes[comment.id] ? "fill-current" : ""}`} />
+                        <span>{comment.likes_count || 0}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
