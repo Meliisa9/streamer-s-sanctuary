@@ -18,7 +18,7 @@ export default function Stream() {
       const { data, error } = await supabase
         .from("site_settings")
         .select("key, value")
-        .in("key", ["stream_platform", "stream_channel", "stream_enabled", "stream_title", "stream_description", "is_live", "live_platform"]);
+        .in("key", ["stream_platform", "stream_channel", "stream_enabled", "stream_title", "stream_description", "is_live", "live_platform", "show_live_badge_on_stream_page"]);
       if (error) throw error;
       const settingsMap: Record<string, any> = {};
       data?.forEach((row) => {
@@ -34,6 +34,7 @@ export default function Stream() {
   const title = settings?.stream_title || "Live Stream";
   const description = settings?.stream_description || "";
   const isLive = settings?.is_live === true;
+  const showLiveBadge = settings?.show_live_badge_on_stream_page !== false;
 
   const getEmbedUrl = () => {
     if (!channel) return null;
@@ -114,7 +115,7 @@ export default function Stream() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl md:text-3xl font-bold">{title}</h1>
-                {isLive && (
+                {isLive && showLiveBadge && (
                   <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-sm font-medium animate-pulse">
                     <Radio className="w-3.5 h-3.5" />
                     LIVE

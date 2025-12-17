@@ -66,7 +66,11 @@ export function AdminNotifications() {
   };
 
   const markAsRead = async (id: string) => {
-    await supabase.from("admin_notifications").update({ is_read: true }).eq("id", id);
+    const { error } = await supabase.from("admin_notifications").update({ is_read: true }).eq("id", id);
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      return;
+    }
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
     );
@@ -74,7 +78,18 @@ export function AdminNotifications() {
   };
 
   const markAllAsRead = async () => {
-    await supabase.from("admin_notifications").update({ is_read: true }).eq("is_read", false);
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
+    if (unreadIds.length === 0) return;
+    
+    const { error } = await supabase
+      .from("admin_notifications")
+      .update({ is_read: true })
+      .in("id", unreadIds);
+    
+    if (error) {
+      console.error("Error marking all notifications as read:", error);
+      return;
+    }
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     setUnreadCount(0);
   };

@@ -32,8 +32,8 @@ const iconMap: Record<string, React.ElementType> = {
   mail: Mail,
   globe: Globe,
   link: LinkIcon,
-  tiktok: Globe, // fallback for tiktok
-  reddit: Globe, // fallback for reddit
+  tiktok: Globe,
+  reddit: Globe,
   whatsapp: MessageCircle,
   snapchat: Globe,
   pinterest: Globe,
@@ -48,7 +48,17 @@ interface SocialLink {
   title: string;
   url: string;
   icon: string;
+  customIcon?: string;
 }
+
+// Load FontAwesome if not already loaded
+const loadFontAwesome = () => {
+  if (document.querySelector('link[href*="fontawesome"]')) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css";
+  document.head.appendChild(link);
+};
 
 export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">>(
   function Footer(props, ref) {
@@ -58,6 +68,7 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
 
     useEffect(() => {
       fetchSocialLinks();
+      loadFontAwesome();
     }, []);
 
     const fetchSocialLinks = async () => {
@@ -79,6 +90,14 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
     const getIcon = (iconName: string | undefined) => {
       if (!iconName) return Globe;
       return iconMap[iconName.toLowerCase()] || Globe;
+    };
+
+    const renderSocialIcon = (social: SocialLink) => {
+      if (social.icon === "custom" && social.customIcon) {
+        return <i className={`${social.customIcon} text-lg`} />;
+      }
+      const IconComponent = getIcon(social.icon);
+      return <IconComponent className="w-5 h-5" />;
     };
 
     return (
@@ -107,22 +126,19 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
               bonuses, and exciting giveaways.
             </p>
             <div className="flex flex-wrap gap-3">
-              {socialLinks.map((social) => {
-                const IconComponent = getIcon(social.icon);
-                return (
-                  <a
-                    key={social.id}
-                    href={social.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-10 h-10 rounded-lg bg-secondary hover:bg-primary/20 hover:text-primary flex items-center justify-center transition-all duration-300"
-                    aria-label={social.title}
-                    title={social.title}
-                  >
-                    <IconComponent className="w-5 h-5" />
-                  </a>
-                );
-              })}
+              {socialLinks.map((social) => (
+                <a
+                  key={social.id}
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-lg bg-secondary hover:bg-primary/20 hover:text-primary flex items-center justify-center transition-all duration-300"
+                  aria-label={social.title}
+                  title={social.title}
+                >
+                  {renderSocialIcon(social)}
+                </a>
+              ))}
             </div>
           </motion.div>
 

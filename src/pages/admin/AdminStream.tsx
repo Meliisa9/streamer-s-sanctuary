@@ -19,6 +19,7 @@ interface StreamSettings {
   stream_description: string;
   is_live: boolean;
   live_platform: "twitch" | "kick";
+  show_live_badge_on_stream_page: boolean;
 }
 
 const defaultSettings: StreamSettings = {
@@ -29,6 +30,7 @@ const defaultSettings: StreamSettings = {
   stream_description: "",
   is_live: false,
   live_platform: "twitch",
+  show_live_badge_on_stream_page: true,
 };
 
 export default function AdminStream() {
@@ -173,6 +175,21 @@ export default function AdminStream() {
                 ? <span className="text-green-400">Live on {settings.live_platform === "kick" ? "Kick" : "Twitch"}</span>
                 : <span className="text-muted-foreground">Offline</span>}
             </p>
+          </div>
+          
+          {/* Show live badge on stream page toggle */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 mt-4">
+            <div>
+              <p className="font-medium">Show LIVE Badge on Stream Page</p>
+              <p className="text-sm text-muted-foreground">Display the red LIVE badge next to the stream title</p>
+            </div>
+            <Switch
+              checked={settings.show_live_badge_on_stream_page}
+              onCheckedChange={(checked) => setSettings({ 
+                ...settings, 
+                show_live_badge_on_stream_page: checked
+              })}
+            />
           </div>
         </div>
       </motion.div>
