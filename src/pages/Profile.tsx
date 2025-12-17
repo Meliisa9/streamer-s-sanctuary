@@ -127,8 +127,9 @@ export default function Profile() {
   const handleConnectKick = async () => {
     setConnectingProvider("kick");
     try {
+      const frontendUrl = window.location.origin;
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}`,
         { headers: { "Content-Type": "application/json" } }
       );
       const data = await response.json();

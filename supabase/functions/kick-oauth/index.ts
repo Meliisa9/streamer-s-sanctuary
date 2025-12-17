@@ -30,10 +30,13 @@ serve(async (req) => {
     // Get redirect URL from request or use default
     const redirectBase = url.searchParams.get("redirect_url") || url.origin;
 
-    if (action === "authorize") {
+  if (action === "authorize") {
       // Step 1: Redirect user to Kick OAuth
-      const state = url.searchParams.get("state") || crypto.randomUUID();
+      const frontendUrl = url.searchParams.get("frontend_url") || "http://localhost:8080";
       const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
+      
+      // Encode frontend URL in state so we can redirect back after OAuth
+      const state = btoa(JSON.stringify({ frontend_url: frontendUrl }));
       
       const kickAuthUrl = new URL("https://id.kick.com/oauth/authorize");
       kickAuthUrl.searchParams.set("client_id", KICK_CLIENT_ID);
@@ -42,6 +45,7 @@ serve(async (req) => {
       kickAuthUrl.searchParams.set("scope", "user:read");
       kickAuthUrl.searchParams.set("state", state);
 
+      console.log("Authorize URL generated, redirecting to Kick OAuth");
       return new Response(
         JSON.stringify({ authorize_url: kickAuthUrl.toString(), state }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -54,24 +58,37 @@ serve(async (req) => {
       const state = url.searchParams.get("state");
       const error = url.searchParams.get("error");
 
+      // Decode frontend URL from state
+      let frontendUrl = "http://localhost:8080";
+      try {
+        if (state) {
+          const stateData = JSON.parse(atob(state));
+          frontendUrl = stateData.frontend_url || frontendUrl;
+        }
+      } catch (e) {
+        console.error("Failed to parse state:", e);
+      }
+
+      console.log("Callback received, frontend_url:", frontendUrl);
+
       if (error) {
-        // Redirect back to profile with error
         return new Response(null, {
           status: 302,
-          headers: { Location: `/profile?kick_error=${encodeURIComponent(error)}` },
+          headers: { Location: `${frontendUrl}/profile?kick_error=${encodeURIComponent(error)}` },
         });
       }
 
       if (!code) {
         return new Response(null, {
           status: 302,
-          headers: { Location: `/profile?kick_error=no_code` },
+          headers: { Location: `${frontendUrl}/profile?kick_error=no_code` },
         });
       }
 
       const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
 
       // Exchange code for token
+      console.log("Exchanging code for token...");
       const tokenResponse = await fetch("https://id.kick.com/oauth/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -89,12 +106,13 @@ serve(async (req) => {
         console.error("Token exchange failed:", errorText);
         return new Response(null, {
           status: 302,
-          headers: { Location: `/profile?kick_error=token_exchange_failed` },
+          headers: { Location: `${frontendUrl}/profile?kick_error=token_exchange_failed` },
         });
       }
 
       const tokenData = await tokenResponse.json();
       const accessToken = tokenData.access_token;
+      console.log("Token obtained successfully");
 
       // Get Kick user info
       const userResponse = await fetch("https://api.kick.com/public/v1/users", {
@@ -102,29 +120,30 @@ serve(async (req) => {
       });
 
       if (!userResponse.ok) {
-        console.error("Failed to get user info");
+        const userErrorText = await userResponse.text();
+        console.error("Failed to get user info:", userErrorText);
         return new Response(null, {
           status: 302,
-          headers: { Location: `/profile?kick_error=user_fetch_failed` },
+          headers: { Location: `${frontendUrl}/profile?kick_error=user_fetch_failed` },
         });
       }
 
       const userData = await userResponse.json();
+      console.log("User data received:", JSON.stringify(userData));
       const kickUsername = userData.data?.[0]?.username || userData.username;
 
       if (!kickUsername) {
         return new Response(null, {
           status: 302,
-          headers: { Location: `/profile?kick_error=no_username` },
+          headers: { Location: `${frontendUrl}/profile?kick_error=no_username` },
         });
       }
 
-      // Redirect back to profile with the kick username in the URL
-      // The frontend will handle updating the profile
+      console.log("Kick username:", kickUsername);
       return new Response(null, {
         status: 302,
         headers: { 
-          Location: `/profile?kick_username=${encodeURIComponent(kickUsername)}&kick_success=true` 
+          Location: `${frontendUrl}/profile?kick_username=${encodeURIComponent(kickUsername)}&kick_success=true` 
         },
       });
     }
