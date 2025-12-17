@@ -134,6 +134,15 @@ export function useAchievements() {
           }, { onConflict: "user_id,achievement_key" });
 
         if (!error) {
+          // Send notification to user
+          await supabase.from("user_notifications").insert({
+            user_id: user.id,
+            type: "achievement",
+            title: `🏆 Achievement Unlocked!`,
+            message: `${achievement.icon} ${achievement.name}: ${achievement.description}`,
+            link: "/profile",
+          });
+
           toast({
             title: `🏆 Achievement Unlocked!`,
             description: `${achievement.icon} ${achievement.name}: ${achievement.description}`,

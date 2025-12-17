@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
-import { LiveNotifications } from "@/components/LiveNotifications";
+import { UserNotifications } from "@/components/UserNotifications";
 
 export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -37,7 +37,7 @@ export function MainLayout() {
       >
         {/* Top bar with notifications */}
         <div className="flex justify-end p-4">
-          <LiveNotifications />
+          <UserNotifications />
         </div>
         <div className="flex-1 px-6">
           <AnimatePresence mode="wait">

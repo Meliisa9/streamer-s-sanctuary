@@ -233,24 +233,22 @@ export default function Stream() {
                 transition={{ delay: 0.1 }}
               >
               {streamSize === "theater" && chatUrl ? (
-                  <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                  <div className="flex flex-col xl:flex-row gap-4" style={{ height: "700px" }}>
                     {/* Main Player - Bigger in theater mode */}
-                    <div className="xl:col-span-2">
-                      <div className="glass rounded-2xl overflow-hidden">
-                        <div style={{ aspectRatio: "16/9", minHeight: "500px" }}>
-                          <iframe
-                            src={embedUrl || ""}
-                            className="w-full h-full"
-                            allowFullScreen
-                            allow="autoplay; encrypted-media; fullscreen"
-                          />
-                        </div>
+                    <div className="flex-[2] min-w-0">
+                      <div className="glass rounded-2xl overflow-hidden h-full">
+                        <iframe
+                          src={embedUrl || ""}
+                          className="w-full h-full"
+                          allowFullScreen
+                          allow="autoplay; encrypted-media; fullscreen"
+                        />
                       </div>
                     </div>
 
-                    {/* Chat Sidebar */}
-                    <div className="hidden xl:block">
-                      <div className="glass rounded-2xl overflow-hidden h-full" style={{ minHeight: "560px" }}>
+                    {/* Chat Sidebar - Same height as player */}
+                    <div className="hidden xl:block flex-1 min-w-[350px]">
+                      <div className="glass rounded-2xl overflow-hidden h-full flex flex-col">
                         <div className="p-4 border-b border-border bg-secondary/30">
                           <div className="flex items-center gap-2">
                             <MessageSquare className="w-5 h-5 text-primary" />
@@ -259,8 +257,7 @@ export default function Stream() {
                         </div>
                         <iframe
                           src={chatUrl}
-                          className="w-full"
-                          style={{ height: "calc(100% - 60px)", minHeight: "500px" }}
+                          className="w-full flex-1"
                         />
                       </div>
                     </div>

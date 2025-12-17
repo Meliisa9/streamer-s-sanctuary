@@ -101,7 +101,7 @@ export function AvatarUpload({ currentAvatarUrl, userId, onAvatarChange }: Avata
           <Camera className="w-4 h-4" />
         </button>
       ) : (
-        <div className="absolute -bottom-2 -right-2 p-3 bg-card border border-border rounded-xl shadow-xl z-10 min-w-[200px]">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-card border border-border rounded-xl shadow-xl z-50 min-w-[220px]">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium">Change Avatar</span>
             <button
