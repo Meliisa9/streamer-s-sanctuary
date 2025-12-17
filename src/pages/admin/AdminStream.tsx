@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Tv, Loader2, Info } from "lucide-react";
+import { Save, Tv, Loader2, Info, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,8 @@ interface StreamSettings {
   stream_enabled: boolean;
   stream_title: string;
   stream_description: string;
+  is_live: boolean;
+  live_platform: "twitch" | "kick";
 }
 
 const defaultSettings: StreamSettings = {
@@ -25,6 +27,8 @@ const defaultSettings: StreamSettings = {
   stream_enabled: false,
   stream_title: "Live Stream",
   stream_description: "",
+  is_live: false,
+  live_platform: "twitch",
 };
 
 export default function AdminStream() {
@@ -32,7 +36,7 @@ export default function AdminStream() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, isModerator } = useAuth();
 
   useEffect(() => {
     fetchSettings();
@@ -50,7 +54,11 @@ export default function AdminStream() {
       data?.forEach((row) => {
         const key = row.key as keyof StreamSettings;
         if (key in loadedSettings) {
-          (loadedSettings as Record<string, any>)[key] = row.value ?? defaultSettings[key];
+          if (typeof defaultSettings[key] === "boolean") {
+            (loadedSettings as Record<string, any>)[key] = row.value === true || row.value === "true";
+          } else {
+            (loadedSettings as Record<string, any>)[key] = row.value ?? defaultSettings[key];
+          }
         }
       });
       setSettings(loadedSettings);
@@ -62,8 +70,8 @@ export default function AdminStream() {
   };
 
   const saveSettings = async () => {
-    if (!isAdmin) {
-      toast({ title: "Only admins can change settings", variant: "destructive" });
+    if (!isAdmin && !isModerator) {
+      toast({ title: "Only admins and moderators can change settings", variant: "destructive" });
       return;
     }
 
@@ -96,7 +104,6 @@ export default function AdminStream() {
     if (settings.stream_platform === "twitch") {
       return `https://player.twitch.tv/?channel=${encodeURIComponent(settings.stream_channel)}&parent=${hostname}&muted=false`;
     } else if (settings.stream_platform === "kick") {
-      // Kick uses player subdomain for embeds
       return `https://player.kick.com/${encodeURIComponent(settings.stream_channel)}`;
     }
     return null;
@@ -107,7 +114,7 @@ export default function AdminStream() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Stream Settings</h1>
-          <p className="text-muted-foreground">Configure your embedded live stream</p>
+          <p className="text-muted-foreground">Configure your embedded live stream and live status</p>
         </div>
         <Button variant="glow" onClick={saveSettings} disabled={isSaving} className="gap-2">
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
@@ -115,8 +122,63 @@ export default function AdminStream() {
         </Button>
       </div>
 
+      {/* Live Status Section */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Radio className="w-5 h-5 text-destructive" />
+          Live Status Badge
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Show a live badge on your site to let visitors know you're streaming
+        </p>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
+              <div>
+                <p className="font-medium">Live on Twitch</p>
+                <p className="text-sm text-muted-foreground">Show purple "Live on Twitch" badge</p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.is_live && settings.live_platform === "twitch"}
+              onCheckedChange={(checked) => setSettings({ 
+                ...settings, 
+                is_live: checked, 
+                live_platform: "twitch"
+              })}
+            />
+          </div>
+          <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+              <div>
+                <p className="font-medium">Live on Kick</p>
+                <p className="text-sm text-muted-foreground">Show green "Live on Kick" badge</p>
+              </div>
+            </div>
+            <Switch
+              checked={settings.is_live && settings.live_platform === "kick"}
+              onCheckedChange={(checked) => setSettings({ 
+                ...settings, 
+                is_live: checked, 
+                live_platform: "kick"
+              })}
+            />
+          </div>
+          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+            <p className="text-sm">
+              <strong>Current Status:</strong>{" "}
+              {settings.is_live 
+                ? <span className="text-green-400">Live on {settings.live_platform === "kick" ? "Kick" : "Twitch"}</span>
+                : <span className="text-muted-foreground">Offline</span>}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6 space-y-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass rounded-2xl p-6 space-y-6">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Tv className="w-5 h-5 text-primary" />
             Stream Configuration
@@ -190,7 +252,7 @@ export default function AdminStream() {
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass rounded-2xl p-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass rounded-2xl p-6">
           <h3 className="text-lg font-semibold mb-4">Preview</h3>
           {settings.stream_channel && settings.stream_enabled ? (
             <div className="aspect-video rounded-xl overflow-hidden bg-black">

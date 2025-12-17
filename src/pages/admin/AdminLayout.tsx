@@ -16,9 +16,11 @@ import {
   BarChart,
   BarChart3,
   RefreshCw,
+  Tv,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { AdminCodeGate } from "@/components/admin/AdminCodeGate";
 
 const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["admin", "moderator"] },
@@ -31,7 +33,7 @@ const adminNavItems = [
   { icon: Target, label: "GTW Sessions", path: "/admin/gtw", roles: ["admin", "moderator"] },
   { icon: BarChart, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
   { icon: Users, label: "Streamers", path: "/admin/streamers", roles: ["admin", "moderator"] },
-  { icon: Video, label: "Stream", path: "/admin/stream", roles: ["admin", "moderator"] },
+  { icon: Tv, label: "Stream", path: "/admin/stream", roles: ["admin", "moderator"] },
   { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin", "moderator"] },
   { icon: Users, label: "Users", path: "/admin/users", roles: ["admin"] },
   { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
@@ -39,8 +41,8 @@ const adminNavItems = [
   { icon: Settings, label: "Settings", path: "/admin/settings", roles: ["admin"] },
 ];
 
-export default function AdminLayout() {
-  const { user, isAdmin, isModerator, isWriter, isLoading, roles } = useAuth();
+function AdminLayoutContent() {
+  const { user, isAdmin, isModerator, isWriter, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -50,8 +52,16 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!isLoading && (!user || !canAccessAdmin)) {
       navigate("/auth");
+      return;
     }
-  }, [user, canAccessAdmin, isLoading, navigate]);
+
+    // If user is ONLY a writer (not admin or moderator), redirect to /admin/news
+    if (!isLoading && user && isWriter && !isAdmin && !isModerator) {
+      if (location.pathname === "/admin") {
+        navigate("/admin/news");
+      }
+    }
+  }, [user, canAccessAdmin, isLoading, navigate, isWriter, isAdmin, isModerator, location.pathname]);
 
   if (isLoading) {
     return (
@@ -136,5 +146,13 @@ export default function AdminLayout() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AdminLayout() {
+  return (
+    <AdminCodeGate>
+      <AdminLayoutContent />
+    </AdminCodeGate>
   );
 }

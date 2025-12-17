@@ -63,7 +63,7 @@ export default function Stream() {
     switch (streamSize) {
       case "small":
         // Medium size - larger than before, but still clearly smaller than theater mode
-        return "max-w-6xl mx-auto";
+        return "max-w-7xl mx-auto";
       case "fullscreen":
         return "fixed inset-0 z-50 bg-black";
       case "theater":
