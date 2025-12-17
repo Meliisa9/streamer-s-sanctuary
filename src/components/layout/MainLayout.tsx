@@ -3,11 +3,11 @@ import { Outlet } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
+import { LiveNotifications } from "@/components/LiveNotifications";
 
 export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Listen for sidebar collapse state changes
   useEffect(() => {
     const checkSidebarState = () => {
       const sidebar = document.querySelector("aside");
@@ -35,7 +35,11 @@ export function MainLayout() {
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <div className="flex-1">
+        {/* Top bar with notifications */}
+        <div className="flex justify-end p-4">
+          <LiveNotifications />
+        </div>
+        <div className="flex-1 px-6">
           <AnimatePresence mode="wait">
             <Outlet />
           </AnimatePresence>

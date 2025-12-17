@@ -1,11 +1,17 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Tv, ExternalLink } from "lucide-react";
+import { Tv, ExternalLink, Maximize2, Monitor, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+
+type StreamSize = "small" | "theater" | "fullscreen";
 
 export default function Stream() {
+  const [streamSize, setStreamSize] = useState<StreamSize>("theater");
+
   const { data: settings, isLoading } = useQuery({
     queryKey: ["stream-settings"],
     queryFn: async () => {
@@ -31,12 +37,12 @@ export default function Stream() {
   const getEmbedUrl = () => {
     if (!channel) return null;
     const hostname = window.location.hostname;
+    
     if (platform === "twitch") {
-      // Twitch requires the parent parameter to match the embedding domain
       return `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${hostname}&muted=false`;
     } else if (platform === "kick") {
-      // Kick uses a different embed format
-      return `https://kick.com/${encodeURIComponent(channel)}/embed`;
+      // Kick embed URL - must use player subdomain
+      return `https://player.kick.com/${encodeURIComponent(channel)}`;
     }
     return null;
   };
@@ -52,6 +58,25 @@ export default function Stream() {
   };
 
   const embedUrl = getEmbedUrl();
+
+  const getSizeClasses = () => {
+    switch (streamSize) {
+      case "small":
+        return "max-w-2xl mx-auto";
+      case "fullscreen":
+        return "fixed inset-0 z-50 bg-black";
+      case "theater":
+      default:
+        return "w-full";
+    }
+  };
+
+  const getAspectClasses = () => {
+    if (streamSize === "fullscreen") {
+      return "w-full h-full";
+    }
+    return "aspect-video w-full";
+  };
 
   if (isLoading) {
     return (
@@ -92,30 +117,65 @@ export default function Stream() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
-          <div className="glass rounded-2xl overflow-hidden">
-            <div className="aspect-video w-full">
-              <iframe
-                src={embedUrl || ""}
-                className="w-full h-full"
-                allowFullScreen
-                allow="autoplay; encrypted-media"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
+          {/* Size Controls */}
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${platform === "twitch" ? "bg-purple-600/20 text-purple-400" : "bg-green-600/20 text-green-400"}`}>
                 {platform === "twitch" ? "Twitch" : "Kick"}
               </span>
               <span className="text-muted-foreground">@{channel}</span>
             </div>
-            <Button variant="outline" asChild>
-              <a href={getChannelUrl()} target="_blank" rel="noopener noreferrer" className="gap-2">
-                <ExternalLink className="w-4 h-4" />
-                Open in {platform === "twitch" ? "Twitch" : "Kick"}
-              </a>
-            </Button>
+            
+            <div className="flex items-center gap-3">
+              <ToggleGroup type="single" value={streamSize} onValueChange={(value) => value && setStreamSize(value as StreamSize)}>
+                <ToggleGroupItem value="small" aria-label="Small view" className="gap-2">
+                  <Square className="w-4 h-4" />
+                  <span className="hidden sm:inline">Small</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="theater" aria-label="Theater mode" className="gap-2">
+                  <Monitor className="w-4 h-4" />
+                  <span className="hidden sm:inline">Theater</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="fullscreen" aria-label="Fullscreen" className="gap-2">
+                  <Maximize2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Fullscreen</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+              
+              <Button variant="outline" asChild>
+                <a href={getChannelUrl()} target="_blank" rel="noopener noreferrer" className="gap-2">
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden sm:inline">Open in {platform === "twitch" ? "Twitch" : "Kick"}</span>
+                </a>
+              </Button>
+            </div>
+          </div>
+
+          {/* Stream Player */}
+          <div className={`${getSizeClasses()} transition-all duration-300`}>
+            <div className={`glass rounded-2xl overflow-hidden ${streamSize === "fullscreen" ? "rounded-none h-full" : ""}`}>
+              <div className={getAspectClasses()}>
+                <iframe
+                  src={embedUrl || ""}
+                  className="w-full h-full"
+                  allowFullScreen
+                  allow="autoplay; encrypted-media; fullscreen"
+                />
+              </div>
+            </div>
+            
+            {/* Exit fullscreen button */}
+            {streamSize === "fullscreen" && (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="fixed top-4 right-4 z-50 gap-2"
+                onClick={() => setStreamSize("theater")}
+              >
+                <Square className="w-4 h-4" />
+                Exit Fullscreen
+              </Button>
+            )}
           </div>
         </motion.div>
       )}
