@@ -41,10 +41,14 @@ const mainNavItems: NavItem[] = [
   { icon: Gift, label: "Giveaways", path: "/giveaways", badge: "LIVE", settingKey: "nav_giveaways_visible" },
 ];
 
+import { BarChart, Info } from "lucide-react";
+
 const communityNavItems: NavItem[] = [
   { icon: Calendar, label: "Events", path: "/events", settingKey: "nav_events_visible" },
   { icon: Target, label: "Guess The Win", path: "/guess-the-win", settingKey: "nav_gtw_visible" },
   { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },
+  { icon: BarChart, label: "Polls", path: "/polls", settingKey: "nav_polls_visible" },
+  { icon: Info, label: "About", path: "/about", settingKey: "nav_about_visible" },
 ];
 
 const adminNavItems: NavItem[] = [

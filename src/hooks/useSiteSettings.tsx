@@ -18,6 +18,8 @@ export interface SiteSettings {
   nav_events_visible: boolean;
   nav_gtw_visible: boolean;
   nav_leaderboard_visible: boolean;
+  nav_polls_visible: boolean;
+  nav_about_visible: boolean;
   stat_community_value: string;
   stat_community_label: string;
   stat_wins_value: string;
@@ -48,6 +50,8 @@ const defaultSettings: SiteSettings = {
   nav_events_visible: true,
   nav_gtw_visible: true,
   nav_leaderboard_visible: true,
+  nav_polls_visible: true,
+  nav_about_visible: true,
   stat_community_value: "150K+",
   stat_community_label: "Community Members",
   stat_wins_value: "$2.5M",

@@ -13,6 +13,7 @@ import {
   Settings,
   Shield,
   FileText,
+  BarChart,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const adminNavItems = [
   { icon: Gift, label: "Giveaways", path: "/admin/giveaways" },
   { icon: Calendar, label: "Events", path: "/admin/events" },
   { icon: Target, label: "GTW Sessions", path: "/admin/gtw" },
+  { icon: BarChart, label: "Polls", path: "/admin/polls" },
   { icon: Users, label: "Users", path: "/admin/users" },
   { icon: FileText, label: "Audit Log", path: "/admin/audit" },
   { icon: Settings, label: "Settings", path: "/admin/settings" },

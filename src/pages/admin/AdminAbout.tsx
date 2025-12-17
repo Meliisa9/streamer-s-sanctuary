@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 
 interface AboutSettings {
   about_title: string;
@@ -195,6 +196,8 @@ export default function AdminAbout() {
 
   return (
     <div className="space-y-6">
+      <AdminSettingsNav />
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">About Page</h2>
