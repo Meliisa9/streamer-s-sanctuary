@@ -201,28 +201,28 @@ export default function AdminNews() {
 
       let mediaHtml = "";
       if (type === "video") {
-        mediaHtml = `\n<video controls class="max-w-lg max-h-80 rounded-lg my-4 mx-auto block"><source src="${url}" type="${file.type}"></video>\n`;
+        mediaHtml = `\n<div class="my-6"><video controls class="w-full max-w-2xl h-auto max-h-[400px] rounded-lg mx-auto block"><source src="${url}" type="${file.type}"></video></div>\n`;
       } else {
         mediaHtml = `\n<img src="${url}" alt="Article image" class="max-w-full rounded-lg my-4" />\n`;
       }
 
-      // Insert at cursor position in content
+      // Insert at cursor position in content - update both content and content_html together
       const textarea = contentRef.current;
       if (textarea) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
         const newContent = formData.content.substring(0, start) + mediaHtml + formData.content.substring(end);
-        const newContentHtml = formData.content_html + mediaHtml;
         setFormData({ 
           ...formData, 
           content: newContent,
-          content_html: newContentHtml 
+          content_html: newContent 
         });
       } else {
+        const newContent = formData.content + mediaHtml;
         setFormData({ 
           ...formData, 
-          content: formData.content + mediaHtml,
-          content_html: formData.content_html + mediaHtml 
+          content: newContent,
+          content_html: newContent 
         });
       }
 
@@ -286,7 +286,7 @@ export default function AdminNews() {
     setFormData({ 
       ...formData, 
       content: newContent,
-      content_html: formData.content_html + htmlTag 
+      content_html: newContent 
     });
 
     // Refocus textarea

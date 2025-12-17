@@ -15,6 +15,8 @@ import Giveaways from "./pages/Giveaways";
 import Events from "./pages/Events";
 import GuessTheWin from "./pages/GuessTheWin";
 import Leaderboard from "./pages/Leaderboard";
+import Polls from "./pages/Polls";
+import About from "./pages/About";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -28,6 +30,12 @@ import AdminNews from "./pages/admin/AdminNews";
 import AdminEvents from "./pages/admin/AdminEvents";
 import AdminGTW from "./pages/admin/AdminGTW";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminBranding from "./pages/admin/AdminBranding";
+import AdminNavigation from "./pages/admin/AdminNavigation";
+import AdminStatistics from "./pages/admin/AdminStatistics";
+import AdminPermissions from "./pages/admin/AdminPermissions";
+import AdminPolls from "./pages/admin/AdminPolls";
+import AdminAbout from "./pages/admin/AdminAbout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +61,8 @@ const App = () => (
                 <Route path="/events" element={<Events />} />
                 <Route path="/guess-the-win" element={<GuessTheWin />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/polls" element={<Polls />} />
+                <Route path="/about" element={<About />} />
                 <Route path="/profile" element={<Profile />} />
                 
                 <Route path="/admin" element={<AdminLayout />}>
@@ -63,8 +73,14 @@ const App = () => (
                   <Route path="news" element={<AdminNews />} />
                   <Route path="events" element={<AdminEvents />} />
                   <Route path="gtw" element={<AdminGTW />} />
+                  <Route path="polls" element={<AdminPolls />} />
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="settings" element={<AdminSettings />} />
+                  <Route path="settings/branding" element={<AdminBranding />} />
+                  <Route path="settings/navigation" element={<AdminNavigation />} />
+                  <Route path="settings/statistics" element={<AdminStatistics />} />
+                  <Route path="settings/permissions" element={<AdminPermissions />} />
+                  <Route path="settings/about" element={<AdminAbout />} />
                   <Route path="audit" element={<AdminAuditLog />} />
                 </Route>
               </Route>
