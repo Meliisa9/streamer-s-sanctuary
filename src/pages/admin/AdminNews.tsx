@@ -509,10 +509,17 @@ export default function AdminNews() {
                 <Textarea
                   ref={contentRef}
                   value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  onChange={(e) => {
+                    const newContent = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      content: newContent,
+                      content_html: newContent // Keep content_html in sync
+                    });
+                  }}
                   rows={12}
                   required
-                  placeholder="Write your article content here. HTML tags for images and videos will be rendered.&#10;&#10;Example embedded image:&#10;<img src='https://...' alt='description' class='w-full rounded-lg my-4' />&#10;&#10;Example embedded video:&#10;<video controls class='w-full rounded-lg my-4'><source src='https://...' type='video/mp4'></video>"
+                  placeholder="Write your article content here. Use the formatting toolbar above or add HTML directly.&#10;&#10;Tips:&#10;- Press Enter twice for new paragraphs&#10;- Use the toolbar to add images and videos&#10;- HTML tags will be rendered in the article"
                   className="font-mono text-sm"
                 />
               </div>

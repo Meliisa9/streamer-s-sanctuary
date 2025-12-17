@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Heart, Eye, Clock, Share2, Send, Loader2, User, Shield, ShieldCheck, Pen } from "lucide-react";
+import { ArrowLeft, Calendar, Heart, Eye, Clock, Share2, Send, Loader2, User, Shield, ShieldCheck, Pen, Bookmark, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +38,6 @@ interface Comment {
 const getRoleBadge = (roles: UserRole[] | undefined) => {
   if (!roles || roles.length === 0) return null;
   
-  // Priority: admin > moderator > writer
   const roleOrder = ["admin", "moderator", "writer"];
   const highestRole = roleOrder.find(r => roles.some(ur => ur.role === r));
   
@@ -60,6 +59,51 @@ const getRoleBadge = (roles: UserRole[] | undefined) => {
       {config.label}
     </Badge>
   );
+};
+
+// Process content to ensure proper rendering
+const processContent = (content: string, contentHtml: string | null): string => {
+  // If we have HTML content, use it but ensure proper formatting
+  if (contentHtml && contentHtml.trim()) {
+    // Check if content contains HTML tags
+    const hasHtmlTags = /<[^>]+>/.test(contentHtml);
+    if (hasHtmlTags) {
+      // Process the HTML content to ensure proper paragraph wrapping
+      let processed = contentHtml;
+      
+      // Split by double line breaks and wrap plain text in paragraphs
+      const parts = processed.split(/\n\n+/);
+      processed = parts.map(part => {
+        const trimmed = part.trim();
+        if (!trimmed) return '';
+        
+        // If it's already wrapped in a block element, keep it as is
+        if (trimmed.startsWith('<div') || trimmed.startsWith('<p') || 
+            trimmed.startsWith('<h1') || trimmed.startsWith('<h2') || 
+            trimmed.startsWith('<h3') || trimmed.startsWith('<img') ||
+            trimmed.startsWith('<video') || trimmed.startsWith('<iframe') ||
+            trimmed.startsWith('<ul') || trimmed.startsWith('<ol') ||
+            trimmed.startsWith('<blockquote')) {
+          return trimmed;
+        }
+        
+        // Wrap in paragraph
+        return `<p class="mb-4 text-muted-foreground leading-relaxed">${trimmed}</p>`;
+      }).join('\n');
+      
+      return processed;
+    }
+  }
+  
+  // Plain text content - convert line breaks to paragraphs
+  if (content && content.trim()) {
+    const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
+    return paragraphs.map(p => 
+      `<p class="mb-4 text-muted-foreground leading-relaxed">${p.trim().replace(/\n/g, '<br />')}</p>`
+    ).join('\n');
+  }
+  
+  return '';
 };
 
 export default function NewsArticlePage() {
@@ -94,7 +138,6 @@ export default function NewsArticlePage() {
     enabled: !!slug,
   });
 
-  // Fetch author profile
   const { data: authorProfile } = useQuery({
     queryKey: ["author-profile", article?.author_id],
     queryFn: async () => {
@@ -115,7 +158,6 @@ export default function NewsArticlePage() {
     enabled: !!article?.author_id,
   });
 
-  // Fetch comments
   const { data: comments = [] } = useQuery({
     queryKey: ["article-comments", article?.id],
     queryFn: async () => {
@@ -130,14 +172,12 @@ export default function NewsArticlePage() {
 
       if (error) throw error;
 
-      // Fetch profiles for comments
       const userIds = [...new Set(data.map((c) => c.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, username, display_name, avatar_url")
         .in("user_id", userIds);
 
-      // Fetch roles for comment authors
       const { data: roles } = await supabase
         .from("user_roles")
         .select("user_id, role")
@@ -160,7 +200,6 @@ export default function NewsArticlePage() {
     enabled: !!article?.id,
   });
 
-  // Check if user has liked
   useEffect(() => {
     if (!user || !article) return;
 
@@ -178,7 +217,6 @@ export default function NewsArticlePage() {
     checkLike();
   }, [user, article]);
 
-  // Like mutation
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!user || !article) throw new Error("Not authenticated");
@@ -214,7 +252,6 @@ export default function NewsArticlePage() {
     },
   });
 
-  // Comment mutation
   const commentMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!user || !article) throw new Error("Not authenticated");
@@ -236,7 +273,7 @@ export default function NewsArticlePage() {
   });
 
   const getReadTime = (content: string) => {
-    const words = content.split(/\s+/).length;
+    const words = content.replace(/<[^>]*>/g, '').split(/\s+/).length;
     const minutes = Math.ceil(words / 200);
     return `${minutes} min read`;
   };
@@ -289,6 +326,7 @@ export default function NewsArticlePage() {
   }
 
   const authorName = authorProfile?.display_name || authorProfile?.username || "Unknown Author";
+  const processedContent = processContent(article.content, article.content_html);
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -305,90 +343,102 @@ export default function NewsArticlePage() {
 
         {/* Article Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="px-3 py-1 bg-primary/20 text-primary text-sm font-medium rounded-full">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
               {article.category}
-            </span>
+            </Badge>
             {article.is_featured && (
-              <span className="px-3 py-1 bg-accent/20 text-accent text-sm font-medium rounded-full">
+              <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20">
                 Featured
-              </span>
+              </Badge>
             )}
           </div>
 
           <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">{article.title}</h1>
 
-          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-            {/* Author */}
-            <span className="flex items-center gap-2">
+          {/* Author & Meta Info */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-secondary/30 rounded-xl mb-6">
+            <div className="flex items-center gap-3">
               {authorProfile?.avatar_url ? (
-                <img src={authorProfile.avatar_url} alt={authorName} className="w-6 h-6 rounded-full object-cover" />
+                <img src={authorProfile.avatar_url} alt={authorName} className="w-12 h-12 rounded-full object-cover ring-2 ring-primary/20" />
               ) : (
-                <User className="w-4 h-4" />
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <User className="w-6 h-6 text-primary" />
+                </div>
               )}
-              <span className="font-medium text-foreground">{authorName}</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              {new Date(article.created_at).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              {getReadTime(article.content)}
-            </span>
-            <span className="flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              {article.views || 0} views
-            </span>
-            <button
-              onClick={() => user && likeMutation.mutate()}
-              className={`flex items-center gap-2 transition-colors ${hasLiked ? "text-red-500" : "hover:text-red-500"}`}
-              disabled={!user}
-            >
-              <Heart className={`w-4 h-4 ${hasLiked ? "fill-current" : ""}`} />
-              {article.likes_count || 0} likes
-            </button>
+              <div>
+                <p className="font-semibold">{authorName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(article.created_at).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4 sm:ml-auto text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                {getReadTime(article.content)}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4" />
+                {article.views || 0}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Heart className={`w-4 h-4 ${hasLiked ? "fill-red-500 text-red-500" : ""}`} />
+                {article.likes_count || 0}
+              </span>
+            </div>
           </div>
         </motion.div>
 
         {/* Featured Image */}
         {article.image_url && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-8">
-            <img
-              src={article.image_url}
-              alt={article.title}
-              className="w-full h-auto max-h-[500px] object-cover rounded-2xl"
-            />
+            <div className="relative rounded-2xl overflow-hidden">
+              <img
+                src={article.image_url}
+                alt={article.title}
+                className="w-full h-auto max-h-[500px] object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/50 to-transparent pointer-events-none" />
+            </div>
           </motion.div>
         )}
 
         {/* Article Content */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass rounded-2xl p-8 mb-8">
           {article.excerpt && (
-            <p className="text-xl text-muted-foreground mb-6 pb-6 border-b border-border">{article.excerpt}</p>
+            <p className="text-xl text-foreground/80 mb-6 pb-6 border-b border-border font-medium leading-relaxed">
+              {article.excerpt}
+            </p>
           )}
 
-          {article.content_html ? (
-            <div
-              className="prose prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-img:rounded-xl"
-              dangerouslySetInnerHTML={{ __html: article.content_html }}
-            />
-          ) : (
-            <div className="prose prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground">
-              {article.content.split("\n").map((paragraph, index) => (
-                <p key={index} className="mb-4 text-muted-foreground leading-relaxed">{paragraph}</p>
-              ))}
-            </div>
-          )}
+          <div
+            className="prose prose-invert max-w-none 
+              prose-headings:text-foreground prose-headings:font-bold
+              prose-h1:text-3xl prose-h1:mb-4 prose-h1:mt-6
+              prose-h2:text-2xl prose-h2:mb-3 prose-h2:mt-5
+              prose-h3:text-xl prose-h3:mb-2 prose-h3:mt-4
+              prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:mb-4
+              prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+              prose-strong:text-foreground prose-strong:font-semibold
+              prose-em:text-foreground/90
+              prose-img:rounded-xl prose-img:my-6
+              prose-video:rounded-xl prose-video:my-6
+              [&_video]:max-w-full [&_video]:rounded-xl [&_video]:my-6
+              [&_img]:max-w-full [&_img]:h-auto
+              [&_iframe]:w-full [&_iframe]:rounded-xl [&_iframe]:my-6"
+            dangerouslySetInnerHTML={{ __html: processedContent }}
+          />
         </motion.div>
 
-        {/* Actions */}
+        {/* Actions Bar */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="flex items-center justify-between glass rounded-2xl p-6 mb-8">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Button
               variant={hasLiked ? "default" : "outline"}
               onClick={() => user && likeMutation.mutate()}
@@ -400,27 +450,32 @@ export default function NewsArticlePage() {
             </Button>
             {!user && <span className="text-sm text-muted-foreground">Login to like</span>}
           </div>
-          <Button variant="glow" onClick={handleShare} className="gap-2">
-            <Share2 className="w-4 h-4" />
-            Share
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleShare} className="gap-2">
+              <Share2 className="w-4 h-4" />
+              Share
+            </Button>
+          </div>
         </motion.div>
 
         {/* Comments Section */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass rounded-2xl p-6">
-          <h3 className="text-xl font-bold mb-6">Comments ({comments.length})</h3>
+          <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-primary" />
+            Comments ({comments.length})
+          </h3>
 
           {/* Comment Form */}
           {user ? (
-            <div className="mb-6">
+            <div className="mb-6 p-4 bg-secondary/30 rounded-xl">
               <textarea
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Write a comment..."
                 rows={3}
-                className="w-full px-4 py-3 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary resize-none"
+                className="w-full px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none transition-colors"
               />
-              <div className="flex justify-end mt-2">
+              <div className="flex justify-end mt-3">
                 <Button
                   onClick={() => commentText.trim() && commentMutation.mutate(commentText)}
                   disabled={!commentText.trim() || commentMutation.isPending}
@@ -436,9 +491,9 @@ export default function NewsArticlePage() {
               </div>
             </div>
           ) : (
-            <div className="mb-6 p-4 bg-secondary/50 rounded-xl text-center">
+            <div className="mb-6 p-4 bg-secondary/30 rounded-xl text-center">
               <p className="text-muted-foreground">
-                <Link to="/auth" className="text-primary hover:underline">Login</Link> to leave a comment
+                <Link to="/auth" className="text-primary hover:underline font-medium">Login</Link> to leave a comment
               </p>
             </div>
           )}
@@ -446,32 +501,35 @@ export default function NewsArticlePage() {
           {/* Comments List */}
           <div className="space-y-4">
             {comments.map((comment) => (
-              <div key={comment.id} className="p-4 bg-secondary/30 rounded-xl">
-                <div className="flex items-start gap-3 mb-2">
+              <div key={comment.id} className="p-4 bg-secondary/20 rounded-xl border border-border/50 hover:border-border transition-colors">
+                <div className="flex items-start gap-3">
                   {comment.profile?.avatar_url ? (
-                    <img src={comment.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+                    <img src={comment.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-1 ring-border" />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
                       <User className="w-5 h-5 text-muted-foreground" />
                     </div>
                   )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="font-semibold">
                         {comment.profile?.display_name || comment.profile?.username || "Anonymous"}
                       </p>
                       {getRoleBadge(comment.roles)}
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(comment.created_at).toLocaleDateString()}
+                      </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(comment.created_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-muted-foreground leading-relaxed">{comment.content}</p>
                   </div>
                 </div>
-                <p className="text-muted-foreground pl-13">{comment.content}</p>
               </div>
             ))}
             {comments.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">No comments yet. Be the first to comment!</p>
+              <div className="text-center py-12">
+                <MessageCircle className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
+              </div>
             )}
           </div>
         </motion.div>
