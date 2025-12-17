@@ -38,10 +38,10 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
     };
 
     const socialLinks = [
-      { icon: getIcon(settings.social_twitter_icon as string), href: settings.social_twitter || "#", label: "Twitter" },
-      { icon: getIcon(settings.social_youtube_icon as string), href: settings.social_youtube || "#", label: "YouTube" },
-      { icon: getIcon(settings.social_instagram_icon as string), href: settings.social_instagram || "#", label: "Instagram" },
-      { icon: getIcon(settings.social_discord_icon as string), href: settings.social_discord || "#", label: "Discord" },
+      { icon: getIcon((settings as any).social_twitter_icon || "twitter"), href: settings.social_twitter || "#", label: "Twitter" },
+      { icon: getIcon((settings as any).social_youtube_icon || "youtube"), href: settings.social_youtube || "#", label: "YouTube" },
+      { icon: getIcon((settings as any).social_instagram_icon || "instagram"), href: settings.social_instagram || "#", label: "Instagram" },
+      { icon: getIcon((settings as any).social_discord_icon || "discord"), href: settings.social_discord || "#", label: "Discord" },
     ];
 
     return (

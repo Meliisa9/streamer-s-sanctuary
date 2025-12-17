@@ -30,10 +30,13 @@ export default function Stream() {
 
   const getEmbedUrl = () => {
     if (!channel) return null;
+    const hostname = window.location.hostname;
     if (platform === "twitch") {
-      return `https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}`;
+      // Twitch requires the parent parameter to match the embedding domain
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${hostname}&muted=false`;
     } else if (platform === "kick") {
-      return `https://player.kick.com/${channel}`;
+      // Kick uses a different embed format
+      return `https://kick.com/${encodeURIComponent(channel)}/embed`;
     }
     return null;
   };

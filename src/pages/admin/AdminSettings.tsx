@@ -17,6 +17,10 @@ interface LiveSettings {
   social_youtube: string;
   social_instagram: string;
   social_discord: string;
+  social_twitter_icon: string;
+  social_youtube_icon: string;
+  social_instagram_icon: string;
+  social_discord_icon: string;
 }
 
 const defaultSettings: LiveSettings = {
@@ -28,6 +32,10 @@ const defaultSettings: LiveSettings = {
   social_youtube: "#",
   social_instagram: "#",
   social_discord: "#",
+  social_twitter_icon: "twitter",
+  social_youtube_icon: "youtube",
+  social_instagram_icon: "instagram",
+  social_discord_icon: "discord",
 };
 
 export default function AdminSettings() {
@@ -193,7 +201,7 @@ export default function AdminSettings() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Twitter/X</label>
+                <label className="text-sm font-medium">Twitter/X URL</label>
                 <input
                   type="url"
                   value={settings.social_twitter}
@@ -203,7 +211,22 @@ export default function AdminSettings() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">YouTube</label>
+                <label className="text-sm font-medium">Twitter/X Icon</label>
+                <select
+                  value={settings.social_twitter_icon}
+                  onChange={(e) => setSettings({ ...settings, social_twitter_icon: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                >
+                  <option value="twitter">Twitter</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="discord">Discord</option>
+                  <option value="twitch">Twitch</option>
+                  <option value="default">Globe (Default)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">YouTube URL</label>
                 <input
                   type="url"
                   value={settings.social_youtube}
@@ -213,7 +236,22 @@ export default function AdminSettings() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Instagram</label>
+                <label className="text-sm font-medium">YouTube Icon</label>
+                <select
+                  value={settings.social_youtube_icon}
+                  onChange={(e) => setSettings({ ...settings, social_youtube_icon: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                >
+                  <option value="youtube">YouTube</option>
+                  <option value="twitter">Twitter</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="discord">Discord</option>
+                  <option value="twitch">Twitch</option>
+                  <option value="default">Globe (Default)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Instagram URL</label>
                 <input
                   type="url"
                   value={settings.social_instagram}
@@ -223,7 +261,22 @@ export default function AdminSettings() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Discord</label>
+                <label className="text-sm font-medium">Instagram Icon</label>
+                <select
+                  value={settings.social_instagram_icon}
+                  onChange={(e) => setSettings({ ...settings, social_instagram_icon: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                >
+                  <option value="instagram">Instagram</option>
+                  <option value="twitter">Twitter</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="discord">Discord</option>
+                  <option value="twitch">Twitch</option>
+                  <option value="default">Globe (Default)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Discord URL</label>
                 <input
                   type="url"
                   value={settings.social_discord}
@@ -231,6 +284,21 @@ export default function AdminSettings() {
                   className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
                   placeholder="https://discord.gg/invite"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Discord Icon</label>
+                <select
+                  value={settings.social_discord_icon}
+                  onChange={(e) => setSettings({ ...settings, social_discord_icon: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                >
+                  <option value="discord">Discord</option>
+                  <option value="twitter">Twitter</option>
+                  <option value="youtube">YouTube</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="twitch">Twitch</option>
+                  <option value="default">Globe (Default)</option>
+                </select>
               </div>
             </div>
           </motion.div>
