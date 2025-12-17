@@ -91,10 +91,13 @@ export default function AdminStream() {
 
   const getPreviewUrl = () => {
     if (!settings.stream_channel) return null;
+    const hostname = window.location.hostname;
     if (settings.stream_platform === "twitch") {
-      return `https://player.twitch.tv/?channel=${settings.stream_channel}&parent=${window.location.hostname}`;
+      // Twitch requires the parent parameter to match the embedding domain
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(settings.stream_channel)}&parent=${hostname}&muted=false`;
     } else if (settings.stream_platform === "kick") {
-      return `https://player.kick.com/${settings.stream_channel}`;
+      // Kick uses a different embed format
+      return `https://kick.com/${encodeURIComponent(settings.stream_channel)}/embed`;
     }
     return null;
   };

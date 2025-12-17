@@ -93,7 +93,15 @@ export default function AdminEvents() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const { error } = await supabase.from("events").insert([data]);
+      // Clean the data - convert empty strings to null for optional fields
+      const cleanData = {
+        ...data,
+        streamer_id: data.streamer_id || null,
+        end_time: data.end_time || null,
+        event_time: data.event_time || null,
+        description: data.description || null,
+      };
+      const { error } = await supabase.from("events").insert([cleanData]);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -102,14 +110,22 @@ export default function AdminEvents() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ title: "Error creating event", description: error.message, variant: "destructive" });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
-      const { error } = await supabase.from("events").update(data).eq("id", id);
+      // Clean the data - convert empty strings to null for optional fields
+      const cleanData = {
+        ...data,
+        streamer_id: data.streamer_id || null,
+        end_time: data.end_time || null,
+        event_time: data.event_time || null,
+        description: data.description || null,
+      };
+      const { error } = await supabase.from("events").update(cleanData).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -118,7 +134,7 @@ export default function AdminEvents() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({ title: "Error updating event", description: error.message, variant: "destructive" });
     },
   });

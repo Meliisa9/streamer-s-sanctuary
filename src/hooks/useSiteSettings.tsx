@@ -20,6 +20,8 @@ export interface SiteSettings {
   nav_leaderboard_visible: boolean;
   nav_polls_visible: boolean;
   nav_about_visible: boolean;
+  nav_streamers_visible: boolean;
+  nav_stream_visible: boolean;
   stat_community_value: string;
   stat_community_label: string;
   stat_wins_value: string;
@@ -31,6 +33,10 @@ export interface SiteSettings {
   social_youtube: string;
   social_instagram: string;
   social_discord: string;
+  social_twitter_icon: string;
+  social_youtube_icon: string;
+  social_instagram_icon: string;
+  social_discord_icon: string;
 }
 
 const defaultSettings: SiteSettings = {
@@ -52,6 +58,8 @@ const defaultSettings: SiteSettings = {
   nav_leaderboard_visible: true,
   nav_polls_visible: true,
   nav_about_visible: true,
+  nav_streamers_visible: true,
+  nav_stream_visible: true,
   stat_community_value: "150K+",
   stat_community_label: "Community Members",
   stat_wins_value: "$2.5M",
@@ -63,6 +71,10 @@ const defaultSettings: SiteSettings = {
   social_youtube: "#",
   social_instagram: "#",
   social_discord: "#",
+  social_twitter_icon: "twitter",
+  social_youtube_icon: "youtube",
+  social_instagram_icon: "instagram",
+  social_discord_icon: "discord",
 };
 
 interface SiteSettingsContextType {

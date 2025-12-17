@@ -80,8 +80,12 @@ export function Sidebar() {
   };
 
   const NavItemComponent = ({ item }: { item: NavItem }) => {
-    const isActive = location.pathname === item.path || 
-      (item.path !== "/" && location.pathname.startsWith(item.path));
+    // Use exact matching for paths that could be prefixes of other paths
+    const isActive = item.path === "/" 
+      ? location.pathname === "/"
+      : item.path === "/stream" || item.path === "/streamers"
+        ? location.pathname === item.path
+        : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
     const Icon = item.icon;
 
     return (
@@ -241,7 +245,7 @@ export function Sidebar() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
-                        {profile?.display_name || profile?.username || "User"}
+                        {profile?.display_name || profile?.username || user?.user_metadata?.full_name || user?.user_metadata?.name || user?.user_metadata?.preferred_username || "User"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {isAdmin ? "Admin" : isModerator ? "Moderator" : "Member"}
