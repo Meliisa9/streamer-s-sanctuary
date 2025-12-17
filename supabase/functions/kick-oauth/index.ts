@@ -1,0 +1,183 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const url = new URL(req.url);
+    const action = url.searchParams.get("action");
+
+    const KICK_CLIENT_ID = Deno.env.get("KICK_CLIENT_ID");
+    const KICK_CLIENT_SECRET = Deno.env.get("KICK_CLIENT_SECRET");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!KICK_CLIENT_ID || !KICK_CLIENT_SECRET) {
+      return new Response(
+        JSON.stringify({ error: "Kick OAuth not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get redirect URL from request or use default
+    const redirectBase = url.searchParams.get("redirect_url") || url.origin;
+
+    if (action === "authorize") {
+      // Step 1: Redirect user to Kick OAuth
+      const state = url.searchParams.get("state") || crypto.randomUUID();
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
+      
+      const kickAuthUrl = new URL("https://id.kick.com/oauth/authorize");
+      kickAuthUrl.searchParams.set("client_id", KICK_CLIENT_ID);
+      kickAuthUrl.searchParams.set("redirect_uri", callbackUrl);
+      kickAuthUrl.searchParams.set("response_type", "code");
+      kickAuthUrl.searchParams.set("scope", "user:read");
+      kickAuthUrl.searchParams.set("state", state);
+
+      return new Response(
+        JSON.stringify({ authorize_url: kickAuthUrl.toString(), state }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "callback") {
+      // Step 2: Handle Kick OAuth callback
+      const code = url.searchParams.get("code");
+      const state = url.searchParams.get("state");
+      const error = url.searchParams.get("error");
+
+      if (error) {
+        // Redirect back to profile with error
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/profile?kick_error=${encodeURIComponent(error)}` },
+        });
+      }
+
+      if (!code) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/profile?kick_error=no_code` },
+        });
+      }
+
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
+
+      // Exchange code for token
+      const tokenResponse = await fetch("https://id.kick.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: KICK_CLIENT_ID,
+          client_secret: KICK_CLIENT_SECRET,
+          code,
+          grant_type: "authorization_code",
+          redirect_uri: callbackUrl,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error("Token exchange failed:", errorText);
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/profile?kick_error=token_exchange_failed` },
+        });
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+
+      // Get Kick user info
+      const userResponse = await fetch("https://api.kick.com/public/v1/users", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (!userResponse.ok) {
+        console.error("Failed to get user info");
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/profile?kick_error=user_fetch_failed` },
+        });
+      }
+
+      const userData = await userResponse.json();
+      const kickUsername = userData.data?.[0]?.username || userData.username;
+
+      if (!kickUsername) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: `/profile?kick_error=no_username` },
+        });
+      }
+
+      // Redirect back to profile with the kick username in the URL
+      // The frontend will handle updating the profile
+      return new Response(null, {
+        status: 302,
+        headers: { 
+          Location: `/profile?kick_username=${encodeURIComponent(kickUsername)}&kick_success=true` 
+        },
+      });
+    }
+
+    if (action === "link") {
+      // Alternative: Link Kick account for authenticated user
+      const authHeader = req.headers.get("Authorization");
+      if (!authHeader) {
+        return new Response(
+          JSON.stringify({ error: "Not authenticated" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { kick_username, user_id } = await req.json();
+
+      if (!kick_username || !user_id) {
+        return new Response(
+          JSON.stringify({ error: "Missing kick_username or user_id" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ kick_username })
+        .eq("user_id", user_id);
+
+      if (updateError) {
+        return new Response(
+          JSON.stringify({ error: updateError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, kick_username }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ error: "Invalid action" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error: unknown) {
+    console.error("Error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return new Response(
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
