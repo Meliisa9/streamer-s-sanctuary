@@ -199,6 +199,35 @@ export type Database = {
         }
         Relationships: []
       }
+      comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "news_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -485,6 +514,7 @@ export type Database = {
           created_at: string
           id: string
           is_approved: boolean | null
+          likes_count: number | null
           user_id: string
         }
         Insert: {
@@ -493,6 +523,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean | null
+          likes_count?: number | null
           user_id: string
         }
         Update: {
@@ -501,6 +532,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean | null
+          likes_count?: number | null
           user_id?: string
         }
         Relationships: [
@@ -725,6 +757,30 @@ export type Database = {
           twitter_url?: string | null
           updated_at?: string
           youtube_url?: string | null
+        }
+        Relationships: []
+      }
+      user_achievements: {
+        Row: {
+          achievement_key: string
+          id: string
+          progress: number | null
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_key: string
+          id?: string
+          progress?: number | null
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_key?: string
+          id?: string
+          progress?: number | null
+          unlocked_at?: string
+          user_id?: string
         }
         Relationships: []
       }
