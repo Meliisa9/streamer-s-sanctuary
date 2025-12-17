@@ -47,6 +47,7 @@ import AdminStream from "./pages/admin/AdminStream";
 import AdminLegal from "./pages/admin/AdminLegal";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminProfileSync from "./pages/admin/AdminProfileSync";
+import AdminActivityLog from "./pages/admin/AdminActivityLog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -104,6 +105,7 @@ const App = () => (
                   <Route path="settings/permissions" element={<AdminPermissions />} />
                   <Route path="settings/about" element={<AdminAbout />} />
                   <Route path="audit" element={<AdminAuditLog />} />
+                  <Route path="activity" element={<AdminActivityLog />} />
                 </Route>
               </Route>
 
