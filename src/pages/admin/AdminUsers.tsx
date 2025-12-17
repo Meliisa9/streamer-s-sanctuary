@@ -450,6 +450,28 @@ export default function AdminUsers() {
                 className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
               />
             </div>
+            <div>
+              <label className="text-sm font-medium">Email Address</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="email"
+                  value={editingEmail?.userId === editingUser.user_id ? editingEmail.email : (userEmails[editingUser.user_id] || "")}
+                  onChange={(e) => setEditingEmail({ userId: editingUser.user_id, email: e.target.value })}
+                  placeholder="Enter new email address"
+                  className="flex-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                />
+                <Button 
+                  onClick={updateUserEmail} 
+                  disabled={isUpdatingEmail || !editingEmail || editingEmail.userId !== editingUser.user_id || !editingEmail.email}
+                  size="sm"
+                  className="gap-2"
+                >
+                  {isUpdatingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Update
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Email changes require confirmation</p>
+            </div>
             <div className="md:col-span-2">
               <label className="text-sm font-medium">Bio</label>
               <textarea

@@ -61,7 +61,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, profile, isAdmin, isModerator, signOut } = useAuth();
+  const { user, profile, isAdmin, isModerator, isWriter, signOut } = useAuth();
   const { settings } = useSiteSettings();
 
   const sidebarVariants = {
@@ -147,27 +147,31 @@ export function Sidebar() {
       {/* Logo */}
       <NavLink to="/" className="p-4 flex items-center gap-3 hover:opacity-80 transition-opacity">
         {settings.logo_url ? (
-          <img src={settings.logo_url} alt={settings.site_name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0" />
+          <>
+            <img src={settings.logo_url} alt={settings.site_name} className={`${collapsed ? "w-10 h-10" : "h-10 w-auto max-w-[180px]"} rounded-xl object-contain flex-shrink-0`} />
+          </>
         ) : (
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center flex-shrink-0">
-            <span className="text-xl font-bold text-primary-foreground">{settings.site_name.charAt(0)}</span>
-          </div>
+          <>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center flex-shrink-0">
+              <span className="text-xl font-bold text-primary-foreground">{settings.site_name.charAt(0)}</span>
+            </div>
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="overflow-hidden"
+                >
+                  <h1 className="font-space-grotesk font-bold text-lg text-foreground">
+                    {settings.site_name}
+                  </h1>
+                  <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
         )}
-        <AnimatePresence mode="wait">
-          {!collapsed && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="overflow-hidden"
-            >
-              <h1 className="font-space-grotesk font-bold text-lg text-foreground">
-                {settings.site_name}
-              </h1>
-              <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </NavLink>
 
       {/* Main Navigation */}
@@ -199,7 +203,7 @@ export function Sidebar() {
         )}
 
         {/* Admin Section */}
-        {isModerator && (
+        {(isModerator || isWriter) && (
           <div className="pt-6">
             {!collapsed && (
               <motion.p
@@ -313,12 +317,12 @@ export function Sidebar() {
                     onClick={() => navigate("/auth")}
                   >
                     <LogIn className="w-4 h-4" />
-                    Discord Login
+                    Login / Signup
                   </Button>
                 </>
               ) : (
                 <Button variant="glow" size="icon" onClick={() => navigate("/auth")}>
-                  <Twitch className="w-4 h-4" />
+                  <LogIn className="w-4 h-4" />
                 </Button>
               )}
             </motion.div>
