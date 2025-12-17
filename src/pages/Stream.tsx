@@ -208,7 +208,7 @@ export default function Stream() {
                         <span className="hidden sm:inline">Theater</span>
                       </Button>
                       <Button
-                        variant={streamSize === "fullscreen" ? "default" : "ghost"}
+                        variant="ghost"
                         size="sm"
                         onClick={() => setStreamSize("fullscreen")}
                         className="gap-2"
