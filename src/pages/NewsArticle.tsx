@@ -2,14 +2,25 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, Heart, Eye, Clock, Share2, Send, Loader2, User } from "lucide-react";
+import { ArrowLeft, Calendar, Heart, Eye, Clock, Share2, Send, Loader2, User, Shield, ShieldCheck, Pen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
 type NewsArticle = Tables<"news_articles">;
+
+interface AuthorProfile {
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+interface UserRole {
+  role: "user" | "moderator" | "admin" | "writer";
+}
 
 interface Comment {
   id: string;
@@ -21,7 +32,35 @@ interface Comment {
     display_name: string | null;
     avatar_url: string | null;
   };
+  roles?: UserRole[];
 }
+
+const getRoleBadge = (roles: UserRole[] | undefined) => {
+  if (!roles || roles.length === 0) return null;
+  
+  // Priority: admin > moderator > writer
+  const roleOrder = ["admin", "moderator", "writer"];
+  const highestRole = roleOrder.find(r => roles.some(ur => ur.role === r));
+  
+  if (!highestRole || highestRole === "user") return null;
+  
+  const badgeConfig = {
+    admin: { label: "Admin", variant: "destructive" as const, icon: ShieldCheck },
+    moderator: { label: "Moderator", variant: "default" as const, icon: Shield },
+    writer: { label: "Writer", variant: "secondary" as const, icon: Pen },
+  };
+  
+  const config = badgeConfig[highestRole as keyof typeof badgeConfig];
+  if (!config) return null;
+  
+  const Icon = config.icon;
+  return (
+    <Badge variant={config.variant} className="text-xs gap-1">
+      <Icon className="w-3 h-3" />
+      {config.label}
+    </Badge>
+  );
+};
 
 export default function NewsArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -55,6 +94,27 @@ export default function NewsArticlePage() {
     enabled: !!slug,
   });
 
+  // Fetch author profile
+  const { data: authorProfile } = useQuery({
+    queryKey: ["author-profile", article?.author_id],
+    queryFn: async () => {
+      if (!article?.author_id) return null;
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username, display_name, avatar_url")
+        .eq("user_id", article.author_id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching author:", error);
+        return null;
+      }
+      return data as AuthorProfile;
+    },
+    enabled: !!article?.author_id,
+  });
+
   // Fetch comments
   const { data: comments = [] } = useQuery({
     queryKey: ["article-comments", article?.id],
@@ -77,11 +137,24 @@ export default function NewsArticlePage() {
         .select("user_id, username, display_name, avatar_url")
         .in("user_id", userIds);
 
+      // Fetch roles for comment authors
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds);
+
       const profileMap = new Map(profiles?.map((p) => [p.user_id, p]));
+      const rolesMap = new Map<string, UserRole[]>();
+      roles?.forEach((r) => {
+        const existing = rolesMap.get(r.user_id) || [];
+        existing.push({ role: r.role });
+        rolesMap.set(r.user_id, existing);
+      });
 
       return data.map((comment) => ({
         ...comment,
         profile: profileMap.get(comment.user_id),
+        roles: rolesMap.get(comment.user_id),
       })) as Comment[];
     },
     enabled: !!article?.id,
@@ -215,6 +288,8 @@ export default function NewsArticlePage() {
     );
   }
 
+  const authorName = authorProfile?.display_name || authorProfile?.username || "Unknown Author";
+
   return (
     <div className="min-h-screen py-8 px-6">
       <div className="container mx-auto max-w-4xl">
@@ -244,6 +319,15 @@ export default function NewsArticlePage() {
           <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">{article.title}</h1>
 
           <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+            {/* Author */}
+            <span className="flex items-center gap-2">
+              {authorProfile?.avatar_url ? (
+                <img src={authorProfile.avatar_url} alt={authorName} className="w-6 h-6 rounded-full object-cover" />
+              ) : (
+                <User className="w-4 h-4" />
+              )}
+              <span className="font-medium text-foreground">{authorName}</span>
+            </span>
             <span className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               {new Date(article.created_at).toLocaleDateString("en-US", {
@@ -363,24 +447,27 @@ export default function NewsArticlePage() {
           <div className="space-y-4">
             {comments.map((comment) => (
               <div key={comment.id} className="p-4 bg-secondary/30 rounded-xl">
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-start gap-3 mb-2">
                   {comment.profile?.avatar_url ? (
-                    <img src={comment.profile.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    <img src={comment.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                      <User className="w-4 h-4 text-muted-foreground" />
+                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                      <User className="w-5 h-5 text-muted-foreground" />
                     </div>
                   )}
-                  <div>
-                    <p className="font-medium text-sm">
-                      {comment.profile?.display_name || comment.profile?.username || "Anonymous"}
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium">
+                        {comment.profile?.display_name || comment.profile?.username || "Anonymous"}
+                      </p>
+                      {getRoleBadge(comment.roles)}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {new Date(comment.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                <p className="text-muted-foreground">{comment.content}</p>
+                <p className="text-muted-foreground pl-13">{comment.content}</p>
               </div>
             ))}
             {comments.length === 0 && (

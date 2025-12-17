@@ -28,6 +28,8 @@ interface BrandingSettings {
   theme_background: string;
   theme_card: string;
   theme_accent: string;
+  font_heading: string;
+  font_body: string;
 }
 
 interface SocialLink {
@@ -35,6 +37,7 @@ interface SocialLink {
   title: string;
   url: string;
   icon: string;
+  customIcon?: string;
 }
 
 const defaultSettings: BrandingSettings = {
@@ -48,6 +51,8 @@ const defaultSettings: BrandingSettings = {
   theme_background: "240 10% 4%",
   theme_card: "240 10% 6%",
   theme_accent: "280 100% 70%",
+  font_heading: "Space Grotesk",
+  font_body: "Outfit",
 };
 
 const defaultTheme = {
@@ -55,7 +60,27 @@ const defaultTheme = {
   theme_background: "240 10% 4%",
   theme_card: "240 10% 6%",
   theme_accent: "280 100% 70%",
+  font_heading: "Space Grotesk",
+  font_body: "Outfit",
 };
+
+const availableFonts = [
+  { value: "Space Grotesk", label: "Space Grotesk" },
+  { value: "Outfit", label: "Outfit" },
+  { value: "Inter", label: "Inter" },
+  { value: "Poppins", label: "Poppins" },
+  { value: "Roboto", label: "Roboto" },
+  { value: "Open Sans", label: "Open Sans" },
+  { value: "Montserrat", label: "Montserrat" },
+  { value: "Lato", label: "Lato" },
+  { value: "Playfair Display", label: "Playfair Display" },
+  { value: "Raleway", label: "Raleway" },
+  { value: "Nunito", label: "Nunito" },
+  { value: "Source Sans Pro", label: "Source Sans Pro" },
+  { value: "Ubuntu", label: "Ubuntu" },
+  { value: "Oswald", label: "Oswald" },
+  { value: "Merriweather", label: "Merriweather" },
+];
 
 const availableIcons = [
   { value: "twitter", label: "Twitter/X" },
@@ -78,6 +103,7 @@ const availableIcons = [
   { value: "mail", label: "Email" },
   { value: "globe", label: "Website" },
   { value: "link", label: "Link" },
+  { value: "custom", label: "Custom (FontAwesome)" },
 ];
 
 export default function AdminBranding() {
@@ -141,6 +167,27 @@ export default function AdminBranding() {
     if (themeSettings.theme_background) root.style.setProperty("--background", themeSettings.theme_background);
     if (themeSettings.theme_card) root.style.setProperty("--card", themeSettings.theme_card);
     if (themeSettings.theme_accent) root.style.setProperty("--accent", themeSettings.theme_accent);
+    
+    // Apply fonts
+    if (themeSettings.font_heading) {
+      loadGoogleFont(themeSettings.font_heading);
+      root.style.setProperty("--font-heading", `"${themeSettings.font_heading}", sans-serif`);
+    }
+    if (themeSettings.font_body) {
+      loadGoogleFont(themeSettings.font_body);
+      root.style.setProperty("--font-body", `"${themeSettings.font_body}", sans-serif`);
+    }
+  };
+
+  const loadGoogleFont = (fontName: string) => {
+    const existingLink = document.querySelector(`link[data-font="${fontName}"]`);
+    if (existingLink) return;
+    
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/ /g, "+")}:wght@300;400;500;600;700&display=swap`;
+    link.setAttribute("data-font", fontName);
+    document.head.appendChild(link);
   };
 
   const handleFileChange = (
@@ -508,6 +555,56 @@ export default function AdminBranding() {
           </div>
         </motion.div>
 
+        {/* Font Customization */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="glass rounded-2xl p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Type className="w-5 h-5 text-primary" />
+            Font Customization
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Heading Font</Label>
+              <select
+                value={settings.font_heading}
+                onChange={(e) => {
+                  setSettings({ ...settings, font_heading: e.target.value });
+                  loadGoogleFont(e.target.value);
+                  document.documentElement.style.setProperty("--font-heading", `"${e.target.value}", sans-serif`);
+                }}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+              >
+                {availableFonts.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">Used for h1, h2, h3, etc.</p>
+            </div>
+            <div>
+              <Label>Body Font</Label>
+              <select
+                value={settings.font_body}
+                onChange={(e) => {
+                  setSettings({ ...settings, font_body: e.target.value });
+                  loadGoogleFont(e.target.value);
+                  document.documentElement.style.setProperty("--font-body", `"${e.target.value}", sans-serif`);
+                }}
+                className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+              >
+                {availableFonts.map((font) => (
+                  <option key={font.value} value={font.value}>{font.label}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">Used for paragraphs and general text</p>
+            </div>
+          </div>
+          <div className="mt-4 p-4 rounded-xl bg-secondary/50 border border-border">
+            <p className="text-sm" style={{ fontFamily: `"${settings.font_body}", sans-serif` }}>
+              <span style={{ fontFamily: `"${settings.font_heading}", sans-serif`, fontWeight: 600 }}>Preview: </span>
+              The quick brown fox jumps over the lazy dog.
+            </p>
+          </div>
+        </motion.div>
+
         {/* Footer Social Links */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
@@ -520,38 +617,54 @@ export default function AdminBranding() {
               Add Link
             </Button>
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto">
+          <p className="text-sm text-muted-foreground mb-4">
+            Select "Custom (FontAwesome)" to use any FontAwesome icon class (e.g., fa-brands fa-tiktok)
+          </p>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
             {socialLinks.map((link) => (
-              <div key={link.id} className="flex items-center gap-2 p-3 rounded-xl bg-secondary/50 border border-border">
-                <select
-                  value={link.icon}
-                  onChange={(e) => updateSocialLink(link.id, "icon", e.target.value)}
-                  className="px-2 py-1.5 bg-background border border-border rounded-lg text-sm"
-                >
-                  {availableIcons.map((icon) => (
-                    <option key={icon.value} value={icon.value}>{icon.label}</option>
-                  ))}
-                </select>
-                <Input
-                  value={link.title}
-                  onChange={(e) => updateSocialLink(link.id, "title", e.target.value)}
-                  placeholder="Title"
-                  className="flex-1"
-                />
-                <Input
-                  value={link.url}
-                  onChange={(e) => updateSocialLink(link.id, "url", e.target.value)}
-                  placeholder="URL"
-                  className="flex-1"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeSocialLink(link.id)}
-                  className="text-destructive hover:text-destructive shrink-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+              <div key={link.id} className="p-3 rounded-xl bg-secondary/50 border border-border space-y-2">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={link.icon}
+                    onChange={(e) => updateSocialLink(link.id, "icon", e.target.value)}
+                    className="px-2 py-1.5 bg-background border border-border rounded-lg text-sm min-w-[140px]"
+                  >
+                    {availableIcons.map((icon) => (
+                      <option key={icon.value} value={icon.value}>{icon.label}</option>
+                    ))}
+                  </select>
+                  <Input
+                    value={link.title}
+                    onChange={(e) => updateSocialLink(link.id, "title", e.target.value)}
+                    placeholder="Title"
+                    className="flex-1"
+                  />
+                  <Input
+                    value={link.url}
+                    onChange={(e) => updateSocialLink(link.id, "url", e.target.value)}
+                    placeholder="URL"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeSocialLink(link.id)}
+                    className="text-destructive hover:text-destructive shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                {link.icon === "custom" && (
+                  <div className="flex items-center gap-2 pl-2">
+                    <Label className="text-xs whitespace-nowrap">FontAwesome Class:</Label>
+                    <Input
+                      value={link.customIcon || ""}
+                      onChange={(e) => updateSocialLink(link.id, "customIcon", e.target.value)}
+                      placeholder="e.g., fa-brands fa-tiktok"
+                      className="flex-1 text-sm"
+                    />
+                  </div>
+                )}
               </div>
             ))}
             {socialLinks.length === 0 && (
