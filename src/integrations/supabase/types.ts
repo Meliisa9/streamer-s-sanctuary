@@ -228,6 +228,45 @@ export type Database = {
           },
         ]
       }
+      content_flags: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          flagged_by: string
+          id: string
+          notes: string | null
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          flagged_by: string
+          id?: string
+          notes?: string | null
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          flagged_by?: string
+          id?: string
+          notes?: string | null
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       daily_sign_ins: {
         Row: {
           consecutive_days: number
@@ -518,6 +557,68 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard_periods: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean | null
+          period_type: string
+          start_date: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean | null
+          period_type: string
+          start_date: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean | null
+          period_type?: string
+          start_date?: string
+        }
+        Relationships: []
+      }
+      leaderboard_snapshots: {
+        Row: {
+          created_at: string
+          id: string
+          period_id: string
+          points: number
+          rank: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          period_id: string
+          points?: number
+          rank?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          period_id?: string
+          points?: number
+          rank?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_snapshots_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "leaderboard_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_articles: {
         Row: {
           author_id: string | null
@@ -729,6 +830,36 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_comments: {
+        Row: {
+          author_id: string
+          content: string
+          created_at: string
+          id: string
+          is_approved: boolean | null
+          profile_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean | null
+          profile_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean | null
+          profile_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -736,6 +867,10 @@ export type Database = {
           created_at: string
           discord_tag: string | null
           display_name: string | null
+          equipped_badge: string | null
+          equipped_title: string | null
+          followers_count: number | null
+          following_count: number | null
           id: string
           kick_username: string | null
           points: number | null
@@ -750,6 +885,10 @@ export type Database = {
           created_at?: string
           discord_tag?: string | null
           display_name?: string | null
+          equipped_badge?: string | null
+          equipped_title?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id?: string
           kick_username?: string | null
           points?: number | null
@@ -764,6 +903,10 @@ export type Database = {
           created_at?: string
           discord_tag?: string | null
           display_name?: string | null
+          equipped_badge?: string | null
+          equipped_title?: string | null
+          followers_count?: number | null
+          following_count?: number | null
           id?: string
           kick_username?: string | null
           points?: number | null
@@ -798,6 +941,42 @@ export type Database = {
           permission?: string
           role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduled_posts: {
+        Row: {
+          created_at: string
+          created_by: string
+          error_message: string | null
+          id: string
+          post_data: Json
+          post_type: string
+          published_at: string | null
+          scheduled_for: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          error_message?: string | null
+          id?: string
+          post_data: Json
+          post_type: string
+          published_at?: string | null
+          scheduled_for: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          id?: string
+          post_data?: Json
+          post_type?: string
+          published_at?: string | null
+          scheduled_for?: string
+          status?: string
         }
         Relationships: []
       }
@@ -924,6 +1103,132 @@ export type Database = {
           id?: string
           ip_address?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_badges: {
+        Row: {
+          awarded_at: string
+          awarded_by: string | null
+          badge_color: string | null
+          badge_icon: string | null
+          badge_key: string
+          badge_name: string
+          id: string
+          is_equipped: boolean | null
+          is_title: boolean | null
+          user_id: string
+        }
+        Insert: {
+          awarded_at?: string
+          awarded_by?: string | null
+          badge_color?: string | null
+          badge_icon?: string | null
+          badge_key: string
+          badge_name: string
+          id?: string
+          is_equipped?: boolean | null
+          is_title?: boolean | null
+          user_id: string
+        }
+        Update: {
+          awarded_at?: string
+          awarded_by?: string | null
+          badge_color?: string | null
+          badge_icon?: string | null
+          badge_key?: string
+          badge_name?: string
+          id?: string
+          is_equipped?: boolean | null
+          is_title?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_bans: {
+        Row: {
+          banned_by: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          ip_address: string | null
+          is_ip_ban: boolean | null
+          is_permanent: boolean | null
+          reason: string | null
+          unbanned_at: string | null
+          unbanned_by: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          ip_address?: string | null
+          is_ip_ban?: boolean | null
+          is_permanent?: boolean | null
+          reason?: string | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          ip_address?: string | null
+          is_ip_ban?: boolean | null
+          is_permanent?: boolean | null
+          reason?: string | null
+          unbanned_at?: string | null
+          unbanned_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_bookmarks: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
         }
         Relationships: []
       }

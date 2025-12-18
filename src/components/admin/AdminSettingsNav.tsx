@@ -11,6 +11,10 @@ const settingsSubcategories = [
   { path: "/admin/settings/permissions", label: "Permissions" },
   { path: "/admin/settings/about", label: "About Page" },
   { path: "/admin/settings/notifications", label: "Send Notifications" },
+  { path: "/admin/settings/bans", label: "User Bans" },
+  { path: "/admin/settings/scheduled", label: "Scheduled Posts" },
+  { path: "/admin/settings/moderation", label: "Moderation Queue" },
+  { path: "/admin/settings/bulk-actions", label: "Bulk Actions" },
 ];
 
 export function AdminSettingsNav() {
