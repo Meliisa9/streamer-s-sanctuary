@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
 import { UserNotifications } from "@/components/UserNotifications";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -35,8 +36,9 @@ export function MainLayout() {
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        {/* Top bar with notifications */}
-        <div className="flex justify-end p-4">
+        {/* Top bar with search and notifications */}
+        <div className="flex items-center justify-between gap-4 p-4">
+          <GlobalSearch />
           <UserNotifications />
         </div>
         <div className="flex-1 px-6">

@@ -55,7 +55,7 @@ export default function Polls() {
     options: ["", ""],
   });
 
-  // Fetch active official polls (approved or non-community)
+  // Fetch active official polls (approved or non-community, not expired)
   const { data: polls = [], isLoading } = useQuery({
     queryKey: ["polls"],
     queryFn: async () => {
@@ -66,11 +66,12 @@ export default function Polls() {
         .or("is_community.eq.false,is_approved.eq.true,is_community.is.null")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Poll[];
+      // Filter out expired polls client-side
+      return (data as Poll[]).filter(poll => !poll.ends_at || new Date(poll.ends_at) > new Date());
     },
   });
 
-  // Fetch community polls separately
+  // Fetch community polls separately (not expired)
   const { data: communityPolls = [] } = useQuery({
     queryKey: ["community-polls"],
     queryFn: async () => {
@@ -82,7 +83,8 @@ export default function Polls() {
         .eq("is_approved", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as Poll[];
+      // Filter out expired polls client-side
+      return (data as Poll[]).filter(poll => !poll.ends_at || new Date(poll.ends_at) > new Date());
     },
   });
 
@@ -104,17 +106,20 @@ export default function Polls() {
     enabled: !!user,
   });
 
+  // Fetch ended/expired polls for recent results
   const { data: recentPolls = [] } = useQuery({
     queryKey: ["recent-polls"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("polls")
         .select("*")
-        .eq("is_active", false)
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(20);
       if (error) throw error;
-      return data as Poll[];
+      // Filter to show only inactive OR expired polls
+      return (data as Poll[]).filter(poll => 
+        !poll.is_active || (poll.ends_at && new Date(poll.ends_at) <= new Date())
+      ).slice(0, 5);
     },
   });
 
@@ -567,8 +572,9 @@ export default function Polls() {
                 )}
               </div>
 
-              {/* Sidebar */}
+              {/* Sidebar - aligned with polls */}
               <div className="space-y-6">
+                {/* Recent Results */}
                 <div className="glass rounded-xl p-5">
                   <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <History className="w-5 h-5 text-muted-foreground" />
@@ -579,9 +585,15 @@ export default function Polls() {
                     <div className="space-y-3">
                       {recentPolls.map((poll) => {
                         const winner = getWinningOption(poll);
+                        const expired = isPollExpired(poll);
                         return (
                           <div key={poll.id} className="p-3 bg-secondary/30 rounded-lg">
-                            <p className="font-medium text-sm mb-1">{poll.title}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-sm flex-1">{poll.title}</p>
+                              {expired && poll.is_active && (
+                                <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded">Expired</span>
+                              )}
+                            </div>
                             {winner.votes > 0 && (
                               <div className="flex items-center gap-2 text-sm">
                                 <Trophy className="w-3 h-3 text-yellow-500" />
@@ -598,6 +610,7 @@ export default function Polls() {
                   )}
                 </div>
 
+                {/* How It Works */}
                 <div className="glass rounded-xl p-5">
                   <h3 className="font-semibold mb-3">How It Works</h3>
                   <div className="space-y-2 text-sm text-muted-foreground">

@@ -15,9 +15,11 @@ import { useAchievements, ACHIEVEMENTS, LEVEL_THRESHOLDS } from "@/hooks/useAchi
 import { 
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
-  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2
+  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useUserFollow } from "@/hooks/useUserFollow";
+import { ProfileComments } from "@/components/ProfileComments";
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -320,12 +322,16 @@ export default function Profile() {
                   <p className="text-xs text-muted-foreground">🔥 Streak</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
-                  <p className="text-xs text-muted-foreground">Achievements</p>
+                  <p className="text-2xl font-bold">{profile?.followers_count || 0}</p>
+                  <p className="text-xs text-muted-foreground">Followers</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold">{totalActivity}</p>
-                  <p className="text-xs text-muted-foreground">Activities</p>
+                  <p className="text-2xl font-bold">{profile?.following_count || 0}</p>
+                  <p className="text-xs text-muted-foreground">Following</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
+                  <p className="text-xs text-muted-foreground">Achievements</p>
                 </div>
               </div>
             </div>
@@ -357,10 +363,14 @@ export default function Profile() {
           transition={{ delay: 0.05 }}
         >
           <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="w-full justify-start mb-6 bg-secondary/30 p-1 rounded-xl">
+            <TabsList className="w-full justify-start mb-6 bg-secondary/30 p-1 rounded-xl flex-wrap">
               <TabsTrigger value="profile" className="gap-2">
                 <User className="w-4 h-4" />
                 Profile
+              </TabsTrigger>
+              <TabsTrigger value="social" className="gap-2">
+                <Users className="w-4 h-4" />
+                Social
               </TabsTrigger>
               <TabsTrigger value="achievements" className="gap-2">
                 <Award className="w-4 h-4" />
@@ -584,6 +594,34 @@ export default function Profile() {
                       </Button>
                     )}
                   </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Social Tab */}
+            <TabsContent value="social">
+              <div className="space-y-6">
+                {/* Stats */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-primary" />
+                    Social Stats
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-secondary/30 rounded-xl text-center">
+                      <p className="text-3xl font-bold text-primary">{profile?.followers_count || 0}</p>
+                      <p className="text-sm text-muted-foreground">Followers</p>
+                    </div>
+                    <div className="p-4 bg-secondary/30 rounded-xl text-center">
+                      <p className="text-3xl font-bold text-accent">{profile?.following_count || 0}</p>
+                      <p className="text-sm text-muted-foreground">Following</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Profile Comments */}
+                <div className="glass rounded-2xl p-6">
+                  <ProfileComments profileUserId={user.id} />
                 </div>
               </div>
             </TabsContent>

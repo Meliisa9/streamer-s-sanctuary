@@ -18,6 +18,7 @@ import {
   Settings,
   Shield,
   User,
+  Crosshair,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import { BarChart, Info } from "lucide-react";
 
 const communityNavItems: NavItem[] = [
   { icon: Calendar, label: "Events", path: "/events", settingKey: "nav_events_visible" },
+  { icon: Crosshair, label: "Bonus Hunt", path: "/bonus-hunt", settingKey: "nav_bonus_hunt_visible" },
   { icon: Target, label: "Guess The Win", path: "/guess-the-win", settingKey: "nav_gtw_visible" },
   { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },
   { icon: BarChart, label: "Polls", path: "/polls", settingKey: "nav_polls_visible" },

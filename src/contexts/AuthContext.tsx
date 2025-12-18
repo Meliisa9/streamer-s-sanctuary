@@ -15,6 +15,10 @@ interface Profile {
   kick_username: string | null;
   bio: string | null;
   points: number;
+  followers_count: number | null;
+  following_count: number | null;
+  equipped_badge: string | null;
+  equipped_title: string | null;
 }
 
 interface AuthContextType {

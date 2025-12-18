@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Calendar, MessageCircle, User, Clock, Search, Tag, ArrowRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import type { Tables } from "@/integrations/supabase/types";
 
 type NewsArticle = Tables<"news_articles">;
@@ -153,6 +154,7 @@ export default function News() {
                                 <Heart className="w-4 h-4" />
                                 {article.likes_count || 0}
                               </span>
+                              <BookmarkButton contentType="article" contentId={article.id} />
                             </div>
                           </div>
                         </div>
@@ -214,10 +216,13 @@ export default function News() {
                                 <span>{new Date(article.created_at).toLocaleDateString()}</span>
                                 <span>{article.views || 0} views</span>
                               </div>
-                              <Button variant="ghost" size="sm" className="group/btn">
-                                Read More
-                                <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                              </Button>
+                              <div className="flex items-center gap-2">
+                                <BookmarkButton contentType="article" contentId={article.id} />
+                                <Button variant="ghost" size="sm" className="group/btn">
+                                  Read More
+                                  <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
