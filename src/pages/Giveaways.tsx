@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Gift, Users, Clock, Trophy, CheckCircle2, Lock, Sparkles, ArrowRight, Crown, Infinity } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -271,6 +272,7 @@ export default function Giveaways() {
                                     <Trophy className="w-4 h-4" />
                                     {giveaway.winners_count} {giveaway.winners_count === 1 ? "winner" : "winners"}
                                   </span>
+                                  <BookmarkButton contentType="giveaway" contentId={giveaway.id} />
                                 </div>
                               </div>
 

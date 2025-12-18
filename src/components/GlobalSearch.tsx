@@ -135,7 +135,7 @@ export function GlobalSearch() {
           id: u.user_id,
           title: u.display_name || u.username || "Anonymous",
           subtitle: u.username ? `@${u.username}` : undefined,
-          url: `/profile?user=${u.user_id}`,
+          url: `/user/${u.user_id}`,
           image: u.avatar_url || undefined,
         });
       });

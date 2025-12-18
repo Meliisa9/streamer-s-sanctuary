@@ -2,9 +2,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Eye, Heart, Filter, Search, Clock, TrendingUp } from "lucide-react";
+import { Play, Eye, Heart, Filter, Search, Clock, TrendingUp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayerModal } from "@/components/VideoPlayerModal";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -299,8 +300,10 @@ export default function Videos() {
                             <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
                             {video.likes_count?.toLocaleString() || 0}
                           </button>
+                          <BookmarkButton contentType="video" contentId={video.id} />
                         </div>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
                           {new Date(video.created_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -381,8 +384,12 @@ export default function Videos() {
                               <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
                               {video.likes_count?.toLocaleString() || 0}
                             </button>
+                            <BookmarkButton contentType="video" contentId={video.id} />
                           </div>
-                          <span>{new Date(video.created_at).toLocaleDateString()}</span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(video.created_at).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
