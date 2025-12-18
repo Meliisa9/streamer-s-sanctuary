@@ -33,19 +33,16 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     if (!user) return;
 
     try {
-      // Always require code entry - no session storage
-      const { data, error } = await supabase
-        .from("admin_access_codes")
-        .select("access_code")
-        .eq("user_id", user.id)
-        .single();
+      // Call edge function to check if user has a code
+      const { data, error } = await supabase.functions.invoke('admin-code', {
+        body: { action: 'check' }
+      });
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error fetching access code:", error);
+      if (error) {
+        console.error("Error checking access code:", error);
       }
 
-      // If user has no code set, they need to create one
-      if (!data || !data.access_code) {
+      if (!data?.hasCode) {
         setHasAccessCode(false);
         setIsSettingCode(true);
       } else {
@@ -76,18 +73,16 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from("admin_access_codes")
-        .upsert({
-          user_id: user.id,
-          access_code: newCode,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
+      // Call edge function to set the code (hashes server-side)
+      const { data, error } = await supabase.functions.invoke('admin-code', {
+        body: { action: 'set', code: newCode }
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       setIsVerified(true);
-      toast({ title: "Access code created", description: "Your personal admin access code has been set" });
+      toast({ title: "Access code created", description: "Your personal admin access code has been set securely" });
     } catch (error: any) {
       toast({ title: "Error setting code", description: error.message, variant: "destructive" });
     } finally {
@@ -103,15 +98,14 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     setIsSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from("admin_access_codes")
-        .select("access_code")
-        .eq("user_id", user.id)
-        .single();
+      // Call edge function to verify the code (compares hash server-side)
+      const { data, error } = await supabase.functions.invoke('admin-code', {
+        body: { action: 'verify', code }
+      });
 
       if (error) throw error;
 
-      if (code === data.access_code) {
+      if (data?.verified) {
         setIsVerified(true);
         toast({ title: "Access granted" });
       } else {
