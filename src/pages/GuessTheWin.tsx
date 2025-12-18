@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Target, Trophy, Users, Clock, Lock, CheckCircle2, ArrowRight, History, Medal, Star, Sparkles, TrendingUp } from "lucide-react";
+import { Target, Trophy, Users, Clock, Lock, CheckCircle2, History, Medal, Star, Sparkles, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -29,6 +29,7 @@ function GuessTheWin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [guessAmounts, setGuessAmounts] = useState<Record<string, string>>({});
+  const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ["gtw-sessions"],
@@ -42,7 +43,6 @@ function GuessTheWin() {
     },
   });
 
-  // Get all active sessions
   const activeSessions = sessions?.filter((s) => s.status === "active" || s.status === "upcoming") || [];
   const pastSessions = sessions?.filter((s) => s.status === "ended" || s.status === "completed").slice(0, 5) || [];
 
@@ -60,7 +60,6 @@ function GuessTheWin() {
         .in("session_id", activeSessionIds);
       if (error) throw error;
       
-      // Return as a map of session_id -> guess
       const guessMap: Record<string, GTWGuess> = {};
       data.forEach(guess => {
         guessMap[guess.session_id] = guess;
@@ -157,19 +156,22 @@ function GuessTheWin() {
     return CURRENCY_SYMBOLS[currency || "USD"] || "$";
   };
 
-  // Stats calculations
+  const toggleSessionExpand = (sessionId: string) => {
+    setExpandedSessions(prev => ({ ...prev, [sessionId]: !prev[sessionId] }));
+  };
+
   const totalActiveSessions = activeSessions.length;
   const totalEntries = Object.values(sessionEntryCounts || {}).reduce((a, b) => a + b, 0);
   const completedCount = pastSessions.length;
 
   return (
     <div className="min-h-screen py-8 px-6">
-      <div className="container mx-auto">
+      <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
+          className="mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Guess <span className="gradient-text">The Win</span>
@@ -187,178 +189,183 @@ function GuessTheWin() {
             transition={{ delay: 0.05 }}
             className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
           >
-            <div className="glass rounded-2xl p-4 text-center">
-              <Target className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{totalActiveSessions}</p>
-              <p className="text-sm text-muted-foreground">Active Sessions</p>
+            <div className="glass rounded-xl p-4 text-center">
+              <Target className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="text-xl font-bold">{totalActiveSessions}</p>
+              <p className="text-xs text-muted-foreground">Active Sessions</p>
             </div>
-            <div className="glass rounded-2xl p-4 text-center">
-              <Users className="w-8 h-8 mx-auto mb-2 text-accent" />
-              <p className="text-2xl font-bold">{totalEntries}</p>
-              <p className="text-sm text-muted-foreground">Current Entries</p>
+            <div className="glass rounded-xl p-4 text-center">
+              <Users className="w-6 h-6 mx-auto mb-2 text-accent" />
+              <p className="text-xl font-bold">{totalEntries}</p>
+              <p className="text-xs text-muted-foreground">Current Entries</p>
             </div>
-            <div className="glass rounded-2xl p-4 text-center">
-              <Trophy className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-              <p className="text-2xl font-bold">{completedCount}</p>
-              <p className="text-sm text-muted-foreground">Completed</p>
+            <div className="glass rounded-xl p-4 text-center">
+              <Trophy className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
+              <p className="text-xl font-bold">{completedCount}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
             </div>
-            <div className="glass rounded-2xl p-4 text-center">
-              <Star className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">{profile?.points || 0}</p>
-              <p className="text-sm text-muted-foreground">Your Points</p>
+            <div className="glass rounded-xl p-4 text-center">
+              <Star className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="text-xl font-bold">{profile?.points || 0}</p>
+              <p className="text-xs text-muted-foreground">Your Points</p>
             </div>
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Active Sessions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Active Sessions - Compact Cards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="lg:col-span-2 space-y-6"
+            className="lg:col-span-2 space-y-4"
           >
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Target className="w-5 h-5 text-primary" />
+              Active Sessions
+            </h2>
+
             {activeSessions.length > 0 ? (
-              activeSessions.map((session, index) => {
-                const userGuess = userGuesses?.[session.id];
-                const entryCount = sessionEntryCounts?.[session.id] || 0;
-                const isLocked = session.status === "locked";
-                const hasSubmittedGuess = !!userGuess;
-                const currencySymbol = getCurrencySymbol(session.currency);
+              <div className="space-y-3">
+                {activeSessions.map((session, index) => {
+                  const userGuess = userGuesses?.[session.id];
+                  const entryCount = sessionEntryCounts?.[session.id] || 0;
+                  const isLocked = session.status === "locked";
+                  const hasSubmittedGuess = !!userGuess;
+                  const currencySymbol = getCurrencySymbol(session.currency);
+                  const isExpanded = expandedSessions[session.id] || (activeSessions.length === 1);
 
-                return (
-                  <div key={session.id} className="glass rounded-2xl p-6 neon-border">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                          session.status === "active"
-                            ? "bg-green-500/20 text-green-500"
-                            : session.status === "locked"
-                            ? "bg-amber-500/20 text-amber-500"
-                            : "bg-muted text-muted-foreground"
-                        }`}>
-                          {session.status === "active" && <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />}
-                          {session.status === "active" ? "Accepting Guesses" : 
-                           session.status === "locked" ? "Locked - Results Soon" : 
-                           session.status === "upcoming" ? "Coming Soon" : "Ended"}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {entryCount.toLocaleString()} entries
-                      </div>
-                    </div>
-
-                    <h2 className="text-2xl font-bold mb-2">{session.title}</h2>
-                    <p className="text-muted-foreground mb-6">
-                      Guess the total winnings from today's bonus hunt session!
-                    </p>
-
-                    {session.pot_amount && (
-                      <div className="text-center mb-6 p-4 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Prize Pool</p>
-                        <p className="text-4xl font-bold gradient-text-gold">{session.pot_amount}</p>
-                      </div>
-                    )}
-
-                    {/* Guess Input */}
-                    <div className="bg-secondary/50 rounded-xl p-6 mb-6">
-                      <label className="text-sm font-medium mb-2 block">
-                        Your Guess (Total Winnings in {currencySymbol})
-                      </label>
-                      {hasSubmittedGuess ? (
-                        <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                          <div className="flex items-center gap-2 text-green-500 mb-2">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-semibold">Guess Submitted!</span>
+                  return (
+                    <div 
+                      key={session.id} 
+                      className={`glass rounded-xl overflow-hidden transition-all ${
+                        hasSubmittedGuess ? "border border-green-500/30" : "border border-border"
+                      }`}
+                    >
+                      {/* Header - Always visible */}
+                      <div 
+                        className="p-4 cursor-pointer hover:bg-secondary/20 transition-colors"
+                        onClick={() => activeSessions.length > 1 && toggleSessionExpand(session.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${
+                              session.status === "active" ? "bg-green-500 animate-pulse" : "bg-amber-500"
+                            }`} />
+                            <h3 className="font-semibold">{session.title}</h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              session.status === "active"
+                                ? "bg-green-500/20 text-green-500"
+                                : "bg-amber-500/20 text-amber-500"
+                            }`}>
+                              {session.status === "active" ? "Open" : session.status}
+                            </span>
                           </div>
-                          <p className="text-2xl font-bold text-foreground">
-                            {currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Your guess is locked and cannot be changed. Good luck!
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="flex gap-3">
-                          <div className="relative flex-1">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-                            <input
-                              type="number"
-                              value={guessAmounts[session.id] || ""}
-                              onChange={(e) => setGuessAmounts(prev => ({ ...prev, [session.id]: e.target.value }))}
-                              disabled={isLocked || session.status === "upcoming" || !user}
-                              placeholder="Enter your guess..."
-                              className="w-full pl-8 pr-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            />
-                          </div>
-                          <Button
-                            variant="gold"
-                            size="lg"
-                            disabled={isLocked || session.status === "upcoming" || !guessAmounts[session.id] || submitGuessMutation.isPending || !user}
-                            onClick={() => handleSubmitGuess(session)}
-                            className="gap-2"
-                          >
-                            {isLocked ? (
-                              <>
-                                <Lock className="w-4 h-4" />
-                                Locked
-                              </>
-                            ) : (
-                              <>
-                                <Target className="w-4 h-4" />
-                                Submit
-                              </>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {entryCount}
+                            </span>
+                            {hasSubmittedGuess && (
+                              <span className="text-xs text-green-400 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                {currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}
+                              </span>
                             )}
-                          </Button>
+                            {activeSessions.length > 1 && (
+                              isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                            )}
+                          </div>
                         </div>
-                      )}
-                      {!user && (
-                        <p className="text-sm text-muted-foreground mt-3">
-                          <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess
-                        </p>
+                        
+                        {/* Prize Pool Preview */}
+                        {session.pot_amount && (
+                          <div className="mt-2 text-sm text-muted-foreground">
+                            Prize Pool: <span className="text-primary font-medium">{session.pot_amount}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="px-4 pb-4 border-t border-border/50">
+                          {/* Guess Input */}
+                          <div className="mt-4">
+                            {hasSubmittedGuess ? (
+                              <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-green-400 font-medium flex items-center gap-2">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    Your guess is locked
+                                  </span>
+                                  <span className="text-xl font-bold">
+                                    {currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <label className="text-sm font-medium">
+                                  Your Guess (Total Winnings in {currencySymbol})
+                                </label>
+                                <div className="flex gap-2">
+                                  <div className="relative flex-1">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
+                                    <input
+                                      type="number"
+                                      value={guessAmounts[session.id] || ""}
+                                      onChange={(e) => setGuessAmounts(prev => ({ ...prev, [session.id]: e.target.value }))}
+                                      disabled={isLocked || session.status === "upcoming" || !user}
+                                      placeholder="Enter your guess..."
+                                      className="w-full pl-7 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+                                    />
+                                  </div>
+                                  <Button
+                                    variant="gold"
+                                    disabled={isLocked || session.status === "upcoming" || !guessAmounts[session.id] || submitGuessMutation.isPending || !user}
+                                    onClick={() => handleSubmitGuess(session)}
+                                    className="gap-2"
+                                  >
+                                    {isLocked ? <Lock className="w-4 h-4" /> : <Target className="w-4 h-4" />}
+                                    {isLocked ? "Locked" : "Submit"}
+                                  </Button>
+                                </div>
+                                {!user && (
+                                  <p className="text-xs text-muted-foreground">
+                                    <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* How It Works - only show on first expanded session */}
+                          {index === 0 && isExpanded && !hasSubmittedGuess && (
+                            <div className="grid grid-cols-3 gap-3 mt-4">
+                              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                                <Target className="w-5 h-5 mx-auto mb-1 text-primary" />
+                                <p className="text-xs">Make Guess</p>
+                              </div>
+                              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                                <Lock className="w-5 h-5 mx-auto mb-1 text-accent" />
+                                <p className="text-xs">Guesses Lock</p>
+                              </div>
+                              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                                <Trophy className="w-5 h-5 mx-auto mb-1 text-green-500" />
+                                <p className="text-xs">Win Points</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
-
-                    {/* How It Works - only show on first session */}
-                    {index === 0 && (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center mb-3">
-                            <Target className="w-5 h-5 text-primary" />
-                          </div>
-                          <h3 className="font-semibold mb-1">1. Make Your Guess</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Enter your prediction for the total winnings
-                          </p>
-                        </div>
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center mb-3">
-                            <Lock className="w-5 h-5 text-accent" />
-                          </div>
-                          <h3 className="font-semibold mb-1">2. Guesses Lock</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Guesses are locked 30 minutes into the stream
-                          </p>
-                        </div>
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center mb-3">
-                            <Trophy className="w-5 h-5 text-green-500" />
-                          </div>
-                          <h3 className="font-semibold mb-1">3. Win Points</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Closest guess wins! Earn points for accuracy
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             ) : (
-              <div className="glass rounded-2xl p-6 text-center">
-                <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-2xl font-bold mb-2">No Active Session</h2>
+              <div className="glass rounded-xl p-8 text-center">
+                <Target className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="text-xl font-bold mb-2">No Active Session</h2>
                 <p className="text-muted-foreground">
                   Check back later for the next Guess The Win session!
                 </p>
@@ -367,161 +374,108 @@ function GuessTheWin() {
 
             {/* Recent Winners */}
             {recentWinners && recentWinners.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-              >
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-accent" />
+              <div className="mt-6">
+                <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-accent" />
                   Recent Winners
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {recentWinners.map((session: any) => (
-                    <div key={session.id} className="glass rounded-xl p-4 text-center">
-                      <div className="w-12 h-12 mx-auto rounded-full bg-accent/20 flex items-center justify-center mb-3 overflow-hidden">
+                    <div key={session.id} className="glass rounded-lg p-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden">
                         {session.profiles?.avatar_url ? (
                           <img src={session.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <Trophy className="w-6 h-6 text-accent" />
+                          <Trophy className="w-5 h-5 text-accent" />
                         )}
                       </div>
-                      <p className="font-semibold">{session.profiles?.display_name || session.profiles?.username || "Winner"}</p>
-                      <p className="text-sm text-muted-foreground mb-2">{session.title}</p>
-                      <p className="text-accent font-bold">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{session.profiles?.display_name || session.profiles?.username || "Winner"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{session.title}</p>
+                      </div>
+                      <span className="text-accent font-bold text-sm">
                         {getCurrencySymbol(session.currency)}{Number(session.winning_guess).toLocaleString()}
-                      </p>
+                      </span>
                     </div>
                   ))}
                 </div>
-              </motion.div>
-            )}
-
-            {/* Past Sessions */}
-            {pastSessions && pastSessions.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <History className="w-5 h-5 text-muted-foreground" />
-                  Recent Results
-                </h2>
-                <div className="glass rounded-2xl overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Date</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Title</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Total</th>
-                        <th className="text-left p-4 text-sm font-medium text-muted-foreground">Winning Guess</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pastSessions.map((session) => {
-                        const symbol = getCurrencySymbol(session.currency);
-                        return (
-                          <tr key={session.id} className="border-b border-border/50 last:border-0">
-                            <td className="p-4 text-sm">{new Date(session.created_at).toLocaleDateString()}</td>
-                            <td className="p-4 text-sm">{session.title}</td>
-                            <td className="p-4 text-sm font-semibold text-accent">
-                              {session.actual_total ? `${symbol}${Number(session.actual_total).toLocaleString()}` : "-"}
-                            </td>
-                            <td className="p-4 text-sm text-primary">
-                              {session.winning_guess ? `${symbol}${Number(session.winning_guess).toLocaleString()}` : "-"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
+              </div>
             )}
           </motion.div>
 
-          {/* Leaderboard */}
+          {/* Sidebar - Leaderboard */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+            transition={{ delay: 0.15 }}
+            className="space-y-4"
           >
-            <div className="glass rounded-2xl p-6">
-              <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <Medal className="w-5 h-5 text-accent" />
+            <div className="glass rounded-xl p-5">
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <Medal className="w-5 h-5 text-yellow-500" />
                 Leaderboard
               </h2>
-
-              <div className="space-y-3">
-                {leaderboard?.map((player, index) => (
-                  <div
-                    key={player.username || index}
-                    className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                      index < 3
-                        ? "bg-accent/10 border border-accent/20"
-                        : "bg-secondary/50 hover:bg-secondary"
-                    }`}
-                  >
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
-                      index === 0
-                        ? "bg-yellow-500/20"
-                        : index === 1
-                        ? "bg-gray-400/20"
-                        : index === 2
-                        ? "bg-amber-600/20"
-                        : "bg-secondary"
-                    }`}>
-                      {index === 0 ? "🏆" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
+              {leaderboard && leaderboard.length > 0 ? (
+                <div className="space-y-2">
+                  {leaderboard.map((player, index) => (
+                    <div
+                      key={index}
+                      className={`flex items-center gap-3 p-2 rounded-lg ${
+                        index < 3 ? "bg-secondary/50" : ""
+                      }`}
+                    >
+                      <span className={`w-6 text-center font-bold text-sm ${
+                        index === 0 ? "text-yellow-500" :
+                        index === 1 ? "text-gray-400" :
+                        index === 2 ? "text-amber-600" : "text-muted-foreground"
+                      }`}>
+                        {index + 1}
+                      </span>
+                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                        {player.avatar_url ? (
+                          <img src={player.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs font-bold">
+                            {(player.display_name || player.username || "?")[0].toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{player.display_name || player.username}</p>
+                      </div>
+                      <span className="font-bold text-primary text-sm">{player.points?.toLocaleString()}</span>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{player.display_name || player.username || "Anonymous"}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-primary">{(player.points || 0).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">points</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-border">
-                <Link to="/leaderboard">
-                  <Button variant="outline" className="w-full gap-2">
-                    View Full Leaderboard
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-center py-4">No players yet</p>
+              )}
+              <Link to="/leaderboard">
+                <Button variant="outline" size="sm" className="w-full mt-4">
+                  View Full Leaderboard
+                </Button>
+              </Link>
             </div>
 
-            {/* Your Stats - Only show when logged in */}
-            {user && (
-              <div className="glass rounded-2xl p-6 mt-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-accent" />
-                  Your Stats
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-secondary/50 rounded-xl">
-                    <p className="text-2xl font-bold text-primary">
-                      {profile ? (leaderboard?.findIndex(p => p.username === profile.username) ?? -1) + 1 || "--" : "--"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">Your Rank</p>
-                  </div>
-                  <div className="text-center p-3 bg-secondary/50 rounded-xl">
-                    <p className="text-2xl font-bold text-accent">{profile?.points || 0}</p>
-                    <p className="text-xs text-muted-foreground">Total Points</p>
-                  </div>
+            {/* Past Sessions */}
+            {pastSessions.length > 0 && (
+              <div className="glass rounded-xl p-5">
+                <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <History className="w-5 h-5 text-muted-foreground" />
+                  Past Sessions
+                </h2>
+                <div className="space-y-2">
+                  {pastSessions.map((session) => (
+                    <div key={session.id} className="flex items-center justify-between p-2 bg-secondary/30 rounded-lg">
+                      <span className="text-sm truncate flex-1">{session.title}</span>
+                      {session.actual_total && (
+                        <span className="text-sm font-medium text-primary">
+                          {getCurrencySymbol(session.currency)}{Number(session.actual_total).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              </div>
-            )}
-
-            {!user && (
-              <div className="glass rounded-2xl p-6 mt-6 text-center">
-                <p className="text-muted-foreground">
-                  <Link to="/auth" className="text-primary hover:underline">Login</Link> to track your progress!
-                </p>
               </div>
             )}
           </motion.div>

@@ -28,6 +28,9 @@ interface Poll {
   ends_at: string | null;
   created_at: string;
   total_votes: number;
+  is_community?: boolean;
+  is_approved?: boolean;
+  created_by?: string;
 }
 
 interface PollVote {
@@ -408,6 +411,11 @@ export default function AdminPolls() {
                     <span className={`px-2 py-0.5 text-xs rounded-full ${poll.is_active ? "bg-green-500/20 text-green-400" : "bg-muted text-muted-foreground"}`}>
                       {poll.is_active ? "Active" : "Inactive"}
                     </span>
+                    {poll.is_community && (
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${poll.is_approved ? "bg-accent/20 text-accent" : "bg-amber-500/20 text-amber-500"}`}>
+                        {poll.is_approved ? "Community" : "Pending Approval"}
+                      </span>
+                    )}
                   </div>
                   {poll.description && <p className="text-muted-foreground text-sm mb-3">{poll.description}</p>}
                   
@@ -447,6 +455,20 @@ export default function AdminPolls() {
                   <Button variant="ghost" size="icon" onClick={() => setViewingPoll(poll)} title="View Results">
                     <Eye className="w-4 h-4" />
                   </Button>
+                  {poll.is_community && !poll.is_approved && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-green-500 border-green-500/30 hover:bg-green-500/10"
+                      onClick={async () => {
+                        await supabase.from("polls").update({ is_approved: true }).eq("id", poll.id);
+                        queryClient.invalidateQueries({ queryKey: ["admin-polls"] });
+                        toast({ title: "Poll approved!" });
+                      }}
+                    >
+                      Approve
+                    </Button>
+                  )}
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(poll)}>
                     <Pencil className="w-4 h-4" />
                   </Button>

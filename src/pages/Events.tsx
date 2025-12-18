@@ -1,9 +1,12 @@
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar as CalendarIcon, Clock, Users, Bell, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Users, Bell, BellOff, ChevronLeft, ChevronRight, User, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Event = Tables<"events">;
@@ -18,6 +21,10 @@ const eventTypes: Record<string, string> = {
 
 export default function Events() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { isSupported, isSubscribed, subscribeToPush, showNotification } = usePushNotifications();
 
   const { data: events, isLoading } = useQuery({
     queryKey: ["events"],
@@ -42,6 +49,79 @@ export default function Events() {
       return data as Streamer[];
     },
   });
+
+  const { data: userSubscriptions = [] } = useQuery({
+    queryKey: ["event-subscriptions", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("event_subscriptions")
+        .select("event_id")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data.map((s) => s.event_id);
+    },
+    enabled: !!user,
+  });
+
+  const subscribeToEvent = useMutation({
+    mutationFn: async (eventId: string) => {
+      if (!user) throw new Error("Must be logged in");
+      const { error } = await supabase
+        .from("event_subscriptions")
+        .insert({ event_id: eventId, user_id: user.id });
+      if (error) throw error;
+    },
+    onSuccess: (_, eventId) => {
+      queryClient.invalidateQueries({ queryKey: ["event-subscriptions"] });
+      const event = events?.find((e) => e.id === eventId);
+      toast({ title: "Subscribed!", description: `You'll be notified when "${event?.title}" starts.` });
+    },
+    onError: (error: any) => {
+      if (error.message?.includes("duplicate")) {
+        toast({ title: "Already subscribed", variant: "destructive" });
+      } else {
+        toast({ title: "Error subscribing", description: error.message, variant: "destructive" });
+      }
+    },
+  });
+
+  const unsubscribeFromEvent = useMutation({
+    mutationFn: async (eventId: string) => {
+      if (!user) throw new Error("Must be logged in");
+      const { error } = await supabase
+        .from("event_subscriptions")
+        .delete()
+        .eq("event_id", eventId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["event-subscriptions"] });
+      toast({ title: "Unsubscribed from event notifications" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error unsubscribing", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleToggleSubscription = async (eventId: string) => {
+    if (!user) {
+      toast({ title: "Please login to subscribe to events", variant: "destructive" });
+      return;
+    }
+    
+    // Enable push notifications if not already subscribed
+    if (!isSubscribed && isSupported) {
+      await subscribeToPush();
+    }
+    
+    if (userSubscriptions.includes(eventId)) {
+      unsubscribeFromEvent.mutate(eventId);
+    } else {
+      subscribeToEvent.mutate(eventId);
+    }
+  };
 
   const getStreamerById = (streamerId: string | null) => {
     if (!streamerId || !streamers) return null;
@@ -200,6 +280,8 @@ export default function Events() {
                   <div className="space-y-4">
                     {upcomingEvents.map((event) => {
                       const streamer = getStreamerById(event.streamer_id);
+                      const isEventSubscribed = userSubscriptions.includes(event.id);
+                      
                       return (
                         <div
                           key={event.id}
@@ -215,9 +297,26 @@ export default function Events() {
                             }`}>
                               {event.event_type}
                             </span>
-                            {event.is_featured && (
-                              <span className="text-xs text-accent font-medium">Featured</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {event.is_featured && (
+                                <span className="text-xs text-accent font-medium">Featured</span>
+                              )}
+                              <button
+                                onClick={() => handleToggleSubscription(event.id)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  isEventSubscribed 
+                                    ? "bg-primary/20 text-primary" 
+                                    : "bg-secondary/50 text-muted-foreground hover:text-primary"
+                                }`}
+                                title={isEventSubscribed ? "Unsubscribe from notifications" : "Get notified when this event starts"}
+                              >
+                                {isEventSubscribed ? (
+                                  <Bell className="w-4 h-4 fill-current" />
+                                ) : (
+                                  <Bell className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                           <h3 className="font-semibold mb-2">{event.title}</h3>
                           {event.description && (
@@ -268,6 +367,13 @@ export default function Events() {
                               {event.platform}
                             </span>
                           )}
+                          
+                          {isEventSubscribed && (
+                            <div className="mt-3 flex items-center gap-1.5 text-xs text-green-400">
+                              <Check className="w-3 h-3" />
+                              You'll be notified when this starts
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -280,21 +386,38 @@ export default function Events() {
                   <Button 
                     variant="glow" 
                     className="w-full gap-2"
-                    onClick={() => {
-                      if ("Notification" in window) {
-                        Notification.requestPermission().then((permission) => {
-                          if (permission === "granted") {
-                            new Notification("Notifications enabled!", {
-                              body: "You'll be notified about upcoming events.",
-                            });
-                          }
-                        });
+                    onClick={async () => {
+                      if (!user) {
+                        toast({ title: "Please login to enable notifications", variant: "destructive" });
+                        return;
+                      }
+                      if (isSubscribed) {
+                        toast({ title: "Notifications already enabled!" });
+                        return;
+                      }
+                      const success = await subscribeToPush();
+                      if (success) {
+                        showNotification("Notifications enabled!", { body: "You'll be notified about your subscribed events." });
                       }
                     }}
                   >
-                    <Bell className="w-4 h-4" />
-                    Enable Notifications
+                    {isSubscribed ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Notifications Enabled
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="w-4 h-4" />
+                        Enable Notifications
+                      </>
+                    )}
                   </Button>
+                  {!user && (
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Login to enable event notifications
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>

@@ -1,1 +1,10 @@
 project_id = "mdckorxfleckrwjmcigw"
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.kick-oauth]
+verify_jwt = false
+
+[functions.event-notifications]
+verify_jwt = false
