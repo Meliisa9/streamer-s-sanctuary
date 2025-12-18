@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Target, Trophy, Users, Clock, Lock, CheckCircle2, ArrowRight, History, Medal, Star } from "lucide-react";
+import { Target, Trophy, Users, Clock, Lock, CheckCircle2, ArrowRight, History, Medal, Star, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
@@ -31,7 +31,7 @@ function GuessTheWin() {
   });
 
   const currentSession = sessions?.find((s) => s.status === "active" || s.status === "upcoming");
-  const pastSessions = sessions?.filter((s) => s.status === "ended").slice(0, 5);
+  const pastSessions = sessions?.filter((s) => s.status === "ended" || s.status === "completed").slice(0, 5);
 
   const { data: userGuess } = useQuery({
     queryKey: ["user-gtw-guess", currentSession?.id, user?.id],
@@ -76,16 +76,28 @@ function GuessTheWin() {
     },
   });
 
+  const { data: recentWinners } = useQuery({
+    queryKey: ["gtw-recent-winners"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("gtw_sessions")
+        .select("*, profiles:winner_id(username, display_name, avatar_url)")
+        .not("winner_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const submitGuessMutation = useMutation({
     mutationFn: async (amount: number) => {
       if (!user || !currentSession) throw new Error("Not authenticated or no active session");
       
-      // Users cannot update their guess once submitted
       if (userGuess) {
         throw new Error("You have already submitted a guess. Guesses cannot be changed.");
       }
       
-      // Insert new guess
       const { error } = await supabase
         .from("gtw_guesses")
         .insert([{ session_id: currentSession.id, user_id: user.id, guess_amount: amount }]);
@@ -115,7 +127,7 @@ function GuessTheWin() {
     submitGuessMutation.mutate(amount);
   };
 
-  const isLocked = currentSession?.status === "locked" || currentSession?.status === "ended";
+  const isLocked = currentSession?.status === "locked" || currentSession?.status === "ended" || currentSession?.status === "completed";
   const hasSubmittedGuess = !!userGuess;
 
   return (
@@ -133,6 +145,35 @@ function GuessTheWin() {
           <p className="text-lg text-muted-foreground">
             Predict the total winnings and climb the leaderboard!
           </p>
+        </motion.div>
+
+        {/* Stats Overview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+        >
+          <div className="glass rounded-2xl p-4 text-center">
+            <Target className="w-8 h-8 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold">{sessions?.filter(s => s.status === "active").length || 0}</p>
+            <p className="text-sm text-muted-foreground">Active Sessions</p>
+          </div>
+          <div className="glass rounded-2xl p-4 text-center">
+            <Users className="w-8 h-8 mx-auto mb-2 text-accent" />
+            <p className="text-2xl font-bold">{sessionEntryCount || 0}</p>
+            <p className="text-sm text-muted-foreground">Current Entries</p>
+          </div>
+          <div className="glass rounded-2xl p-4 text-center">
+            <Trophy className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
+            <p className="text-2xl font-bold">{pastSessions?.length || 0}</p>
+            <p className="text-sm text-muted-foreground">Completed</p>
+          </div>
+          <div className="glass rounded-2xl p-4 text-center">
+            <Star className="w-8 h-8 mx-auto mb-2 text-primary" />
+            <p className="text-2xl font-bold">{profile?.points || 0}</p>
+            <p className="text-sm text-muted-foreground">Your Points</p>
+          </div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -172,7 +213,7 @@ function GuessTheWin() {
                 </p>
 
                 {currentSession.pot_amount && (
-                  <div className="text-center mb-6">
+                  <div className="text-center mb-6 p-4 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-xl">
                     <p className="text-sm text-muted-foreground mb-1">Prize Pool</p>
                     <p className="text-4xl font-bold gradient-text-gold">{currentSession.pot_amount}</p>
                   </div>
@@ -271,6 +312,37 @@ function GuessTheWin() {
                   Check back later for the next Guess The Win session!
                 </p>
               </div>
+            )}
+
+            {/* Recent Winners */}
+            {recentWinners && recentWinners.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="mt-8"
+              >
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-accent" />
+                  Recent Winners
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {recentWinners.map((session: any) => (
+                    <div key={session.id} className="glass rounded-xl p-4 text-center">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-accent/20 flex items-center justify-center mb-3 overflow-hidden">
+                        {session.profiles?.avatar_url ? (
+                          <img src={session.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <Trophy className="w-6 h-6 text-accent" />
+                        )}
+                      </div>
+                      <p className="font-semibold">{session.profiles?.display_name || session.profiles?.username || "Winner"}</p>
+                      <p className="text-sm text-muted-foreground mb-2">{session.title}</p>
+                      <p className="text-accent font-bold">${Number(session.winning_guess).toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
             )}
 
             {/* Past Sessions */}
@@ -372,7 +444,7 @@ function GuessTheWin() {
             {/* Your Stats */}
             <div className="glass rounded-2xl p-6 mt-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <Star className="w-5 h-5 text-accent" />
+                <TrendingUp className="w-5 h-5 text-accent" />
                 Your Stats
               </h3>
               <div className="grid grid-cols-2 gap-4">

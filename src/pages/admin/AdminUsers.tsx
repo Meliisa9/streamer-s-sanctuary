@@ -151,7 +151,7 @@ export default function AdminUsers() {
           twitch_username: editForm.twitch_username || null,
           points: editForm.points,
         })
-        .eq("id", editingUser.id);
+        .eq("user_id", editingUser.user_id);
 
       if (error) throw error;
 

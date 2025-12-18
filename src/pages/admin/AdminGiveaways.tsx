@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Users, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Loader2, Infinity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 interface Giveaway {
   id: string;
   title: string;
+  description: string | null;
   prize: string;
   prize_type: string | null;
   image_url: string | null;
@@ -33,15 +34,16 @@ export default function AdminGiveaways() {
 
   const [formData, setFormData] = useState({
     title: "",
+    description: "",
     prize: "",
     prize_type: "Cash",
-    description: "",
     image_url: "",
     max_entries: "",
     winners_count: 1,
     requirements: "",
     status: "active",
     end_date: "",
+    end_time: "",
     is_exclusive: false,
   });
 
@@ -79,15 +81,16 @@ export default function AdminGiveaways() {
   const resetForm = () => {
     setFormData({
       title: "",
+      description: "",
       prize: "",
       prize_type: "Cash",
-      description: "",
       image_url: "",
       max_entries: "",
       winners_count: 1,
       requirements: "",
       status: "active",
       end_date: "",
+      end_time: "",
       is_exclusive: false,
     });
     setEditingGiveaway(null);
@@ -95,17 +98,22 @@ export default function AdminGiveaways() {
   };
 
   const handleEdit = (giveaway: Giveaway) => {
+    const endDateTime = new Date(giveaway.end_date);
+    const dateStr = endDateTime.toISOString().split("T")[0];
+    const timeStr = endDateTime.toTimeString().slice(0, 5);
+    
     setFormData({
       title: giveaway.title,
+      description: giveaway.description || "",
       prize: giveaway.prize,
       prize_type: giveaway.prize_type || "Cash",
-      description: "",
       image_url: giveaway.image_url || "",
       max_entries: giveaway.max_entries?.toString() || "",
       winners_count: giveaway.winners_count,
       requirements: giveaway.requirements?.join("\n") || "",
       status: giveaway.status,
-      end_date: giveaway.end_date.split("T")[0],
+      end_date: dateStr,
+      end_time: timeStr,
       is_exclusive: giveaway.is_exclusive,
     });
     setEditingGiveaway(giveaway);
@@ -116,16 +124,29 @@ export default function AdminGiveaways() {
     e.preventDefault();
     setIsSaving(true);
 
+    // Combine date and time
+    let endDateISO: string;
+    if (formData.end_time) {
+      endDateISO = new Date(`${formData.end_date}T${formData.end_time}`).toISOString();
+    } else {
+      endDateISO = new Date(`${formData.end_date}T23:59:59`).toISOString();
+    }
+
+    // Handle max_entries: empty or 0 means unlimited (null)
+    const maxEntries = formData.max_entries ? parseInt(formData.max_entries) : null;
+    const finalMaxEntries = maxEntries === 0 ? null : maxEntries;
+
     const giveawayData = {
       title: formData.title,
+      description: formData.description || null,
       prize: formData.prize,
       prize_type: formData.prize_type,
       image_url: formData.image_url || null,
-      max_entries: formData.max_entries ? parseInt(formData.max_entries) : null,
+      max_entries: finalMaxEntries,
       winners_count: formData.winners_count,
       requirements: formData.requirements.split("\n").filter(Boolean),
       status: formData.status,
-      end_date: new Date(formData.end_date).toISOString(),
+      end_date: endDateISO,
       is_exclusive: formData.is_exclusive,
       created_by: user?.id,
     };
@@ -252,6 +273,16 @@ export default function AdminGiveaways() {
                 />
               </div>
               <div>
+                <label className="text-sm font-medium mb-1 block">End Time</label>
+                <input
+                  type="time"
+                  value={formData.end_time}
+                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave empty for 23:59</p>
+              </div>
+              <div>
                 <label className="text-sm font-medium mb-1 block">Image URL</label>
                 <input
                   type="url"
@@ -266,8 +297,10 @@ export default function AdminGiveaways() {
                   type="number"
                   value={formData.max_entries}
                   onChange={(e) => setFormData({ ...formData, max_entries: e.target.value })}
+                  placeholder="Leave empty or 0 for unlimited"
                   className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
                 />
+                <p className="text-xs text-muted-foreground mt-1">0 or empty = unlimited entries</p>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Winners Count</label>
@@ -292,6 +325,16 @@ export default function AdminGiveaways() {
                   <option value="ended">Ended</option>
                 </select>
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+                placeholder="Add a description for the giveaway..."
+                className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+              />
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">Requirements (one per line)</label>
@@ -333,8 +376,11 @@ export default function AdminGiveaways() {
               <tr key={giveaway.id} className="border-b border-border/50 last:border-0">
                 <td className="p-4">
                   <p className="font-medium">{giveaway.title}</p>
+                  {giveaway.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-1">{giveaway.description}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                    Ends: {new Date(giveaway.end_date).toLocaleDateString()}
+                    Ends: {new Date(giveaway.end_date).toLocaleString()}
                   </p>
                 </td>
                 <td className="p-4 hidden md:table-cell">
@@ -344,7 +390,11 @@ export default function AdminGiveaways() {
                   <span className="flex items-center justify-center gap-1">
                     <Users className="w-4 h-4" />
                     {entryCounts[giveaway.id] || 0}
-                    {giveaway.max_entries && ` / ${giveaway.max_entries}`}
+                    {giveaway.max_entries ? (
+                      <span className="text-muted-foreground">/ {giveaway.max_entries}</span>
+                    ) : (
+                      <Infinity className="w-3 h-3 text-muted-foreground ml-1" />
+                    )}
                   </span>
                 </td>
                 <td className="p-4 text-center">
