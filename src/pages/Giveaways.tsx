@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Gift, Users, Clock, Trophy, CheckCircle2, Lock, Sparkles, ArrowRight, Crown } from "lucide-react";
+import { Gift, Users, Clock, Trophy, CheckCircle2, Lock, Sparkles, ArrowRight, Crown, Infinity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -116,6 +116,13 @@ export default function Giveaways() {
     return acc + (match ? parseInt(match[1].replace(/,/g, "")) : 0);
   }, 0) || 0;
 
+  // Check if entry limit reached (null or 0 max_entries = unlimited)
+  const isEntryLimitReached = (giveaway: Giveaway) => {
+    if (!giveaway.max_entries || giveaway.max_entries === 0) return false;
+    const currentEntries = entryCounts?.[giveaway.id] || 0;
+    return currentEntries >= giveaway.max_entries;
+  };
+
   return (
     <div className="min-h-screen py-8 px-6">
       <div className="container mx-auto">
@@ -183,6 +190,7 @@ export default function Giveaways() {
                   {activeGiveaways.map((giveaway, index) => {
                     const hasEntered = userEntries?.includes(giveaway.id);
                     const entries = entryCounts?.[giveaway.id] || 0;
+                    const limitReached = isEntryLimitReached(giveaway);
 
                     return (
                       <motion.div
@@ -219,6 +227,12 @@ export default function Giveaways() {
                             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                               <div className="flex-1">
                                 <h3 className="text-2xl font-bold mb-2">{giveaway.title}</h3>
+                                
+                                {/* Description */}
+                                {giveaway.description && (
+                                  <p className="text-muted-foreground mb-4">{giveaway.description}</p>
+                                )}
+                                
                                 <div className="flex items-center gap-4 mb-4">
                                   <span className="text-3xl font-bold gradient-text-gold">
                                     {giveaway.prize}
@@ -245,7 +259,13 @@ export default function Giveaways() {
                                   <span className="flex items-center gap-1">
                                     <Users className="w-4 h-4" />
                                     {entries.toLocaleString()} entries
-                                    {giveaway.max_entries && ` / ${giveaway.max_entries.toLocaleString()}`}
+                                    {giveaway.max_entries && giveaway.max_entries > 0 ? (
+                                      <span>/ {giveaway.max_entries.toLocaleString()}</span>
+                                    ) : (
+                                      <span className="flex items-center gap-1">
+                                        <Infinity className="w-3 h-3" /> unlimited
+                                      </span>
+                                    )}
                                   </span>
                                   <span className="flex items-center gap-1">
                                     <Trophy className="w-4 h-4" />
@@ -267,6 +287,11 @@ export default function Giveaways() {
                                   <Button variant="outline" size="lg" disabled className="w-full lg:w-auto gap-2">
                                     <CheckCircle2 className="w-4 h-4" />
                                     Entered
+                                  </Button>
+                                ) : limitReached ? (
+                                  <Button variant="outline" size="lg" disabled className="w-full lg:w-auto gap-2">
+                                    <Lock className="w-4 h-4" />
+                                    Entry Limit Reached
                                   </Button>
                                 ) : (
                                   <Button
@@ -335,6 +360,9 @@ export default function Giveaways() {
                       </div>
                       <div className="p-4">
                         <h3 className="font-bold mb-2">{giveaway.title}</h3>
+                        {giveaway.description && (
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{giveaway.description}</p>
+                        )}
                         <p className="text-xl font-bold text-muted-foreground mb-3">{giveaway.prize}</p>
                         <p className="text-sm text-muted-foreground">
                           {entryCounts?.[giveaway.id] || 0} entries

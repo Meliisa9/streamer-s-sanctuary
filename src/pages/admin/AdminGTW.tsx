@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Edit2, Trash2, Trophy, Users, Clock, Target, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Trophy, Users, Clock, Target, Loader2, Award, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,10 +11,17 @@ import type { Tables } from "@/integrations/supabase/types";
 type GTWSession = Tables<"gtw_sessions">;
 type GTWGuess = Tables<"gtw_guesses">;
 
+interface Profile {
+  username: string | null;
+  display_name: string | null;
+}
+
 export default function AdminGTW() {
   const [sessions, setSessions] = useState<GTWSession[]>([]);
+  const [sessionGuesses, setSessionGuesses] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [viewingGuesses, setViewingGuesses] = useState<{ session: GTWSession; guesses: (GTWGuess & { profile?: Profile })[] } | null>(null);
   const [editingSession, setEditingSession] = useState<GTWSession | null>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -41,8 +48,45 @@ export default function AdminGTW() {
       toast({ title: "Error fetching sessions", description: error.message, variant: "destructive" });
     } else {
       setSessions(data || []);
+      
+      // Fetch guess counts for each session
+      const counts: Record<string, number> = {};
+      for (const session of data || []) {
+        const { count } = await supabase
+          .from("gtw_guesses")
+          .select("*", { count: "exact", head: true })
+          .eq("session_id", session.id);
+        counts[session.id] = count || 0;
+      }
+      setSessionGuesses(counts);
     }
     setIsLoading(false);
+  };
+
+  const fetchGuessesForSession = async (session: GTWSession) => {
+    const { data: guesses, error } = await supabase
+      .from("gtw_guesses")
+      .select("*")
+      .eq("session_id", session.id)
+      .order("guess_amount", { ascending: true });
+    
+    if (error) {
+      toast({ title: "Error fetching guesses", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    // Fetch profiles for each guess
+    const guessesWithProfiles: (GTWGuess & { profile?: Profile })[] = [];
+    for (const guess of guesses || []) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .eq("user_id", guess.user_id)
+        .maybeSingle();
+      guessesWithProfiles.push({ ...guess, profile: profile || undefined });
+    }
+    
+    setViewingGuesses({ session, guesses: guessesWithProfiles });
   };
 
   const resetForm = () => {
@@ -113,8 +157,11 @@ export default function AdminGTW() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this session?")) return;
+    if (!confirm("Are you sure you want to delete this session? All guesses will also be deleted.")) return;
 
+    // Delete guesses first
+    await supabase.from("gtw_guesses").delete().eq("session_id", id);
+    
     const { error } = await supabase.from("gtw_sessions").delete().eq("id", id);
 
     if (error) {
@@ -131,7 +178,6 @@ export default function AdminGTW() {
       return;
     }
 
-    // Get all guesses for this session
     const { data: guesses, error } = await supabase
       .from("gtw_guesses")
       .select("*")
@@ -142,7 +188,6 @@ export default function AdminGTW() {
       return;
     }
 
-    // Find closest guess
     let winner = guesses[0];
     let minDiff = Math.abs(Number(guesses[0].guess_amount) - Number(session.actual_total));
 
@@ -154,7 +199,6 @@ export default function AdminGTW() {
       }
     });
 
-    // Update session with winner
     const { error: updateError } = await supabase
       .from("gtw_sessions")
       .update({
@@ -167,8 +211,32 @@ export default function AdminGTW() {
     if (updateError) {
       toast({ title: "Error determining winner", description: updateError.message, variant: "destructive" });
     } else {
-      toast({ title: "Winner determined!", description: `Closest guess: ${winner.guess_amount}` });
+      // Award points to winner
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("points")
+        .eq("user_id", winner.user_id)
+        .maybeSingle();
+      
+      if (profile) {
+        await supabase
+          .from("profiles")
+          .update({ points: (profile.points || 0) + 1000 })
+          .eq("user_id", winner.user_id);
+      }
+
+      toast({ title: "Winner determined!", description: `Closest guess: $${Number(winner.guess_amount).toLocaleString()} - Awarded 1000 points!` });
       fetchSessions();
+    }
+  };
+
+  const getStatusColor = (status: string | null) => {
+    switch (status) {
+      case "active": return "bg-green-500/20 text-green-500";
+      case "locked": return "bg-yellow-500/20 text-yellow-500";
+      case "completed": return "bg-primary/20 text-primary";
+      case "ended": return "bg-muted text-muted-foreground";
+      default: return "bg-secondary text-muted-foreground";
     }
   };
 
@@ -183,7 +251,10 @@ export default function AdminGTW() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Guess The Win Sessions</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Guess The Win Sessions</h2>
+          <p className="text-muted-foreground">Create and manage GTW sessions</p>
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="glow" className="gap-2" onClick={() => { setEditingSession(null); resetForm(); setIsDialogOpen(true); }}>
@@ -197,7 +268,7 @@ export default function AdminGTW() {
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>
-                <label className="text-sm font-medium">Title</label>
+                <label className="text-sm font-medium">Title *</label>
                 <input
                   type="text"
                   value={formData.title}
@@ -207,13 +278,13 @@ export default function AdminGTW() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Pot Amount</label>
+                <label className="text-sm font-medium">Pot Amount / Prize</label>
                 <input
                   type="text"
                   value={formData.pot_amount}
                   onChange={(e) => setFormData({ ...formData, pot_amount: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                  placeholder="e.g. $10,000"
+                  placeholder="e.g. $10,000 or 1000 Points"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -247,6 +318,7 @@ export default function AdminGTW() {
                   <option value="active">Active</option>
                   <option value="locked">Locked</option>
                   <option value="completed">Completed</option>
+                  <option value="ended">Ended</option>
                 </select>
               </div>
               <div>
@@ -273,6 +345,59 @@ export default function AdminGTW() {
         </Dialog>
       </div>
 
+      {/* View Guesses Modal */}
+      <Dialog open={!!viewingGuesses} onOpenChange={() => setViewingGuesses(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Guesses for: {viewingGuesses?.session.title}</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {viewingGuesses?.session.actual_total && (
+              <div className="mb-4 p-3 bg-accent/10 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Actual Total</p>
+                <p className="text-2xl font-bold text-accent">${Number(viewingGuesses.session.actual_total).toLocaleString()}</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              {viewingGuesses?.guesses.map((guess, index) => {
+                const diff = viewingGuesses.session.actual_total
+                  ? Math.abs(Number(guess.guess_amount) - Number(viewingGuesses.session.actual_total))
+                  : null;
+                const isWinner = guess.user_id === viewingGuesses.session.winner_id;
+                
+                return (
+                  <div
+                    key={guess.id}
+                    className={`flex items-center justify-between p-3 rounded-lg ${
+                      isWinner ? "bg-green-500/20 border border-green-500/30" : "bg-secondary/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground w-6">#{index + 1}</span>
+                      <span className="font-medium">
+                        {guess.profile?.display_name || guess.profile?.username || "Anonymous"}
+                      </span>
+                      {isWinner && <Trophy className="w-4 h-4 text-yellow-500" />}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">${Number(guess.guess_amount).toLocaleString()}</p>
+                      {diff !== null && (
+                        <p className="text-xs text-muted-foreground">
+                          {diff === 0 ? "Exact!" : `Off by $${diff.toLocaleString()}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {viewingGuesses?.guesses.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">No guesses yet</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="space-y-4">
         {sessions.map((session) => (
           <motion.div
@@ -285,22 +410,21 @@ export default function AdminGTW() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="text-xl font-bold">{session.title}</h3>
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${
-                    session.status === "active" ? "bg-green-500/20 text-green-500" :
-                    session.status === "locked" ? "bg-yellow-500/20 text-yellow-500" :
-                    session.status === "completed" ? "bg-primary/20 text-primary" :
-                    "bg-secondary text-muted-foreground"
-                  }`}>
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(session.status)}`}>
                     {session.status}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-muted-foreground">
                   {session.pot_amount && (
                     <div className="flex items-center gap-2">
                       <Trophy className="w-4 h-4 text-primary" />
                       <span>Pot: {session.pot_amount}</span>
                     </div>
                   )}
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-accent" />
+                    <span>{sessionGuesses[session.id] || 0} guesses</span>
+                  </div>
                   {session.lock_time && (
                     <div className="flex items-center gap-2">
                       <Clock className="w-4 h-4" />
@@ -310,21 +434,25 @@ export default function AdminGTW() {
                   {session.actual_total && (
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-accent" />
-                      <span>Total: ${session.actual_total}</span>
+                      <span>Total: ${Number(session.actual_total).toLocaleString()}</span>
                     </div>
                   )}
                   {session.winning_guess && (
                     <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-green-500" />
-                      <span>Winner: ${session.winning_guess}</span>
+                      <Award className="w-4 h-4 text-green-500" />
+                      <span>Winner: ${Number(session.winning_guess).toLocaleString()}</span>
                     </div>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => fetchGuessesForSession(session)} className="gap-1">
+                  <Eye className="w-4 h-4" />
+                  Guesses
+                </Button>
                 {session.status !== "completed" && session.actual_total && (
-                  <Button variant="outline" size="sm" onClick={() => determineWinner(session)}>
-                    <Trophy className="w-4 h-4 mr-1" />
+                  <Button variant="outline" size="sm" onClick={() => determineWinner(session)} className="gap-1">
+                    <Trophy className="w-4 h-4" />
                     Pick Winner
                   </Button>
                 )}
@@ -333,7 +461,7 @@ export default function AdminGTW() {
                 </Button>
                 {isAdmin && (
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(session.id)}>
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
                 )}
               </div>

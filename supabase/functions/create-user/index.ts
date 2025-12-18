@@ -49,6 +49,8 @@ serve(async (req) => {
 
     // Handle delete user
     if (action === "delete") {
+      console.log("Delete user request:", { user_id, requestingUser: requestingUser.id });
+      
       if (!user_id) {
         return new Response(JSON.stringify({ error: "user_id is required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -58,12 +60,44 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      // First delete related data that may block cascade
+      try {
+        // Delete user roles
+        await supabaseAdmin.from("user_roles").delete().eq("user_id", user_id);
+        // Delete profile
+        await supabaseAdmin.from("profiles").delete().eq("user_id", user_id);
+        // Delete notification preferences
+        await supabaseAdmin.from("notification_preferences").delete().eq("user_id", user_id);
+        // Delete giveaway entries
+        await supabaseAdmin.from("giveaway_entries").delete().eq("user_id", user_id);
+        // Delete poll votes
+        await supabaseAdmin.from("poll_votes").delete().eq("user_id", user_id);
+        // Delete gtw guesses
+        await supabaseAdmin.from("gtw_guesses").delete().eq("user_id", user_id);
+        // Delete user notifications
+        await supabaseAdmin.from("user_notifications").delete().eq("user_id", user_id);
+        // Delete user achievements
+        await supabaseAdmin.from("user_achievements").delete().eq("user_id", user_id);
+        // Delete article likes
+        await supabaseAdmin.from("article_likes").delete().eq("user_id", user_id);
+        // Delete comment likes
+        await supabaseAdmin.from("comment_likes").delete().eq("user_id", user_id);
+        // Delete video likes
+        await supabaseAdmin.from("video_likes").delete().eq("user_id", user_id);
+        // Delete news comments
+        await supabaseAdmin.from("news_comments").delete().eq("user_id", user_id);
+      } catch (cleanupError) {
+        console.log("Cleanup error (non-fatal):", cleanupError);
+      }
+
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user_id);
       if (deleteError) {
+        console.error("Delete user error:", deleteError);
         return new Response(JSON.stringify({ error: deleteError.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      console.log("User deleted successfully:", user_id);
       return new Response(JSON.stringify({ success: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

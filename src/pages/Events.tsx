@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar as CalendarIcon, Clock, Users, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Users, Bell, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Event = Tables<"events">;
+type Streamer = Tables<"streamers">;
 
 const eventTypes: Record<string, string> = {
   Stream: "bg-primary/20 text-primary",
@@ -29,6 +30,23 @@ export default function Events() {
       return data as Event[];
     },
   });
+
+  const { data: streamers } = useQuery({
+    queryKey: ["streamers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("streamers")
+        .select("*")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data as Streamer[];
+    },
+  });
+
+  const getStreamerById = (streamerId: string | null) => {
+    if (!streamerId || !streamers) return null;
+    return streamers.find((s) => s.id === streamerId);
+  };
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -180,49 +198,79 @@ export default function Events() {
                 </h2>
                 {upcomingEvents && upcomingEvents.length > 0 ? (
                   <div className="space-y-4">
-                    {upcomingEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className={`p-4 rounded-xl border ${
-                          event.is_featured
-                            ? "border-accent/50 bg-accent/5"
-                            : "border-border hover:border-primary/30"
-                        } transition-colors`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            eventTypes[event.event_type || "Stream"] || eventTypes.Stream
-                          }`}>
-                            {event.event_type}
-                          </span>
-                          {event.is_featured && (
-                            <span className="text-xs text-accent font-medium">Featured</span>
+                    {upcomingEvents.map((event) => {
+                      const streamer = getStreamerById(event.streamer_id);
+                      return (
+                        <div
+                          key={event.id}
+                          className={`p-4 rounded-xl border ${
+                            event.is_featured
+                              ? "border-accent/50 bg-accent/5"
+                              : "border-border hover:border-primary/30"
+                          } transition-colors`}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              eventTypes[event.event_type || "Stream"] || eventTypes.Stream
+                            }`}>
+                              {event.event_type}
+                            </span>
+                            {event.is_featured && (
+                              <span className="text-xs text-accent font-medium">Featured</span>
+                            )}
+                          </div>
+                          <h3 className="font-semibold mb-2">{event.title}</h3>
+                          {event.description && (
+                            <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                              {event.description}
+                            </p>
                           )}
-                        </div>
-                        <h3 className="font-semibold mb-2">{event.title}</h3>
-                        {event.description && (
-                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                            {event.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(event.event_date).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}{" "}
-                            {event.event_time}
-                          </span>
-                          {event.expected_viewers && (
+                          
+                          {/* Streamer Info */}
+                          {streamer && (
+                            <div className="flex items-center gap-2 mb-3 p-2 bg-secondary/50 rounded-lg">
+                              {streamer.image_url ? (
+                                <img 
+                                  src={streamer.image_url} 
+                                  alt={streamer.name}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                  <User className="w-4 h-4 text-primary" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-sm font-medium">{streamer.name}</p>
+                                <p className="text-xs text-muted-foreground">Host</p>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
-                              <Users className="w-3 h-3" />
-                              {event.expected_viewers}
+                              <Clock className="w-3 h-3" />
+                              {new Date(event.event_date).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}{" "}
+                              {event.event_time}
+                            </span>
+                            {event.expected_viewers && (
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {event.expected_viewers}
+                              </span>
+                            )}
+                          </div>
+                          {event.platform && (
+                            <span className="inline-block mt-2 text-xs px-2 py-1 bg-secondary rounded">
+                              {event.platform}
                             </span>
                           )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted-foreground text-center py-8">No upcoming events</p>
