@@ -56,7 +56,7 @@ export function useUserFollow(targetUserId?: string) {
     enabled: !!targetUserId,
   });
 
-  // Get list of users the current user is following
+  // Get list of users the current user is following (with profile data)
   const { data: following } = useQuery({
     queryKey: ["user-following", user?.id],
     queryFn: async () => {
@@ -70,12 +70,24 @@ export function useUserFollow(targetUserId?: string) {
         .eq("follower_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      
+      // Fetch profile data for each followed user
+      const followingWithProfiles = await Promise.all(
+        data.map(async (f) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("avatar_url, username, display_name")
+            .eq("user_id", f.following_id)
+            .maybeSingle();
+          return { ...f, profile };
+        })
+      );
+      return followingWithProfiles;
     },
     enabled: !!user,
   });
 
-  // Get list of followers
+  // Get list of followers (with profile data)
   const { data: followers } = useQuery({
     queryKey: ["user-followers", targetUserId],
     queryFn: async () => {
@@ -89,7 +101,19 @@ export function useUserFollow(targetUserId?: string) {
         .eq("following_id", targetUserId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data;
+      
+      // Fetch profile data for each follower
+      const followersWithProfiles = await Promise.all(
+        data.map(async (f) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("avatar_url, username, display_name")
+            .eq("user_id", f.follower_id)
+            .maybeSingle();
+          return { ...f, profile };
+        })
+      );
+      return followersWithProfiles;
     },
     enabled: !!targetUserId,
   });

@@ -22,34 +22,7 @@ export function AdminNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const { toast } = useToast();
 
-  useEffect(() => {
-    fetchNotifications();
-    
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel('admin-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'admin_notifications',
-        },
-        (payload) => {
-          const newNotification = payload.new as AdminNotification;
-          setNotifications((prev) => [newNotification, ...prev]);
-          setUnreadCount((prev) => prev + 1);
-          toast({ title: newNotification.title, description: newNotification.message || undefined });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Important notification types that admins/mods should see
+  // Important notification types that admins/mods should see (login removed)
   const IMPORTANT_TYPES = ['signup', 'article_created', 'article_published', 'giveaway_entry', 'report', 'admin_action', 'system'];
 
   const fetchNotifications = async () => {
@@ -68,6 +41,36 @@ export function AdminNotifications() {
     setNotifications(data || []);
     setUnreadCount(data?.filter((n) => !n.is_read).length || 0);
   };
+
+  useEffect(() => {
+    fetchNotifications();
+    
+    // Subscribe to real-time updates - only show toast for NEW notifications (not on initial load)
+    const channel = supabase
+      .channel('admin-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'admin_notifications',
+        },
+        (payload) => {
+          const newNotification = payload.new as AdminNotification;
+          // Only add if it's an important type and not a login
+          if (IMPORTANT_TYPES.includes(newNotification.type)) {
+            setNotifications((prev) => [newNotification, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+            toast({ title: newNotification.title, description: newNotification.message || undefined });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const markAsRead = async (id: string) => {
     const { error } = await supabase.from("admin_notifications").update({ is_read: true }).eq("id", id);

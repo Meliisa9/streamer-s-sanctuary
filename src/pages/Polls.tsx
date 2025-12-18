@@ -392,88 +392,89 @@ export default function Polls() {
     );
   }
 
+  // Previous Poll Card Component with expandable details
+  const PreviousPollCard = ({ 
+    poll, 
+    winner, 
+    expired,
+    voteCountsData 
+  }: { 
+    poll: Poll; 
+    winner: { option: string; votes: number; index: number };
+    expired: boolean;
+    voteCountsData: Record<string, Record<number, number>>;
+  }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    const getVotePercentageForPoll = (optionIndex: number) => {
+      const pollVotes = voteCountsData[poll.id] || {};
+      const totalPollVotes = Object.values(pollVotes).reduce((a, b) => a + b, 0);
+      if (totalPollVotes === 0) return 0;
+      return Math.round(((pollVotes[optionIndex] || 0) / totalPollVotes) * 100);
+    };
+
+    const getVoteCountForPoll = (optionIndex: number) => {
+      return voteCountsData[poll.id]?.[optionIndex] || 0;
+    };
+
+    return (
+      <div className="bg-secondary/30 rounded-lg overflow-hidden">
+        <button 
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full p-3 text-left hover:bg-secondary/50 transition-colors"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <p className="font-medium text-sm flex-1">{poll.title}</p>
+            {expired && poll.is_active && (
+              <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded">Expired</span>
+            )}
+          </div>
+          {winner.votes > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <Trophy className="w-3 h-3 text-yellow-500" />
+              <span className="text-primary text-xs">{winner.option}</span>
+              <span className="text-muted-foreground text-xs">({winner.votes} votes)</span>
+            </div>
+          )}
+        </button>
+        {isExpanded && (
+          <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-2">
+            {poll.options.map((option, optionIndex) => {
+              const percentage = getVotePercentageForPoll(optionIndex);
+              const voteCount = getVoteCountForPoll(optionIndex);
+              const isWinner = optionIndex === winner.index && winner.votes > 0;
+              
+              return (
+                <div key={optionIndex} className={`p-2 rounded ${isWinner ? "bg-primary/10 border border-primary/30" : "bg-secondary/30"}`}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="flex items-center gap-1">
+                      {isWinner && <Trophy className="w-3 h-3 text-yellow-500" />}
+                      {option}
+                    </span>
+                    <span className="text-muted-foreground">{percentage}% ({voteCount})</span>
+                  </div>
+                  <Progress value={percentage} className="h-1" />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen py-8 px-6">
       <div className="container mx-auto max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-                <BarChart className="w-10 h-10 text-primary" />
-                Community Polls
-              </h1>
-              <p className="text-muted-foreground">
-                Have your say! Vote on community polls and see what others think.
-              </p>
-            </div>
-            {user && (
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Create Poll
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Create Community Poll</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <p className="text-sm text-muted-foreground">
-                      Submit your poll for moderator review. Once approved, it will appear in the Community Polls section.
-                    </p>
-                    <div className="space-y-2">
-                      <Label>Question</Label>
-                      <Input
-                        value={newPollData.title}
-                        onChange={(e) => setNewPollData({ ...newPollData, title: e.target.value })}
-                        placeholder="What's your favorite...?"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description (optional)</Label>
-                      <Textarea
-                        value={newPollData.description}
-                        onChange={(e) => setNewPollData({ ...newPollData, description: e.target.value })}
-                        placeholder="Additional context..."
-                        rows={2}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Options</Label>
-                      {newPollData.options.map((option, index) => (
-                        <div key={index} className="flex gap-2">
-                          <Input
-                            value={option}
-                            onChange={(e) => updateOption(index, e.target.value)}
-                            placeholder={`Option ${index + 1}`}
-                          />
-                          {newPollData.options.length > 2 && (
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeOption(index)}>
-                              ×
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      {newPollData.options.length < 6 && (
-                        <Button type="button" variant="outline" size="sm" onClick={addOption}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Option
-                        </Button>
-                      )}
-                    </div>
-                    <Button
-                      className="w-full"
-                      onClick={() => createCommunityPollMutation.mutate(newPollData)}
-                      disabled={createCommunityPollMutation.isPending}
-                    >
-                      {createCommunityPollMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Submit for Review
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
+          <div>
+            <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
+              <BarChart className="w-10 h-10 text-primary" />
+              Community Polls
+            </h1>
+            <p className="text-muted-foreground">
+              Have your say! Vote on community polls and see what others think.
+            </p>
           </div>
         </motion.div>
 
@@ -569,11 +570,11 @@ export default function Polls() {
 
               {/* Sidebar - aligned with polls */}
               <div className="space-y-6">
-                {/* Recent Results */}
+                {/* Previous Polls */}
                 <div className="glass rounded-xl p-5">
                   <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <History className="w-5 h-5 text-muted-foreground" />
-                    Recent Results
+                    Previous Polls
                   </h2>
                   
                   {recentPolls.length > 0 ? (
@@ -582,26 +583,18 @@ export default function Polls() {
                         const winner = getWinningOption(poll);
                         const expired = isPollExpired(poll);
                         return (
-                          <div key={poll.id} className="p-3 bg-secondary/30 rounded-lg">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-medium text-sm flex-1">{poll.title}</p>
-                              {expired && poll.is_active && (
-                                <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded">Expired</span>
-                              )}
-                            </div>
-                            {winner.votes > 0 && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <Trophy className="w-3 h-3 text-yellow-500" />
-                                <span className="text-primary text-xs">{winner.option}</span>
-                                <span className="text-muted-foreground text-xs">({winner.votes})</span>
-                              </div>
-                            )}
-                          </div>
+                          <PreviousPollCard 
+                            key={poll.id} 
+                            poll={poll} 
+                            winner={winner} 
+                            expired={expired}
+                            voteCountsData={voteCountsData}
+                          />
                         );
                       })}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground text-sm text-center py-4">No recent polls</p>
+                    <p className="text-muted-foreground text-sm text-center py-4">No previous polls</p>
                   )}
                 </div>
 
@@ -654,10 +647,72 @@ export default function Polls() {
                     Community polls are created by users like you! All submissions are reviewed by moderators before being published.
                   </p>
                   {user ? (
-                    <Button className="w-full" onClick={() => setIsCreateDialogOpen(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create a Poll
-                    </Button>
+                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create a Poll
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Create Community Poll</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 mt-4">
+                          <p className="text-sm text-muted-foreground">
+                            Submit your poll for moderator review. Once approved, it will appear in the Community Polls section.
+                          </p>
+                          <div className="space-y-2">
+                            <Label>Question</Label>
+                            <Input
+                              value={newPollData.title}
+                              onChange={(e) => setNewPollData({ ...newPollData, title: e.target.value })}
+                              placeholder="What's your favorite...?"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Description (optional)</Label>
+                            <Textarea
+                              value={newPollData.description}
+                              onChange={(e) => setNewPollData({ ...newPollData, description: e.target.value })}
+                              placeholder="Additional context..."
+                              rows={2}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Options</Label>
+                            {newPollData.options.map((option, index) => (
+                              <div key={index} className="flex gap-2">
+                                <Input
+                                  value={option}
+                                  onChange={(e) => updateOption(index, e.target.value)}
+                                  placeholder={`Option ${index + 1}`}
+                                />
+                                {newPollData.options.length > 2 && (
+                                  <Button type="button" variant="ghost" size="icon" onClick={() => removeOption(index)}>
+                                    ×
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                            {newPollData.options.length < 6 && (
+                              <Button type="button" variant="outline" size="sm" onClick={addOption}>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Option
+                              </Button>
+                            )}
+                          </div>
+                          <Button
+                            className="w-full"
+                            onClick={() => createCommunityPollMutation.mutate(newPollData)}
+                            disabled={createCommunityPollMutation.isPending}
+                          >
+                            {createCommunityPollMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Submit for Review
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   ) : (
                     <p className="text-sm text-muted-foreground text-center">
                       <a href="/auth" className="text-primary hover:underline">Login</a> to create polls

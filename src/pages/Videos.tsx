@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Play, Eye, Heart, Filter, Search, Clock, TrendingUp, Calendar } from "lucide-react";
+import { Play, Eye, Heart, Filter, Search, Clock, TrendingUp, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VideoPlayerModal } from "@/components/VideoPlayerModal";
 import { BookmarkButton } from "@/components/BookmarkButton";
@@ -165,6 +165,175 @@ export default function Videos() {
 
   const isVideoLiked = (videoId: string) => userLikes?.includes(videoId) || false;
 
+  // Featured Carousel Component
+  const FeaturedCarousel = ({ 
+    videos, 
+    onVideoClick, 
+    getThumbnail: getThumb, 
+    handleLike: onLike, 
+    isVideoLiked: checkLiked 
+  }: { 
+    videos: Video[]; 
+    onVideoClick: (v: Video) => void;
+    getThumbnail: (v: Video) => string;
+    handleLike: (e: React.MouseEvent, id: string) => void;
+    isVideoLiked: (id: string) => boolean;
+  }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    
+    const goToPrevious = () => {
+      setCurrentIndex((prev) => (prev === 0 ? videos.length - 1 : prev - 1));
+    };
+    
+    const goToNext = () => {
+      setCurrentIndex((prev) => (prev === videos.length - 1 ? 0 : prev + 1));
+    };
+
+    if (videos.length === 0) return null;
+
+    const currentVideo = videos[currentIndex];
+    const prevIndex = currentIndex === 0 ? videos.length - 1 : currentIndex - 1;
+    const nextIndex = currentIndex === videos.length - 1 ? 0 : currentIndex + 1;
+
+    return (
+      <div className="relative">
+        {/* Navigation Arrows */}
+        {videos.length > 1 && (
+          <>
+            <button
+              onClick={goToPrevious}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-background/80 backdrop-blur-sm border border-border rounded-full flex items-center justify-center hover:bg-primary hover:border-primary transition-all duration-300 -translate-x-1/2"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={goToNext}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-background/80 backdrop-blur-sm border border-border rounded-full flex items-center justify-center hover:bg-primary hover:border-primary transition-all duration-300 translate-x-1/2"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 px-8">
+          {/* Side Preview Left */}
+          {videos.length > 2 && (
+            <div 
+              onClick={() => setCurrentIndex(prevIndex)}
+              className="hidden lg:block glass rounded-xl overflow-hidden cursor-pointer opacity-50 hover:opacity-75 transition-opacity"
+            >
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  src={getThumb(videos[prevIndex])}
+                  alt={videos[prevIndex].title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+                <div className="absolute bottom-2 left-2 right-2">
+                  <p className="text-sm font-medium truncate">{videos[prevIndex].title}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Featured Video */}
+          <div 
+            className={`${videos.length > 2 ? 'lg:col-span-2' : 'lg:col-span-4'} glass rounded-2xl overflow-hidden card-hover neon-border group cursor-pointer`}
+            onClick={() => onVideoClick(currentVideo)}
+          >
+            <div className="relative aspect-video overflow-hidden">
+              <img
+                src={getThumb(currentVideo)}
+                alt={currentVideo.title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center">
+                  <Play className="w-8 h-8 text-primary-foreground ml-1" />
+                </div>
+              </div>
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center gap-2 mb-2">
+                  {currentVideo.multiplier && (
+                    <span className="px-2 py-1 bg-accent text-accent-foreground text-xs font-bold rounded">
+                      {currentVideo.multiplier}
+                    </span>
+                  )}
+                  {currentVideo.duration && (
+                    <span className="px-2 py-1 bg-background/80 text-xs rounded">
+                      {currentVideo.duration}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold text-foreground line-clamp-2">
+                  {currentVideo.title}
+                </h3>
+              </div>
+            </div>
+            <div className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Eye className="w-4 h-4" />
+                  {currentVideo.views?.toLocaleString() || 0}
+                </span>
+                <button
+                  onClick={(e) => onLike(e, currentVideo.id)}
+                  className={`flex items-center gap-1 transition-colors ${
+                    checkLiked(currentVideo.id) ? "text-destructive" : "hover:text-destructive"
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${checkLiked(currentVideo.id) ? "fill-current" : ""}`} />
+                  {currentVideo.likes_count?.toLocaleString() || 0}
+                </button>
+                <BookmarkButton contentType="video" contentId={currentVideo.id} />
+              </div>
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {new Date(currentVideo.created_at).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+
+          {/* Side Preview Right */}
+          {videos.length > 2 && (
+            <div 
+              onClick={() => setCurrentIndex(nextIndex)}
+              className="hidden lg:block glass rounded-xl overflow-hidden cursor-pointer opacity-50 hover:opacity-75 transition-opacity"
+            >
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  src={getThumb(videos[nextIndex])}
+                  alt={videos[nextIndex].title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
+                <div className="absolute bottom-2 left-2 right-2">
+                  <p className="text-sm font-medium truncate">{videos[nextIndex].title}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Carousel Indicators */}
+        {videos.length > 1 && (
+          <div className="flex justify-center gap-2 mt-4">
+            {videos.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentIndex ? "bg-primary w-6" : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen py-8 px-6">
       <div className="container mx-auto">
@@ -231,7 +400,7 @@ export default function Videos() {
           <div className="text-center py-20">Loading videos...</div>
         ) : (
           <>
-            {/* Featured Video */}
+            {/* Featured Video Carousel */}
             {featuredVideos && featuredVideos.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.98 }}
@@ -243,73 +412,13 @@ export default function Videos() {
                   <TrendingUp className="w-5 h-5 text-accent" />
                   <h2 className="text-xl font-semibold">Featured</h2>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {featuredVideos.slice(0, 2).map((video) => (
-                    <div
-                      key={video.id}
-                      onClick={() => handleVideoClick(video)}
-                      className="glass rounded-2xl overflow-hidden card-hover neon-border group cursor-pointer"
-                    >
-                      <div className="relative aspect-video overflow-hidden">
-                        <img
-                          src={getThumbnail(video)}
-                          alt={video.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center">
-                            <Play className="w-8 h-8 text-primary-foreground ml-1" />
-                          </div>
-                        </div>
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <div className="flex items-center gap-2 mb-2">
-                            {video.multiplier && (
-                              <span className="px-2 py-1 bg-accent text-accent-foreground text-xs font-bold rounded">
-                                {video.multiplier}
-                              </span>
-                            )}
-                            {video.duration && (
-                              <span className="px-2 py-1 bg-background/80 text-xs rounded">
-                                {video.duration}
-                              </span>
-                            )}
-                            {!video.is_external && video.video_file_url && (
-                              <span className="px-2 py-1 bg-green-500/80 text-white text-xs rounded">
-                                HD
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-xl font-bold text-foreground line-clamp-2">
-                            {video.title}
-                          </h3>
-                        </div>
-                      </div>
-                      <div className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-4 h-4" />
-                            {video.views?.toLocaleString() || 0}
-                          </span>
-                          <button
-                            onClick={(e) => handleLike(e, video.id)}
-                            className={`flex items-center gap-1 transition-colors ${
-                              isVideoLiked(video.id) ? "text-destructive" : "hover:text-destructive"
-                            }`}
-                          >
-                            <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
-                            {video.likes_count?.toLocaleString() || 0}
-                          </button>
-                          <BookmarkButton contentType="video" contentId={video.id} />
-                        </div>
-                        <span className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(video.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <FeaturedCarousel 
+                  videos={featuredVideos} 
+                  onVideoClick={handleVideoClick}
+                  getThumbnail={getThumbnail}
+                  handleLike={handleLike}
+                  isVideoLiked={isVideoLiked}
+                />
               </motion.div>
             )}
 
