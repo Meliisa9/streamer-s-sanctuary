@@ -155,8 +155,9 @@ export default function Events() {
 
   const upcomingEvents = events
     ?.filter((e) => new Date(e.event_date) >= new Date())
-    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
-    .slice(0, 5);
+    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+  
+  // Show up to 3 events visible, rest scrollable
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -277,7 +278,7 @@ export default function Events() {
                   Upcoming Events
                 </h2>
                 {upcomingEvents && upcomingEvents.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
                     {upcomingEvents.map((event) => {
                       const streamer = getStreamerById(event.streamer_id);
                       const isEventSubscribed = userSubscriptions.includes(event.id);
