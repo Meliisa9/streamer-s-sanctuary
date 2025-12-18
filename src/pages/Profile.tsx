@@ -475,16 +475,14 @@ export default function Profile() {
                       </div>
                       <div>
                         <p className="font-medium text-sm">Twitch</p>
-                        <p className="text-xs text-muted-foreground">
-                          {twitchConnected ? (
+                        <p className="text-xs">
+                          {twitchConnected || profile?.twitch_username ? (
                             <span className="flex items-center gap-1 text-green-400">
                               <CheckCircle2 className="w-3 h-3" />
-                              Connected
+                              {profile?.twitch_username ? `@${profile.twitch_username}` : "Connected"}
                             </span>
-                          ) : profile?.twitch_username ? (
-                            <span>@{profile.twitch_username}</span>
                           ) : (
-                            "Not connected"
+                            <span className="text-muted-foreground">Not connected</span>
                           )}
                         </p>
                       </div>
@@ -516,16 +514,14 @@ export default function Profile() {
                       </div>
                       <div>
                         <p className="font-medium text-sm">Discord</p>
-                        <p className="text-xs text-muted-foreground">
-                          {discordConnected ? (
+                        <p className="text-xs">
+                          {discordConnected || profile?.discord_tag ? (
                             <span className="flex items-center gap-1 text-green-400">
                               <CheckCircle2 className="w-3 h-3" />
-                              Connected
+                              {profile?.discord_tag || "Connected"}
                             </span>
-                          ) : profile?.discord_tag ? (
-                            <span>{profile.discord_tag}</span>
                           ) : (
-                            "Not connected"
+                            <span className="text-muted-foreground">Not connected</span>
                           )}
                         </p>
                       </div>

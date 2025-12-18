@@ -243,6 +243,7 @@ export type Database = {
           is_recurring: boolean | null
           platform: string | null
           streamer_id: string | null
+          timezone: string | null
           title: string
         }
         Insert: {
@@ -259,6 +260,7 @@ export type Database = {
           is_recurring?: boolean | null
           platform?: string | null
           streamer_id?: string | null
+          timezone?: string | null
           title: string
         }
         Update: {
@@ -275,6 +277,7 @@ export type Database = {
           is_recurring?: boolean | null
           platform?: string | null
           streamer_id?: string | null
+          timezone?: string | null
           title?: string
         }
         Relationships: [
@@ -416,6 +419,7 @@ export type Database = {
           actual_total: number | null
           created_at: string
           created_by: string | null
+          currency: string | null
           id: string
           lock_time: string | null
           pot_amount: string | null
@@ -429,6 +433,7 @@ export type Database = {
           actual_total?: number | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           id?: string
           lock_time?: string | null
           pot_amount?: string | null
@@ -442,6 +447,7 @@ export type Database = {
           actual_total?: number | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           id?: string
           lock_time?: string | null
           pot_amount?: string | null
