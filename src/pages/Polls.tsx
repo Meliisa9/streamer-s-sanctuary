@@ -173,7 +173,24 @@ export default function Polls() {
       queryClient.invalidateQueries({ queryKey: ["community-polls"] });
       queryClient.invalidateQueries({ queryKey: ["user-poll-votes"] });
       queryClient.invalidateQueries({ queryKey: ["poll-vote-counts"] });
-      toast({ title: "Vote submitted!" });
+      toast({ title: "Vote submitted! (+5 XP)" });
+      
+      // Award XP for voting - will trigger achievement check via useAchievements
+      if (user) {
+        supabase
+          .from("profiles")
+          .select("points")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              supabase
+                .from("profiles")
+                .update({ points: (data.points || 0) + 5 })
+                .eq("user_id", user.id);
+            }
+          });
+      }
     },
     onError: (error: any) => {
       if (error.message.includes("duplicate")) {
@@ -463,25 +480,25 @@ export default function Polls() {
             transition={{ delay: 0.05 }}
             className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
           >
-            <div className="glass rounded-xl p-4 text-center">
-              <BarChart className="w-6 h-6 mx-auto mb-2 text-primary" />
+            <div className="glass rounded-xl p-4 flex flex-col items-center justify-center min-h-[100px]">
+              <BarChart className="w-6 h-6 mb-2 text-primary" />
               <p className="text-2xl font-bold">{polls.length}</p>
-              <p className="text-xs text-muted-foreground">Active Polls</p>
+              <p className="text-xs text-muted-foreground text-center">Active Polls</p>
             </div>
-            <div className="glass rounded-xl p-4 text-center">
-              <Users className="w-6 h-6 mx-auto mb-2 text-accent" />
+            <div className="glass rounded-xl p-4 flex flex-col items-center justify-center min-h-[100px]">
+              <Users className="w-6 h-6 mb-2 text-accent" />
               <p className="text-2xl font-bold">{totalVotes.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total Votes</p>
+              <p className="text-xs text-muted-foreground text-center">Total Votes</p>
             </div>
-            <div className="glass rounded-xl p-4 text-center">
-              <PieChart className="w-6 h-6 mx-auto mb-2 text-green-500" />
+            <div className="glass rounded-xl p-4 flex flex-col items-center justify-center min-h-[100px]">
+              <PieChart className="w-6 h-6 mb-2 text-green-500" />
               <p className="text-2xl font-bold">{totalPolls}</p>
-              <p className="text-xs text-muted-foreground">All Time Polls</p>
+              <p className="text-xs text-muted-foreground text-center">All Time Polls</p>
             </div>
-            <div className="glass rounded-xl p-4 text-center">
-              <Trophy className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
+            <div className="glass rounded-xl p-4 flex flex-col items-center justify-center min-h-[100px]">
+              <Trophy className="w-6 h-6 mb-2 text-yellow-500" />
               <p className="text-2xl font-bold">{userParticipation}</p>
-              <p className="text-xs text-muted-foreground">Your Participation</p>
+              <p className="text-xs text-muted-foreground text-center">Your Participation</p>
             </div>
           </motion.div>
         )}

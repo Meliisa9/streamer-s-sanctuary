@@ -131,8 +131,25 @@ function GuessTheWin() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["user-gtw-guesses"] });
       queryClient.invalidateQueries({ queryKey: ["gtw-entry-counts"] });
-      toast({ title: "Guess submitted! Good luck!" });
+      toast({ title: "Guess submitted! Good luck! (+10 XP)" });
       setGuessAmounts(prev => ({ ...prev, [variables.sessionId]: "" }));
+      
+      // Award XP for submitting a guess
+      if (user) {
+        supabase
+          .from("profiles")
+          .select("points")
+          .eq("user_id", user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              supabase
+                .from("profiles")
+                .update({ points: (data.points || 0) + 10 })
+                .eq("user_id", user.id);
+            }
+          });
+      }
     },
     onError: (error) => {
       toast({ title: "Error submitting guess", description: error.message, variant: "destructive" });

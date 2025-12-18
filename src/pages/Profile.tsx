@@ -11,7 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
-import { useAchievements, ACHIEVEMENTS } from "@/hooks/useAchievements";
+import { useAchievements, ACHIEVEMENTS, LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
 import { 
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
@@ -27,7 +27,7 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
-  const { achievements, getAchievementProgress, stats, refreshAchievements } = useAchievements();
+  const { achievements, getAchievementProgress, stats, refreshAchievements, getLevelInfo } = useAchievements();
   
   const [formData, setFormData] = useState({
     username: "",
@@ -203,7 +203,7 @@ export default function Profile() {
     return null;
   }
 
-  const totalActivity = stats.giveawayEntries + stats.gtwGuesses + stats.comments + stats.articleLikes;
+  const totalActivity = stats.giveawayEntries + stats.gtwGuesses + stats.comments + stats.articleLikes + stats.pollVotes;
   const memberSince = user?.created_at
     ? new Date(user.created_at).toLocaleDateString("en-US", {
         year: "numeric",
@@ -212,15 +212,7 @@ export default function Profile() {
       })
     : "Unknown";
 
-  const getLevel = (points: number) => {
-    if (points >= 10000) return { name: "Legend", color: "text-yellow-500", progress: 100 };
-    if (points >= 5000) return { name: "Expert", color: "text-purple-500", progress: (points - 5000) / 50 };
-    if (points >= 1000) return { name: "Pro", color: "text-blue-500", progress: (points - 1000) / 40 };
-    if (points >= 100) return { name: "Member", color: "text-green-500", progress: (points - 100) / 9 };
-    return { name: "Newbie", color: "text-muted-foreground", progress: points };
-  };
-
-  const level = getLevel(profile?.points || 0);
+  const level = getLevelInfo(profile?.points || 0);
 
   // Check if accounts are connected via OAuth
   const identities = user.identities || [];
@@ -337,10 +329,19 @@ export default function Profile() {
             {/* Level Progress */}
             <div className="mt-4 p-3 bg-secondary/30 rounded-xl">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium">Level Progress to next rank</span>
-                <span className="text-xs text-muted-foreground">{Math.min(level.progress, 100).toFixed(0)}%</span>
+                <span className="text-xs font-medium">
+                  Level {level.level}: {level.name}
+                  {level.xpToNextLevel > 0 && (
+                    <span className="text-muted-foreground ml-2">({level.xpToNextLevel} XP to next level)</span>
+                  )}
+                </span>
+                <span className="text-xs text-muted-foreground">{level.progressPercent.toFixed(0)}%</span>
               </div>
-              <Progress value={Math.min(level.progress, 100)} className="h-1.5" />
+              <Progress value={level.progressPercent} className="h-1.5" />
+              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                <span>{level.currentXP} XP</span>
+                <span>{level.maxXP === Infinity ? "Max Level" : `${level.maxXP + 1} XP`}</span>
+              </div>
             </div>
           </div>
         </motion.div>
