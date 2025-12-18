@@ -133,6 +133,133 @@ export type Database = {
         }
         Relationships: []
       }
+      bonus_hunt_guesses: {
+        Row: {
+          created_at: string
+          guess_amount: number
+          hunt_id: string
+          id: string
+          points_earned: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          guess_amount: number
+          hunt_id: string
+          id?: string
+          points_earned?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          guess_amount?: number
+          hunt_id?: string
+          id?: string
+          points_earned?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_hunt_guesses_hunt_id_fkey"
+            columns: ["hunt_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_hunts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_hunt_slots: {
+        Row: {
+          bet_amount: number | null
+          created_at: string
+          hunt_id: string
+          id: string
+          is_played: boolean | null
+          multiplier: number | null
+          provider: string | null
+          slot_name: string
+          sort_order: number | null
+          win_amount: number | null
+        }
+        Insert: {
+          bet_amount?: number | null
+          created_at?: string
+          hunt_id: string
+          id?: string
+          is_played?: boolean | null
+          multiplier?: number | null
+          provider?: string | null
+          slot_name: string
+          sort_order?: number | null
+          win_amount?: number | null
+        }
+        Update: {
+          bet_amount?: number | null
+          created_at?: string
+          hunt_id?: string
+          id?: string
+          is_played?: boolean | null
+          multiplier?: number | null
+          provider?: string | null
+          slot_name?: string
+          sort_order?: number | null
+          win_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_hunt_slots_hunt_id_fkey"
+            columns: ["hunt_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_hunts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bonus_hunts: {
+        Row: {
+          average_bet: number | null
+          created_at: string
+          created_by: string | null
+          date: string
+          ending_balance: number | null
+          highest_multiplier: number | null
+          highest_win: number | null
+          id: string
+          status: string
+          target_balance: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          average_bet?: number | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          ending_balance?: number | null
+          highest_multiplier?: number | null
+          highest_win?: number | null
+          id?: string
+          status?: string
+          target_balance?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          average_bet?: number | null
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          ending_balance?: number | null
+          highest_multiplier?: number | null
+          highest_win?: number | null
+          id?: string
+          status?: string
+          target_balance?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       casino_bonuses: {
         Row: {
           affiliate_url: string | null
