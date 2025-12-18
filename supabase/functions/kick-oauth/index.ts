@@ -15,14 +15,17 @@ serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    const KICK_CLIENT_ID = Deno.env.get("KICK_CLIENT_ID");
-    const KICK_CLIENT_SECRET = Deno.env.get("KICK_CLIENT_SECRET");
+    const KICK_CLIENT_ID = (Deno.env.get("KICK_CLIENT_ID") || "").trim();
+    const KICK_CLIENT_SECRET = (Deno.env.get("KICK_CLIENT_SECRET") || "").trim();
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!KICK_CLIENT_ID || !KICK_CLIENT_SECRET) {
       return new Response(
-        JSON.stringify({ error: "Kick OAuth not configured" }),
+        JSON.stringify({
+          error:
+            "Kick OAuth not configured (missing client id/secret). Please verify your backend secrets.",
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -36,8 +39,8 @@ serve(async (req) => {
 
       // IMPORTANT: Kick must be able to redirect back to this URL.
       // localhost is not reachable from Kick, so for local dev you must use an HTTPS tunnel.
-      const callbackBase = (url.searchParams.get("callback_base") || SUPABASE_URL || "").trim();
-      if (!callbackBase) {
+      const callbackBaseRaw = (url.searchParams.get("callback_base") || SUPABASE_URL || "").trim();
+      if (!callbackBaseRaw) {
         return new Response(
           JSON.stringify({
             error:
@@ -46,7 +49,24 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (/localhost|127\.0\.0\.1/.test(callbackBase)) {
+
+      let callbackBase: URL;
+      try {
+        callbackBase = new URL(callbackBaseRaw);
+      } catch {
+        return new Response(
+          JSON.stringify({ error: "Invalid callback_base URL." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (callbackBase.protocol !== "https:") {
+        return new Response(
+          JSON.stringify({ error: "callback_base must be https://" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (/localhost|127\.0\.0\.1/.test(callbackBase.hostname)) {
         return new Response(
           JSON.stringify({
             error:
@@ -56,7 +76,8 @@ serve(async (req) => {
         );
       }
 
-      const callbackUrl = `${callbackBase.replace(/\/$/, "")}/functions/v1/kick-oauth?action=callback`;
+      // Always normalize to origin (users sometimes paste a full path).
+      const callbackUrl = `${callbackBase.origin}/functions/v1/kick-oauth?action=callback`;
 
       // Encode frontend URL in state so we can redirect back after OAuth
       const state = btoa(JSON.stringify({ frontend_url: frontendUrl }));
@@ -68,9 +89,11 @@ serve(async (req) => {
       kickAuthUrl.searchParams.set("scope", "user:read");
       kickAuthUrl.searchParams.set("state", state);
 
-      console.log("Authorize URL generated:", kickAuthUrl.toString());
+      const authorizeUrl = kickAuthUrl.toString();
+
+      console.log("Authorize URL generated:", authorizeUrl);
       return new Response(
-        JSON.stringify({ authorize_url: kickAuthUrl.toString(), state, callback_url: callbackUrl }),
+        JSON.stringify({ authorize_url: authorizeUrl, state, callback_url: callbackUrl }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
