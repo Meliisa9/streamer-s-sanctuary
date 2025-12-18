@@ -106,9 +106,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+
+        // Track login/signup activities
+        if (event === "SIGNED_IN" && session?.user) {
+          // Use setTimeout to avoid blocking the auth flow
+          setTimeout(async () => {
+            try {
+              // Determine if this is a new signup or returning login
+              const provider = session.user.app_metadata?.provider || "email";
+              const isNewUser = session.user.created_at && 
+                new Date(session.user.created_at).getTime() > Date.now() - 60000; // Within last minute
+              
+              const action = isNewUser ? "signup" : "login";
+              
+              await supabase.from("user_activities").insert({
+                user_id: session.user.id,
+                action,
+                details: {
+                  provider,
+                  email: session.user.email,
+                },
+              });
+
+              // Create admin notification for logins/signups
+              const notificationTitles: Record<string, string> = {
+                login: "User Login",
+                signup: "New User Signup",
+              };
+
+              await supabase.from("admin_notifications").insert({
+                type: action,
+                title: notificationTitles[action],
+                message: `User ${session.user.email || session.user.id} ${action === "signup" ? "signed up" : "logged in"} via ${provider}`,
+              });
+            } catch (error) {
+              console.error("Error tracking auth activity:", error);
+            }
+          }, 100);
+        }
 
         // Defer profile fetch to avoid deadlock
         if (session?.user) {

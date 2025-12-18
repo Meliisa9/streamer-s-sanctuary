@@ -37,7 +37,14 @@ export const ACHIEVEMENTS: Achievement[] = [
   { key: "first_like", name: "Appreciator", description: "Like your first article", icon: "❤️", requirement: 1, category: "social", color: "red", xpReward: 5 },
   { key: "supporter", name: "Supporter", description: "Like 20 articles", icon: "💖", requirement: 20, category: "social", color: "red", xpReward: 75 },
   
-  // Loyalty
+  // Loyalty - Daily Sign-In Streaks
+  { key: "streak_30", name: "Dedicated", description: "30 day sign-in streak", icon: "🔥", requirement: 30, category: "loyalty", color: "orange", xpReward: 150 },
+  { key: "streak_60", name: "Committed", description: "60 day sign-in streak", icon: "💪", requirement: 60, category: "loyalty", color: "orange", xpReward: 300 },
+  { key: "streak_90", name: "Unstoppable", description: "90 day sign-in streak", icon: "⚡", requirement: 90, category: "loyalty", color: "yellow", xpReward: 500 },
+  { key: "streak_180", name: "Legendary Streak", description: "180 day sign-in streak", icon: "🏅", requirement: 180, category: "loyalty", color: "gold", xpReward: 1000 },
+  { key: "streak_365", name: "Year of Dedication", description: "365 day sign-in streak", icon: "🎊", requirement: 365, category: "loyalty", color: "gold", xpReward: 2500 },
+  
+  // Loyalty - Points & Membership
   { key: "point_collector", name: "Point Collector", description: "Earn 100 points", icon: "⭐", requirement: 100, category: "loyalty", color: "yellow", xpReward: 25 },
   { key: "point_hoarder", name: "Point Hoarder", description: "Earn 500 points", icon: "🌟", requirement: 500, category: "loyalty", color: "yellow", xpReward: 100 },
   { key: "point_master", name: "Point Master", description: "Earn 1000 points", icon: "✨", requirement: 1000, category: "loyalty", color: "yellow", xpReward: 250 },
@@ -78,6 +85,7 @@ export function useAchievements() {
     articleLikes: 0,
     memberDays: 0,
     pollVotes: 0,
+    consecutiveSignIns: 0,
   });
 
   const fetchUserAchievements = useCallback(async () => {
@@ -96,12 +104,13 @@ export function useAchievements() {
   const fetchStats = useCallback(async () => {
     if (!user) return;
 
-    const [entriesResult, guessesResult, commentsResult, likesResult, pollVotesResult] = await Promise.all([
+    const [entriesResult, guessesResult, commentsResult, likesResult, pollVotesResult, signInResult] = await Promise.all([
       supabase.from("giveaway_entries").select("id", { count: "exact" }).eq("user_id", user.id),
       supabase.from("gtw_guesses").select("id", { count: "exact" }).eq("user_id", user.id),
       supabase.from("news_comments").select("id", { count: "exact" }).eq("user_id", user.id),
       supabase.from("article_likes").select("id", { count: "exact" }).eq("user_id", user.id),
       supabase.from("poll_votes").select("id", { count: "exact" }).eq("user_id", user.id),
+      supabase.from("daily_sign_ins").select("consecutive_days").eq("user_id", user.id).maybeSingle(),
     ]);
 
     const memberDays = user.created_at
@@ -115,6 +124,7 @@ export function useAchievements() {
       articleLikes: likesResult.count || 0,
       memberDays,
       pollVotes: pollVotesResult.count || 0,
+      consecutiveSignIns: signInResult.data?.consecutive_days || 0,
     });
   }, [user]);
 
@@ -154,6 +164,12 @@ export function useAchievements() {
       { key: "social_butterfly", value: stats.comments },
       { key: "first_like", value: stats.articleLikes },
       { key: "supporter", value: stats.articleLikes },
+      // Daily sign-in streak achievements
+      { key: "streak_30", value: stats.consecutiveSignIns },
+      { key: "streak_60", value: stats.consecutiveSignIns },
+      { key: "streak_90", value: stats.consecutiveSignIns },
+      { key: "streak_180", value: stats.consecutiveSignIns },
+      { key: "streak_365", value: stats.consecutiveSignIns },
       // Loyalty achievements
       { key: "point_collector", value: profile.points || 0 },
       { key: "point_hoarder", value: profile.points || 0 },
@@ -209,7 +225,7 @@ export function useAchievements() {
   }, [fetchUserAchievements, fetchStats]);
 
   useEffect(() => {
-    if (stats.giveawayEntries > 0 || stats.comments > 0 || stats.pollVotes > 0 || stats.gtwGuesses > 0) {
+    if (stats.giveawayEntries > 0 || stats.comments > 0 || stats.pollVotes > 0 || stats.gtwGuesses > 0 || stats.consecutiveSignIns > 0) {
       checkAndUnlockAchievements();
     }
   }, [stats, checkAndUnlockAchievements]);
@@ -241,6 +257,12 @@ export function useAchievements() {
         case "first_like":
         case "supporter":
           return stats.articleLikes;
+        case "streak_30":
+        case "streak_60":
+        case "streak_90":
+        case "streak_180":
+        case "streak_365":
+          return stats.consecutiveSignIns;
         case "point_collector":
         case "point_hoarder":
         case "point_master":

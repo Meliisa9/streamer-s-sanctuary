@@ -228,6 +228,36 @@ export type Database = {
           },
         ]
       }
+      daily_sign_ins: {
+        Row: {
+          consecutive_days: number
+          created_at: string
+          id: string
+          last_sign_in_date: string
+          total_sign_ins: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consecutive_days?: number
+          created_at?: string
+          id?: string
+          last_sign_in_date?: string
+          total_sign_ins?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consecutive_days?: number
+          created_at?: string
+          id?: string
+          last_sign_in_date?: string
+          total_sign_ins?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       event_subscriptions: {
         Row: {
           created_at: string
