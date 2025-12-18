@@ -556,11 +556,6 @@ export default function Polls() {
           <TabsContent value="official">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               <div className="lg:col-span-2 space-y-4">
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  Active Polls
-                </h2>
-                
                 {polls.filter(p => !p.is_community).map((poll, index) => renderPollCard(poll, index))}
 
                 {polls.filter(p => !p.is_community).length === 0 && (
@@ -635,11 +630,6 @@ export default function Polls() {
           <TabsContent value="community">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               <div className="lg:col-span-2 space-y-4">
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <Users className="w-5 h-5 text-accent" />
-                  Community Polls
-                </h2>
-                
                 {communityPolls.map((poll, index) => renderPollCard(poll, index, true))}
 
                 {communityPolls.length === 0 && (
