@@ -130,8 +130,18 @@ export default function Profile() {
       const frontendUrl = window.location.origin;
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}`;
 
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session?.access_token) throw new Error("Not authenticated");
+
       const response = await fetch(url, {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       // Prefer reading raw text first so we can surface useful errors even if JSON parsing fails
@@ -169,11 +179,13 @@ export default function Profile() {
   }
 
   const totalActivity = stats.giveawayEntries + stats.gtwGuesses + stats.comments + stats.articleLikes;
-  const memberSince = user?.created_at ? new Date(user.created_at).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric"
-  }) : "Unknown";
+  const memberSince = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "Unknown";
 
   const getLevel = (points: number) => {
     if (points >= 10000) return { name: "Legend", color: "text-yellow-500", progress: 100 };
@@ -187,8 +199,8 @@ export default function Profile() {
 
   // Check if accounts are connected via OAuth
   const identities = user.identities || [];
-  const twitchConnected = identities.some(i => i.provider === "twitch");
-  const discordConnected = identities.some(i => i.provider === "discord");
+  const twitchConnected = identities.some((i) => i.provider === "twitch");
+  const discordConnected = identities.some((i) => i.provider === "discord");
   const kickConnected = !!profile?.kick_username;
 
   // Group achievements by category
