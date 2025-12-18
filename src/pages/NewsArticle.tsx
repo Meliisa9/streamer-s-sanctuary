@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { processAndSanitizeContent } from "@/lib/sanitize";
 import type { Tables } from "@/integrations/supabase/types";
 
 type NewsArticle = Tables<"news_articles">;
@@ -64,39 +65,7 @@ const getRoleBadge = (roles: UserRole[] | undefined) => {
   );
 };
 
-// Process content to ensure proper rendering
-const processContent = (content: string, contentHtml: string | null): string => {
-  if (contentHtml && contentHtml.trim()) {
-    const hasHtmlTags = /<[^>]+>/.test(contentHtml);
-    if (hasHtmlTags) {
-      let processed = contentHtml;
-      const parts = processed.split(/\n\n+/);
-      processed = parts.map(part => {
-        const trimmed = part.trim();
-        if (!trimmed) return '';
-        if (trimmed.startsWith('<div') || trimmed.startsWith('<p') || 
-            trimmed.startsWith('<h1') || trimmed.startsWith('<h2') || 
-            trimmed.startsWith('<h3') || trimmed.startsWith('<img') ||
-            trimmed.startsWith('<video') || trimmed.startsWith('<iframe') ||
-            trimmed.startsWith('<ul') || trimmed.startsWith('<ol') ||
-            trimmed.startsWith('<blockquote')) {
-          return trimmed;
-        }
-        return `<p class="mb-4 text-muted-foreground leading-relaxed">${trimmed}</p>`;
-      }).join('\n');
-      return processed;
-    }
-  }
-  
-  if (content && content.trim()) {
-    const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
-    return paragraphs.map(p => 
-      `<p class="mb-4 text-muted-foreground leading-relaxed">${p.trim().replace(/\n/g, '<br />')}</p>`
-    ).join('\n');
-  }
-  
-  return '';
-};
+// Use the sanitized content processor from lib/sanitize
 
 export default function NewsArticlePage() {
   const { slug } = useParams<{ slug: string }>();
@@ -384,7 +353,7 @@ export default function NewsArticlePage() {
   }
 
   const authorName = authorProfile?.display_name || authorProfile?.username || "Unknown Author";
-  const processedContent = processContent(article.content, article.content_html);
+  const processedContent = processAndSanitizeContent(article.content, article.content_html);
 
   return (
     <div className="min-h-screen py-8 px-6">
