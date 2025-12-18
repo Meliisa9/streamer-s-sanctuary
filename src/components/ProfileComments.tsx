@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageSquare, Send, Trash2, Flag, Loader2, User } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
+import { notifyComment } from "@/hooks/useSocialNotifications";
 
 interface ProfileCommentsProps {
   profileUserId: string;
@@ -61,6 +62,24 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
         content,
       });
       if (error) throw error;
+      
+      // Send notification if commenting on someone else's profile
+      if (user.id !== profileUserId) {
+        const { data: commenterProfile } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        const { data: profileOwner } = await supabase
+          .from("profiles")
+          .select("username")
+          .eq("user_id", profileUserId)
+          .maybeSingle();
+        
+        const commenterName = commenterProfile?.display_name || commenterProfile?.username || "Someone";
+        await notifyComment(profileUserId, commenterName, profileOwner?.username || profileUserId);
+      }
     },
     onSuccess: () => {
       toast({ title: "Comment posted!" });

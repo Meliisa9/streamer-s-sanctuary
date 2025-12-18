@@ -135,7 +135,7 @@ export function GlobalSearch() {
           id: u.user_id,
           title: u.display_name || u.username || "Anonymous",
           subtitle: u.username ? `@${u.username}` : undefined,
-          url: `/user/${u.user_id}`,
+          url: `/user/${u.username || u.user_id}`,
           image: u.avatar_url || undefined,
         });
       });
@@ -171,13 +171,13 @@ export function GlobalSearch() {
   };
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md">
+    <div ref={containerRef} className="relative w-full max-w-lg mx-auto">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           ref={inputRef}
           type="text"
-          placeholder="Search... (⌘K)"
+          placeholder="Search..."
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);

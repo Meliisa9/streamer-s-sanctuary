@@ -17,9 +17,36 @@ import {
 import { LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
 
 export default function UserProfile() {
-  const { userId } = useParams<{ userId: string }>();
+  const { usernameOrId } = useParams<{ usernameOrId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // First, resolve username to user_id if needed
+  const { data: resolvedUserId, isLoading: resolvingUser } = useQuery({
+    queryKey: ["resolve-user", usernameOrId],
+    queryFn: async () => {
+      if (!usernameOrId) return null;
+      
+      // Check if it's a UUID (user_id) or username
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId);
+      
+      if (isUUID) {
+        return usernameOrId;
+      }
+      
+      // Lookup by username
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("username", usernameOrId)
+        .maybeSingle();
+      
+      if (error || !data) return null;
+      return data.user_id;
+    },
+    enabled: !!usernameOrId,
+  });
+
   const { 
     isFollowing, 
     checkingFollow, 
@@ -27,61 +54,61 @@ export default function UserProfile() {
     followingCount, 
     toggleFollow, 
     isToggling 
-  } = useUserFollow(userId);
+  } = useUserFollow(resolvedUserId || undefined);
 
-  const { data: profile, isLoading } = useQuery({
-    queryKey: ["public-profile", userId],
+  const { data: profile, isLoading: loadingProfile } = useQuery({
+    queryKey: ["public-profile", resolvedUserId],
     queryFn: async () => {
-      if (!userId) return null;
+      if (!resolvedUserId) return null;
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", resolvedUserId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!userId,
+    enabled: !!resolvedUserId,
   });
 
   const { data: badges } = useQuery({
-    queryKey: ["user-badges", userId],
+    queryKey: ["user-badges", resolvedUserId],
     queryFn: async () => {
-      if (!userId) return [];
+      if (!resolvedUserId) return [];
       const { data, error } = await supabase
         .from("user_badges")
         .select("*")
-        .eq("user_id", userId)
+        .eq("user_id", resolvedUserId)
         .order("awarded_at", { ascending: false });
       if (error) throw error;
       return data;
     },
-    enabled: !!userId,
+    enabled: !!resolvedUserId,
   });
 
   const { data: achievementsCount } = useQuery({
-    queryKey: ["user-achievements-count", userId],
+    queryKey: ["user-achievements-count", resolvedUserId],
     queryFn: async () => {
-      if (!userId) return 0;
+      if (!resolvedUserId) return 0;
       const { count, error } = await supabase
         .from("user_achievements")
         .select("*", { count: "exact", head: true })
-        .eq("user_id", userId);
+        .eq("user_id", resolvedUserId);
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!userId,
+    enabled: !!resolvedUserId,
   });
 
   const { data: activityStats } = useQuery({
-    queryKey: ["user-activity-stats", userId],
+    queryKey: ["user-activity-stats", resolvedUserId],
     queryFn: async () => {
-      if (!userId) return { giveawayEntries: 0, comments: 0, pollVotes: 0 };
+      if (!resolvedUserId) return { giveawayEntries: 0, comments: 0, pollVotes: 0 };
       
       const [entries, comments, votes] = await Promise.all([
-        supabase.from("giveaway_entries").select("*", { count: "exact", head: true }).eq("user_id", userId),
-        supabase.from("news_comments").select("*", { count: "exact", head: true }).eq("user_id", userId),
-        supabase.from("poll_votes").select("*", { count: "exact", head: true }).eq("user_id", userId),
+        supabase.from("giveaway_entries").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
+        supabase.from("news_comments").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
+        supabase.from("poll_votes").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
       ]);
 
       return {
@@ -90,7 +117,7 @@ export default function UserProfile() {
         pollVotes: votes.count || 0,
       };
     },
-    enabled: !!userId,
+    enabled: !!resolvedUserId,
   });
 
   const getLevelInfo = (points: number) => {
@@ -125,7 +152,8 @@ export default function UserProfile() {
     };
   };
 
-  const isOwnProfile = user?.id === userId;
+  const isOwnProfile = user?.id === resolvedUserId;
+  const isLoading = resolvingUser || loadingProfile;
 
   if (isLoading) {
     return (
@@ -218,7 +246,7 @@ export default function UserProfile() {
                 {!isOwnProfile && user && (
                   <Button
                     variant={isFollowing ? "outline" : "glow"}
-                    onClick={() => toggleFollow(userId!)}
+                    onClick={() => toggleFollow(resolvedUserId!)}
                     disabled={isToggling || checkingFollow}
                     className="gap-2"
                   >
@@ -360,7 +388,7 @@ export default function UserProfile() {
           </TabsContent>
 
           <TabsContent value="comments">
-            <ProfileComments profileUserId={userId!} />
+            <ProfileComments profileUserId={resolvedUserId!} />
           </TabsContent>
         </Tabs>
       </div>

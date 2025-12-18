@@ -106,7 +106,7 @@ const App = () => (
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/achievements" element={<Achievements />} />
                 <Route path="/bonus-hunt" element={<BonusHunt />} />
-                <Route path="/user/:userId" element={<UserProfile />} />
+                <Route path="/user/:usernameOrId" element={<UserProfile />} />
                 
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
