@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { notifyFollow } from "@/hooks/useSocialNotifications";
 
 export function useUserFollow(targetUserId?: string) {
   const { user } = useAuth();
@@ -101,6 +102,16 @@ export function useUserFollow(targetUserId?: string) {
         following_id: followingId,
       });
       if (error) throw error;
+      
+      // Get follower's profile for notification
+      const { data: followerProfile } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      const followerName = followerProfile?.display_name || followerProfile?.username || "Someone";
+      await notifyFollow(user.id, followingId, followerName);
     },
     onSuccess: () => {
       toast({ title: "Following!" });

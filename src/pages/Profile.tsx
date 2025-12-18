@@ -15,11 +15,12 @@ import { useAchievements, ACHIEVEMENTS, LEVEL_THRESHOLDS } from "@/hooks/useAchi
 import { 
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
-  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users
+  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users, Bookmark
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useUserFollow } from "@/hooks/useUserFollow";
 import { ProfileComments } from "@/components/ProfileComments";
+import { useBookmarks } from "@/hooks/useBookmarks";
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -30,6 +31,8 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const { achievements, getAchievementProgress, stats, refreshAchievements, getLevelInfo } = useAchievements();
+  const { following } = useUserFollow(user?.id);
+  const { bookmarks, getBookmarksByType } = useBookmarks();
   
   const [formData, setFormData] = useState({
     username: "",
@@ -372,6 +375,10 @@ export default function Profile() {
                 <Users className="w-4 h-4" />
                 Social
               </TabsTrigger>
+              <TabsTrigger value="bookmarks" className="gap-2">
+                <Bookmark className="w-4 h-4" />
+                Bookmarks
+              </TabsTrigger>
               <TabsTrigger value="achievements" className="gap-2">
                 <Award className="w-4 h-4" />
                 Achievements
@@ -619,9 +626,95 @@ export default function Profile() {
                   </div>
                 </div>
 
+                {/* Following List */}
+                {following && following.length > 0 && (
+                  <div className="glass rounded-2xl p-6">
+                    <h3 className="font-semibold mb-4">Following ({following.length})</h3>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {following.map((f) => (
+                        <Link
+                          key={f.following_id}
+                          to={`/user/${f.following_id}`}
+                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <span className="text-sm">View Profile</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Profile Comments */}
                 <div className="glass rounded-2xl p-6">
                   <ProfileComments profileUserId={user.id} />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Bookmarks Tab */}
+            <TabsContent value="bookmarks">
+              <div className="space-y-6">
+                {/* Video Bookmarks */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Saved Videos ({getBookmarksByType("video").length})</h3>
+                  {getBookmarksByType("video").length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {getBookmarksByType("video").map((b) => (
+                        <Link
+                          key={b.id}
+                          to="/videos"
+                          className="p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                        >
+                          <p className="text-sm text-muted-foreground">Video saved on {new Date(b.created_at).toLocaleDateString()}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No saved videos yet</p>
+                  )}
+                </div>
+
+                {/* Article Bookmarks */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Saved Articles ({getBookmarksByType("article").length})</h3>
+                  {getBookmarksByType("article").length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {getBookmarksByType("article").map((b) => (
+                        <Link
+                          key={b.id}
+                          to="/news"
+                          className="p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                        >
+                          <p className="text-sm text-muted-foreground">Article saved on {new Date(b.created_at).toLocaleDateString()}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No saved articles yet</p>
+                  )}
+                </div>
+
+                {/* Giveaway Bookmarks */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Saved Giveaways ({getBookmarksByType("giveaway").length})</h3>
+                  {getBookmarksByType("giveaway").length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {getBookmarksByType("giveaway").map((b) => (
+                        <Link
+                          key={b.id}
+                          to="/giveaways"
+                          className="p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                        >
+                          <p className="text-sm text-muted-foreground">Giveaway saved on {new Date(b.created_at).toLocaleDateString()}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No saved giveaways yet</p>
+                  )}
                 </div>
               </div>
             </TabsContent>

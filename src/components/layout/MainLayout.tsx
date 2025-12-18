@@ -37,8 +37,10 @@ export function MainLayout() {
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         {/* Top bar with search and notifications */}
-        <div className="flex items-center justify-between gap-4 p-4">
-          <GlobalSearch />
+        <div className="flex items-center gap-4 p-4">
+          <div className="flex-1 flex justify-center">
+            <GlobalSearch />
+          </div>
           <UserNotifications />
         </div>
         <div className="flex-1 px-6">
