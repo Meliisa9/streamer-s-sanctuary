@@ -148,11 +148,14 @@ export default function AdminBonusHunt() {
         title: data.title,
         date: data.date,
         status: data.status,
+        starting_balance: data.starting_balance ? parseFloat(data.starting_balance) : null,
         target_balance: data.target_balance ? parseFloat(data.target_balance) : null,
         ending_balance: data.ending_balance ? parseFloat(data.ending_balance) : null,
         average_bet: data.average_bet ? parseFloat(data.average_bet) : null,
         highest_win: data.highest_win ? parseFloat(data.highest_win) : null,
         highest_multiplier: data.highest_multiplier ? parseFloat(data.highest_multiplier) : null,
+        currency: data.currency,
+        winner_points: data.winner_points ? parseInt(data.winner_points) : 1000,
       };
 
       if (editingHunt) {
