@@ -30,14 +30,37 @@ serve(async (req) => {
     // Get redirect URL from request or use default
     const redirectBase = url.searchParams.get("redirect_url") || url.origin;
 
-  if (action === "authorize") {
-      // Step 1: Redirect user to Kick OAuth
+    if (action === "authorize") {
+      // Step 1: Generate Kick authorize URL
       const frontendUrl = url.searchParams.get("frontend_url") || "http://localhost:8080";
-      const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
-      
+
+      // IMPORTANT: Kick must be able to redirect back to this URL.
+      // localhost is not reachable from Kick, so for local dev you must use an HTTPS tunnel.
+      const callbackBase = (url.searchParams.get("callback_base") || SUPABASE_URL || "").trim();
+      if (!callbackBase) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Missing callback_base. Provide a public HTTPS base URL (use an ngrok/Cloudflare tunnel for local dev).",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (/localhost|127\.0\.0\.1/.test(callbackBase)) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Kick OAuth cannot redirect to localhost. Use an HTTPS tunnel URL as callback_base.",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const callbackUrl = `${callbackBase.replace(/\/$/, "")}/functions/v1/kick-oauth?action=callback`;
+
       // Encode frontend URL in state so we can redirect back after OAuth
       const state = btoa(JSON.stringify({ frontend_url: frontendUrl }));
-      
+
       const kickAuthUrl = new URL("https://id.kick.com/oauth/authorize");
       kickAuthUrl.searchParams.set("client_id", KICK_CLIENT_ID);
       kickAuthUrl.searchParams.set("redirect_uri", callbackUrl);
@@ -45,9 +68,9 @@ serve(async (req) => {
       kickAuthUrl.searchParams.set("scope", "user:read");
       kickAuthUrl.searchParams.set("state", state);
 
-      console.log("Authorize URL generated, redirecting to Kick OAuth");
+      console.log("Authorize URL generated:", kickAuthUrl.toString());
       return new Response(
-        JSON.stringify({ authorize_url: kickAuthUrl.toString(), state }),
+        JSON.stringify({ authorize_url: kickAuthUrl.toString(), state, callback_url: callbackUrl }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -85,10 +108,12 @@ serve(async (req) => {
         });
       }
 
-      const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
+      // IMPORTANT: redirect_uri must match what was used in the authorize step.
+      // Using url.origin ensures the token exchange matches the actual callback host.
+      const callbackUrl = `${url.origin}/functions/v1/kick-oauth?action=callback`;
 
       // Exchange code for token
-      console.log("Exchanging code for token...");
+      console.log("Exchanging code for token...", { callbackUrl });
       const tokenResponse = await fetch("https://id.kick.com/oauth/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
