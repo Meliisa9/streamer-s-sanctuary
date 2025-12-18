@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Calendar, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, Search, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,7 @@ interface Event {
   streamer_id: string | null;
   is_featured: boolean | null;
   is_recurring: boolean | null;
+  timezone: string | null;
   created_at: string;
 }
 
@@ -46,6 +47,36 @@ interface Streamer {
 
 const eventTypes = ["Stream", "Special Event", "Community", "Giveaway"];
 const platforms = ["Twitch", "Kick", "YouTube", "Discord"];
+
+const timezones = [
+  { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+  { value: "America/New_York", label: "EST/EDT (Eastern Time)" },
+  { value: "America/Chicago", label: "CST/CDT (Central Time)" },
+  { value: "America/Denver", label: "MST/MDT (Mountain Time)" },
+  { value: "America/Los_Angeles", label: "PST/PDT (Pacific Time)" },
+  { value: "Europe/London", label: "GMT/BST (London)" },
+  { value: "Europe/Paris", label: "CET/CEST (Central European)" },
+  { value: "Europe/Stockholm", label: "CET/CEST (Stockholm)" },
+  { value: "Europe/Berlin", label: "CET/CEST (Berlin)" },
+  { value: "Asia/Tokyo", label: "JST (Japan)" },
+  { value: "Asia/Singapore", label: "SGT (Singapore)" },
+  { value: "Australia/Sydney", label: "AEST/AEDT (Sydney)" },
+];
+
+// Generate time options in 15-minute intervals
+const generateTimeOptions = () => {
+  const times = [];
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 15) {
+      const hour = h.toString().padStart(2, "0");
+      const minute = m.toString().padStart(2, "0");
+      times.push(`${hour}:${minute}`);
+    }
+  }
+  return times;
+};
+
+const timeOptions = generateTimeOptions();
 
 export default function AdminEvents() {
   const { toast } = useToast();
@@ -64,6 +95,7 @@ export default function AdminEvents() {
     streamer_id: "",
     is_featured: false,
     is_recurring: false,
+    timezone: "UTC",
   });
 
   const { data: events, isLoading } = useQuery({
@@ -93,13 +125,13 @@ export default function AdminEvents() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Clean the data - convert empty strings to null for optional fields
       const cleanData = {
         ...data,
         streamer_id: data.streamer_id || null,
         end_time: data.end_time || null,
         event_time: data.event_time || null,
         description: data.description || null,
+        timezone: data.timezone || "UTC",
       };
       const { error } = await supabase.from("events").insert([cleanData]);
       if (error) throw error;
@@ -117,13 +149,13 @@ export default function AdminEvents() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<typeof formData> }) => {
-      // Clean the data - convert empty strings to null for optional fields
       const cleanData = {
         ...data,
         streamer_id: data.streamer_id || null,
         end_time: data.end_time || null,
         event_time: data.event_time || null,
         description: data.description || null,
+        timezone: data.timezone || "UTC",
       };
       const { error } = await supabase.from("events").update(cleanData).eq("id", id);
       if (error) throw error;
@@ -165,6 +197,7 @@ export default function AdminEvents() {
       streamer_id: "",
       is_featured: false,
       is_recurring: false,
+      timezone: "UTC",
     });
     setEditingEvent(null);
   };
@@ -182,6 +215,7 @@ export default function AdminEvents() {
       streamer_id: event.streamer_id || "",
       is_featured: event.is_featured ?? false,
       is_recurring: event.is_recurring ?? false,
+      timezone: event.timezone || "UTC",
     });
     setIsDialogOpen(true);
   };
@@ -189,6 +223,12 @@ export default function AdminEvents() {
   const getStreamerName = (streamerId: string | null) => {
     if (!streamerId) return null;
     return streamers?.find((s) => s.id === streamerId)?.name;
+  };
+
+  const getTimezoneLabel = (tz: string | null) => {
+    if (!tz) return "UTC";
+    const found = timezones.find(t => t.value === tz);
+    return found ? found.value.split("/").pop()?.replace("_", " ") : tz;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -223,7 +263,7 @@ export default function AdminEvents() {
               Add Event
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingEvent ? "Edit Event" : "Add New Event"}</DialogTitle>
             </DialogHeader>
@@ -236,25 +276,71 @@ export default function AdminEvents() {
                   required
                 />
               </div>
+              
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  value={formData.event_date}
+                  onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
+                  required
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.event_date}
-                    onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                    required
-                  />
+                  <Label>Start Time</Label>
+                  <Select
+                    value={formData.event_time}
+                    onValueChange={(value) => setFormData({ ...formData, event_time: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      <SelectItem value="">No specific time</SelectItem>
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Time</Label>
-                  <Input
-                    value={formData.event_time}
-                    onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
-                    placeholder="20:00 CET"
-                  />
+                  <Label>End Time</Label>
+                  <Select
+                    value={formData.end_time}
+                    onValueChange={(value) => setFormData({ ...formData, end_time: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select time" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[200px]">
+                      <SelectItem value="">No end time</SelectItem>
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label>Timezone</Label>
+                <Select
+                  value={formData.timezone}
+                  onValueChange={(value) => setFormData({ ...formData, timezone: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {timezones.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Event Type</Label>
@@ -289,6 +375,7 @@ export default function AdminEvents() {
                   </Select>
                 </div>
               </div>
+              
               <div className="space-y-2">
                 <Label>Streamer</Label>
                 <Select
@@ -306,14 +393,7 @@ export default function AdminEvents() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>End Time</Label>
-                <Input
-                  value={formData.end_time}
-                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  placeholder="23:00 CET"
-                />
-              </div>
+              
               <div className="space-y-2">
                 <Label>Description</Label>
                 <Textarea
@@ -322,6 +402,7 @@ export default function AdminEvents() {
                   rows={3}
                 />
               </div>
+              
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <Switch
@@ -378,7 +459,13 @@ export default function AdminEvents() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                         <span>{new Date(event.event_date).toLocaleDateString()}</span>
-                        {event.event_time && <span>• {event.event_time}{event.end_time && ` - ${event.end_time}`}</span>}
+                        {event.event_time && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {event.event_time}{event.end_time && ` - ${event.end_time}`}
+                            {event.timezone && ` (${getTimezoneLabel(event.timezone)})`}
+                          </span>
+                        )}
                         <span>• {event.event_type}</span>
                         <span>• {event.platform}</span>
                         {event.streamer_id && <span>• {getStreamerName(event.streamer_id)}</span>}

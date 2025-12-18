@@ -3,18 +3,32 @@ import { motion } from "framer-motion";
 import { Plus, Edit2, Trash2, Trophy, Users, Clock, Target, Loader2, Award, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 
-type GTWSession = Tables<"gtw_sessions">;
+type GTWSession = Tables<"gtw_sessions"> & { currency?: string };
 type GTWGuess = Tables<"gtw_guesses">;
 
 interface Profile {
   username: string | null;
   display_name: string | null;
 }
+
+const CURRENCIES = [
+  { value: "USD", label: "USD ($)", symbol: "$" },
+  { value: "EUR", label: "EUR (€)", symbol: "€" },
+  { value: "GBP", label: "GBP (£)", symbol: "£" },
+  { value: "SEK", label: "SEK (kr)", symbol: "kr" },
+  { value: "NOK", label: "NOK (kr)", symbol: "kr" },
+  { value: "DKK", label: "DKK (kr)", symbol: "kr" },
+  { value: "CAD", label: "CAD (C$)", symbol: "C$" },
+  { value: "AUD", label: "AUD (A$)", symbol: "A$" },
+  { value: "JPY", label: "JPY (¥)", symbol: "¥" },
+];
 
 export default function AdminGTW() {
   const [sessions, setSessions] = useState<GTWSession[]>([]);
@@ -30,6 +44,7 @@ export default function AdminGTW() {
     reveal_time: "",
     status: "upcoming" as string,
     actual_total: "",
+    currency: "USD",
   });
   const { toast } = useToast();
   const { isAdmin, isModerator } = useAuth();
@@ -49,7 +64,6 @@ export default function AdminGTW() {
     } else {
       setSessions(data || []);
       
-      // Fetch guess counts for each session
       const counts: Record<string, number> = {};
       for (const session of data || []) {
         const { count } = await supabase
@@ -75,7 +89,6 @@ export default function AdminGTW() {
       return;
     }
 
-    // Fetch profiles for each guess
     const guessesWithProfiles: (GTWGuess & { profile?: Profile })[] = [];
     for (const guess of guesses || []) {
       const { data: profile } = await supabase
@@ -97,6 +110,7 @@ export default function AdminGTW() {
       reveal_time: "",
       status: "upcoming",
       actual_total: "",
+      currency: "USD",
     });
     setEditingSession(null);
     setIsDialogOpen(false);
@@ -111,6 +125,7 @@ export default function AdminGTW() {
       reveal_time: session.reveal_time ? new Date(session.reveal_time).toISOString().slice(0, 16) : "",
       status: session.status || "upcoming",
       actual_total: session.actual_total?.toString() || "",
+      currency: (session as any).currency || "USD",
     });
     setIsDialogOpen(true);
   };
@@ -128,6 +143,7 @@ export default function AdminGTW() {
       reveal_time: formData.reveal_time ? new Date(formData.reveal_time).toISOString() : null,
       status: formData.status,
       actual_total: formData.actual_total ? parseFloat(formData.actual_total) : null,
+      currency: formData.currency,
     };
 
     if (editingSession) {
@@ -159,7 +175,6 @@ export default function AdminGTW() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this session? All guesses will also be deleted.")) return;
 
-    // Delete guesses first
     await supabase.from("gtw_guesses").delete().eq("session_id", id);
     
     const { error } = await supabase.from("gtw_sessions").delete().eq("id", id);
@@ -211,7 +226,6 @@ export default function AdminGTW() {
     if (updateError) {
       toast({ title: "Error determining winner", description: updateError.message, variant: "destructive" });
     } else {
-      // Award points to winner
       const { data: profile } = await supabase
         .from("profiles")
         .select("points")
@@ -238,6 +252,10 @@ export default function AdminGTW() {
       case "ended": return "bg-muted text-muted-foreground";
       default: return "bg-secondary text-muted-foreground";
     }
+  };
+
+  const getCurrencySymbol = (currency: string | undefined) => {
+    return CURRENCIES.find(c => c.value === currency)?.symbol || "$";
   };
 
   if (isLoading) {
@@ -277,15 +295,35 @@ export default function AdminGTW() {
                   placeholder="Session title"
                 />
               </div>
-              <div>
-                <label className="text-sm font-medium">Pot Amount / Prize</label>
-                <input
-                  type="text"
-                  value={formData.pot_amount}
-                  onChange={(e) => setFormData({ ...formData, pot_amount: e.target.value })}
-                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                  placeholder="e.g. $10,000 or 1000 Points"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Pot Amount / Prize</label>
+                  <input
+                    type="text"
+                    value={formData.pot_amount}
+                    onChange={(e) => setFormData({ ...formData, pot_amount: e.target.value })}
+                    className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                    placeholder="e.g. $10,000"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm font-medium">Currency</Label>
+                  <Select
+                    value={formData.currency}
+                    onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CURRENCIES.map((currency) => (
+                        <SelectItem key={currency.value} value={currency.value}>
+                          {currency.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -355,7 +393,9 @@ export default function AdminGTW() {
             {viewingGuesses?.session.actual_total && (
               <div className="mb-4 p-3 bg-accent/10 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">Actual Total</p>
-                <p className="text-2xl font-bold text-accent">${Number(viewingGuesses.session.actual_total).toLocaleString()}</p>
+                <p className="text-2xl font-bold text-accent">
+                  {getCurrencySymbol((viewingGuesses.session as any).currency)}{Number(viewingGuesses.session.actual_total).toLocaleString()}
+                </p>
               </div>
             )}
             <div className="space-y-2">
@@ -364,6 +404,7 @@ export default function AdminGTW() {
                   ? Math.abs(Number(guess.guess_amount) - Number(viewingGuesses.session.actual_total))
                   : null;
                 const isWinner = guess.user_id === viewingGuesses.session.winner_id;
+                const symbol = getCurrencySymbol((viewingGuesses.session as any).currency);
                 
                 return (
                   <div
@@ -380,10 +421,10 @@ export default function AdminGTW() {
                       {isWinner && <Trophy className="w-4 h-4 text-yellow-500" />}
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">${Number(guess.guess_amount).toLocaleString()}</p>
+                      <p className="font-bold">{symbol}{Number(guess.guess_amount).toLocaleString()}</p>
                       {diff !== null && (
                         <p className="text-xs text-muted-foreground">
-                          {diff === 0 ? "Exact!" : `Off by $${diff.toLocaleString()}`}
+                          {diff === 0 ? "Exact!" : `Off by ${symbol}${diff.toLocaleString()}`}
                         </p>
                       )}
                     </div>
@@ -399,78 +440,85 @@ export default function AdminGTW() {
       </Dialog>
 
       <div className="space-y-4">
-        {sessions.map((session) => (
-          <motion.div
-            key={session.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-2xl p-6"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-bold">{session.title}</h3>
-                  <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(session.status)}`}>
-                    {session.status}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-muted-foreground">
-                  {session.pot_amount && (
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-primary" />
-                      <span>Pot: {session.pot_amount}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-accent" />
-                    <span>{sessionGuesses[session.id] || 0} guesses</span>
+        {sessions.map((session) => {
+          const symbol = getCurrencySymbol((session as any).currency);
+          
+          return (
+            <motion.div
+              key={session.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-xl font-bold">{session.title}</h3>
+                    <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(session.status)}`}>
+                      {session.status}
+                    </span>
+                    {(session as any).currency && (session as any).currency !== "USD" && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-secondary text-muted-foreground">
+                        {(session as any).currency}
+                      </span>
+                    )}
                   </div>
-                  {session.lock_time && (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm text-muted-foreground">
+                    {session.pot_amount && (
+                      <div className="flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-primary" />
+                        <span>Pot: {session.pot_amount}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>Lock: {new Date(session.lock_time).toLocaleString()}</span>
+                      <Users className="w-4 h-4 text-accent" />
+                      <span>{sessionGuesses[session.id] || 0} guesses</span>
                     </div>
-                  )}
-                  {session.actual_total && (
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-accent" />
-                      <span>Total: ${Number(session.actual_total).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {session.winning_guess && (
-                    <div className="flex items-center gap-2">
-                      <Award className="w-4 h-4 text-green-500" />
-                      <span>Winner: ${Number(session.winning_guess).toLocaleString()}</span>
-                    </div>
-                  )}
+                    {session.lock_time && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>Lock: {new Date(session.lock_time).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {session.actual_total && (
+                      <div className="flex items-center gap-2">
+                        <Target className="w-4 h-4 text-accent" />
+                        <span>Total: {symbol}{Number(session.actual_total).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {session.winning_guess && (
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-green-500" />
+                        <span>Winner: {symbol}{Number(session.winning_guess).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => fetchGuessesForSession(session)} className="gap-1">
-                  <Eye className="w-4 h-4" />
-                  Guesses
-                </Button>
-                {session.status !== "completed" && session.actual_total && (
-                  <Button variant="outline" size="sm" onClick={() => determineWinner(session)} className="gap-1">
-                    <Trophy className="w-4 h-4" />
-                    Pick Winner
+                <div className="flex items-center gap-2 ml-4">
+                  <Button variant="ghost" size="icon" onClick={() => fetchGuessesForSession(session)} title="View Guesses">
+                    <Eye className="w-4 h-4" />
                   </Button>
-                )}
-                <Button variant="ghost" size="icon" onClick={() => handleEdit(session)}>
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                {isAdmin && (
+                  {session.actual_total && !session.winner_id && (
+                    <Button variant="outline" size="sm" onClick={() => determineWinner(session)} className="gap-1">
+                      <Trophy className="w-4 h-4" />
+                      Pick Winner
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={() => handleEdit(session)}>
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(session.id)}>
                     <Trash2 className="w-4 h-4 text-destructive" />
                   </Button>
-                )}
+                </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
+
         {sessions.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            No GTW sessions found. Create one to get started!
+            No sessions created yet. Create your first GTW session!
           </div>
         )}
       </div>
