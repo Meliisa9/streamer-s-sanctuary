@@ -30,54 +30,13 @@ serve(async (req) => {
       );
     }
 
-    // Get redirect URL from request or use default
-    const redirectBase = url.searchParams.get("redirect_url") || url.origin;
-
     if (action === "authorize") {
       // Step 1: Generate Kick authorize URL
       const frontendUrl = url.searchParams.get("frontend_url") || "http://localhost:8080";
 
-      // IMPORTANT: Kick must be able to redirect back to this URL.
-      // localhost is not reachable from Kick, so for local dev you must use an HTTPS tunnel.
-      const callbackBaseRaw = (url.searchParams.get("callback_base") || SUPABASE_URL || "").trim();
-      if (!callbackBaseRaw) {
-        return new Response(
-          JSON.stringify({
-            error:
-              "Missing callback_base. Provide a public HTTPS base URL (use an ngrok/Cloudflare tunnel for local dev).",
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      let callbackBase: URL;
-      try {
-        callbackBase = new URL(callbackBaseRaw);
-      } catch {
-        return new Response(
-          JSON.stringify({ error: "Invalid callback_base URL." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (callbackBase.protocol !== "https:") {
-        return new Response(
-          JSON.stringify({ error: "callback_base must be https://" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (/localhost|127\.0\.0\.1/.test(callbackBase.hostname)) {
-        return new Response(
-          JSON.stringify({
-            error:
-              "Kick OAuth cannot redirect to localhost. Use an HTTPS tunnel URL as callback_base.",
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Always normalize to origin (users sometimes paste a full path).
-      const callbackUrl = `${callbackBase.origin}/functions/v1/kick-oauth?action=callback`;
+      // IMPORTANT: Kick must redirect back to a publicly reachable HTTPS URL.
+      // This backend function is already public, so we always use its own origin.
+      const callbackUrl = `${url.origin}/functions/v1/kick-oauth?action=callback`;
 
       // Encode frontend URL in state so we can redirect back after OAuth
       const state = btoa(JSON.stringify({ frontend_url: frontendUrl }));

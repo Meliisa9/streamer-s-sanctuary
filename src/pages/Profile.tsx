@@ -129,18 +129,8 @@ export default function Profile() {
     try {
       const frontendUrl = window.location.origin;
 
-      // Kick must be able to reach the callback URL (localhost won't work).
-      // For local dev, set a tunnel base URL in localStorage: kick_callback_base
-      const isLocalhost =
-        window.location.hostname === "localhost" || window.location.hostname === "127.0\.0\.1";
-      const callbackBase = (localStorage.getItem("kick_callback_base") || "").trim();
-      if (isLocalhost && !callbackBase) {
-        throw new Error(
-          'Kick OAuth cannot redirect back to localhost. Set localStorage key "kick_callback_base" to your HTTPS tunnel base (e.g. https://xxxx.ngrok-free.app) and try again.'
-        );
-      }
-
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}${callbackBase ? `&callback_base=${encodeURIComponent(callbackBase)}` : ""}`;
+      // Always use the deployed backend callback URL for Kick (works for localhost and public frontends)
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}`;
 
       const {
         data: { session },
@@ -585,9 +575,6 @@ export default function Profile() {
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Click "Connect" to link your accounts via OAuth. For Kick on localhost, use an HTTPS tunnel and set <code className="px-1 py-0.5 rounded bg-secondary/50">localStorage.kick_callback_base</code> to the tunnel base URL.
-                </p>
               </div>
             </TabsContent>
 
