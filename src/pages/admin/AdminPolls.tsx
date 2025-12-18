@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, X, Loader2, BarChart, Eye, Trophy, Users, TrendingUp } from "lucide-react";
+import { Plus, Pencil, Trash2, X, Loader2, BarChart, Eye, Trophy, Users, TrendingUp, CheckCircle, XCircle, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { Progress } from "@/components/ui/progress";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface Poll {
   id: string;
@@ -31,13 +37,6 @@ interface Poll {
   is_community?: boolean;
   is_approved?: boolean;
   created_by?: string;
-}
-
-interface PollVote {
-  poll_id: string;
-  option_index: number;
-  user_id: string;
-  created_at: string;
 }
 
 export default function AdminPolls() {
@@ -98,6 +97,8 @@ export default function AdminPolls() {
         is_multiple_choice: data.is_multiple_choice,
         ends_at: data.ends_at || null,
         created_by: user?.id,
+        is_community: false,
+        is_approved: true,
       }]);
       if (error) throw error;
     },
@@ -140,7 +141,6 @@ export default function AdminPolls() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      // Delete votes first
       await supabase.from("poll_votes").delete().eq("poll_id", id);
       const { error } = await supabase.from("polls").delete().eq("id", id);
       if (error) throw error;
@@ -152,6 +152,35 @@ export default function AdminPolls() {
     },
     onError: (error) => {
       toast({ title: "Error deleting poll", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("polls").update({ is_approved: true }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-polls"] });
+      toast({ title: "Poll approved!" });
+    },
+    onError: (error) => {
+      toast({ title: "Error approving poll", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("poll_votes").delete().eq("poll_id", id);
+      const { error } = await supabase.from("polls").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-polls"] });
+      toast({ title: "Poll rejected and deleted" });
+    },
+    onError: (error) => {
+      toast({ title: "Error rejecting poll", description: error.message, variant: "destructive" });
     },
   });
 
@@ -229,10 +258,121 @@ export default function AdminPolls() {
     return winningIndex >= 0 ? { option: poll.options[winningIndex], votes: maxVotes } : null;
   };
 
+  // Filter polls by type
+  const officialPolls = polls?.filter(p => !p.is_community) || [];
+  const communityPolls = polls?.filter(p => p.is_community && p.is_approved) || [];
+  const pendingPolls = polls?.filter(p => p.is_community && !p.is_approved) || [];
+
   // Stats
   const totalVotes = polls?.reduce((sum, poll) => sum + (poll.total_votes || 0), 0) || 0;
   const activePolls = polls?.filter(p => p.is_active).length || 0;
   const completedPolls = polls?.filter(p => !p.is_active).length || 0;
+
+  const renderPollCard = (poll: Poll, showApproveReject = false) => {
+    const winner = getWinningOption(poll);
+    
+    return (
+      <div key={poll.id} className="glass rounded-xl p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold">{poll.title}</h3>
+              <span className={`px-2 py-0.5 text-xs rounded-full ${poll.is_active ? "bg-green-500/20 text-green-400" : "bg-muted text-muted-foreground"}`}>
+                {poll.is_active ? "Active" : "Inactive"}
+              </span>
+              {poll.is_community && (
+                <span className="px-2 py-0.5 text-xs rounded-full bg-accent/20 text-accent">
+                  Community
+                </span>
+              )}
+            </div>
+            {poll.description && <p className="text-muted-foreground text-sm mb-3">{poll.description}</p>}
+            
+            <div className="flex flex-wrap gap-2 mb-3">
+              {poll.options.map((option, i) => {
+                const voteCount = getVoteCount(poll.id, i);
+                const isWinner = winner?.option === option && winner.votes > 0;
+                return (
+                  <span 
+                    key={i} 
+                    className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 ${
+                      isWinner ? "bg-primary/20 text-primary" : "bg-secondary"
+                    }`}
+                  >
+                    {isWinner && <Trophy className="w-3 h-3" />}
+                    {option} ({voteCount})
+                  </span>
+                );
+              })}
+            </div>
+            
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <BarChart className="w-4 h-4" />
+                {poll.total_votes} votes
+              </span>
+              {poll.ends_at && (
+                <span>Ends: {new Date(poll.ends_at).toLocaleDateString()}</span>
+              )}
+              {poll.is_multiple_choice && (
+                <span className="text-primary">Multiple choice</span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={() => setViewingPoll(poll)} title="View Results">
+              <Eye className="w-4 h-4" />
+            </Button>
+            {showApproveReject ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-green-500 border-green-500/30 hover:bg-green-500/10"
+                  onClick={() => approveMutation.mutate(poll.id)}
+                  disabled={approveMutation.isPending}
+                >
+                  <CheckCircle className="w-4 h-4 mr-1" />
+                  Approve
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => {
+                    if (confirm("Reject and delete this poll?")) {
+                      rejectMutation.mutate(poll.id);
+                    }
+                  }}
+                  disabled={rejectMutation.isPending}
+                >
+                  <XCircle className="w-4 h-4 mr-1" />
+                  Reject
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(poll)}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    if (confirm("Delete this poll and all votes?")) {
+                      deleteMutation.mutate(poll.id);
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -253,12 +393,12 @@ export default function AdminPolls() {
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
-              Create Poll
+              Create Official Poll
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingPoll ? "Edit Poll" : "Create New Poll"}</DialogTitle>
+              <DialogTitle>{editingPoll ? "Edit Poll" : "Create Official Poll"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
@@ -333,7 +473,7 @@ export default function AdminPolls() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="glass rounded-xl p-4 text-center">
           <BarChart className="w-6 h-6 mx-auto mb-2 text-primary" />
           <p className="text-2xl font-bold">{polls?.length || 0}</p>
@@ -353,6 +493,11 @@ export default function AdminPolls() {
           <Users className="w-6 h-6 mx-auto mb-2 text-accent" />
           <p className="text-2xl font-bold">{totalVotes.toLocaleString()}</p>
           <p className="text-sm text-muted-foreground">Total Votes</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <Clock className="w-6 h-6 mx-auto mb-2 text-amber-500" />
+          <p className="text-2xl font-bold">{pendingPolls.length}</p>
+          <p className="text-sm text-muted-foreground">Pending Review</p>
         </div>
       </div>
 
@@ -398,102 +543,69 @@ export default function AdminPolls() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid gap-4">
-        {polls?.map((poll) => {
-          const winner = getWinningOption(poll);
-          
-          return (
-            <div key={poll.id} className="glass rounded-xl p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-semibold">{poll.title}</h3>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${poll.is_active ? "bg-green-500/20 text-green-400" : "bg-muted text-muted-foreground"}`}>
-                      {poll.is_active ? "Active" : "Inactive"}
-                    </span>
-                    {poll.is_community && (
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${poll.is_approved ? "bg-accent/20 text-accent" : "bg-amber-500/20 text-amber-500"}`}>
-                        {poll.is_approved ? "Community" : "Pending Approval"}
-                      </span>
-                    )}
-                  </div>
-                  {poll.description && <p className="text-muted-foreground text-sm mb-3">{poll.description}</p>}
-                  
-                  {/* Options with vote counts */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {poll.options.map((option, i) => {
-                      const voteCount = getVoteCount(poll.id, i);
-                      const isWinner = winner?.option === option && winner.votes > 0;
-                      return (
-                        <span 
-                          key={i} 
-                          className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 ${
-                            isWinner ? "bg-primary/20 text-primary" : "bg-secondary"
-                          }`}
-                        >
-                          {isWinner && <Trophy className="w-3 h-3" />}
-                          {option} ({voteCount})
-                        </span>
-                      );
-                    })}
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <BarChart className="w-4 h-4" />
-                      {poll.total_votes} votes
-                    </span>
-                    {poll.ends_at && (
-                      <span>Ends: {new Date(poll.ends_at).toLocaleDateString()}</span>
-                    )}
-                    {poll.is_multiple_choice && (
-                      <span className="text-primary">Multiple choice</span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => setViewingPoll(poll)} title="View Results">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  {poll.is_community && !poll.is_approved && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="text-green-500 border-green-500/30 hover:bg-green-500/10"
-                      onClick={async () => {
-                        await supabase.from("polls").update({ is_approved: true }).eq("id", poll.id);
-                        queryClient.invalidateQueries({ queryKey: ["admin-polls"] });
-                        toast({ title: "Poll approved!" });
-                      }}
-                    >
-                      Approve
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(poll)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => {
-                      if (confirm("Delete this poll and all votes?")) {
-                        deleteMutation.mutate(poll.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {polls?.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            No polls created yet. Create your first poll to engage your community!
+      {/* Tabs for different poll types */}
+      <Tabs defaultValue="official" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="official" className="gap-2">
+            <BarChart className="w-4 h-4" />
+            Official Polls
+            <span className="ml-1 px-1.5 py-0.5 bg-secondary text-xs rounded">{officialPolls.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="community" className="gap-2">
+            <Users className="w-4 h-4" />
+            Community Polls
+            <span className="ml-1 px-1.5 py-0.5 bg-secondary text-xs rounded">{communityPolls.length}</span>
+          </TabsTrigger>
+          <TabsTrigger value="review" className="gap-2">
+            <Clock className="w-4 h-4" />
+            Review Polls
+            {pendingPolls.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-amber-500/20 text-amber-500 text-xs rounded">{pendingPolls.length}</span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="official" className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Official Polls</h2>
+            <p className="text-sm text-muted-foreground">Admin-created polls</p>
           </div>
-        )}
-      </div>
+          {officialPolls.map((poll) => renderPollCard(poll))}
+          {officialPolls.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground glass rounded-xl">
+              No official polls created yet. Create your first poll to engage your community!
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="community" className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Community Polls</h2>
+            <p className="text-sm text-muted-foreground">User-created polls (approved)</p>
+          </div>
+          {communityPolls.map((poll) => renderPollCard(poll))}
+          {communityPolls.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground glass rounded-xl">
+              No approved community polls yet.
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="review" className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Review Polls</h2>
+            <p className="text-sm text-muted-foreground">Community polls pending approval</p>
+          </div>
+          {pendingPolls.map((poll) => renderPollCard(poll, true))}
+          {pendingPolls.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground glass rounded-xl">
+              <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg">All caught up!</p>
+              <p className="text-sm">No polls pending review.</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
