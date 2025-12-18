@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
 
 export default function Leaderboard() {
+  const [period, setPeriod] = useState<"all" | "weekly" | "monthly">("all");
+
   const { data: profiles, isLoading } = useQuery({
-    queryKey: ["leaderboard-profiles"],
+    queryKey: ["leaderboard-profiles", period],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -81,7 +85,7 @@ export default function Leaderboard() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
+          className="mb-6"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             <span className="gradient-text-gold">Leaderboard</span>
@@ -90,6 +94,15 @@ export default function Leaderboard() {
             Top community members ranked by points and achievements
           </p>
         </motion.div>
+
+        {/* Period Tabs */}
+        <Tabs value={period} onValueChange={(v) => setPeriod(v as any)} className="mb-8">
+          <TabsList>
+            <TabsTrigger value="all">All Time</TabsTrigger>
+            <TabsTrigger value="weekly">Weekly</TabsTrigger>
+            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {isLoading ? (
           <div className="text-center py-20">Loading leaderboard...</div>

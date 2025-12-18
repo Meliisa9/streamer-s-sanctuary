@@ -52,6 +52,10 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminProfileSync from "./pages/admin/AdminProfileSync";
 import AdminActivityLog from "./pages/admin/AdminActivityLog";
 import AdminSendNotifications from "./pages/admin/AdminSendNotifications";
+import AdminUserBans from "./pages/admin/AdminUserBans";
+import AdminScheduledPosts from "./pages/admin/AdminScheduledPosts";
+import AdminModerationQueue from "./pages/admin/AdminModerationQueue";
+import AdminBulkActions from "./pages/admin/AdminBulkActions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +116,10 @@ const App = () => (
                   <Route path="settings/permissions" element={<AdminPermissions />} />
                   <Route path="settings/about" element={<AdminAbout />} />
                   <Route path="settings/notifications" element={<AdminSendNotifications />} />
+                  <Route path="settings/bans" element={<AdminUserBans />} />
+                  <Route path="settings/scheduled" element={<AdminScheduledPosts />} />
+                  <Route path="settings/moderation" element={<AdminModerationQueue />} />
+                  <Route path="settings/bulk-actions" element={<AdminBulkActions />} />
                   <Route path="audit" element={<AdminAuditLog />} />
                   <Route path="activity" element={<AdminActivityLog />} />
                 </Route>
