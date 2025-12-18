@@ -116,13 +116,9 @@ export function Sidebar() {
             </span>
           )}
           {item.badge && !collapsed && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse"
-            >
+            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse">
               {item.badge}
-            </motion.span>
+            </span>
           )}
         </motion.div>
       </NavLink>

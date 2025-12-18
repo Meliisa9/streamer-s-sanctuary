@@ -36,7 +36,7 @@ export default function Profile() {
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
   const { achievements, getAchievementProgress, stats, refreshAchievements, getLevelInfo } = useAchievements();
-  const { following } = useUserFollow(user?.id);
+  const { following, followers } = useUserFollow(user?.id);
   const { bookmarks, getBookmarksByType } = useBookmarks();
   
   const [formData, setFormData] = useState({
@@ -684,26 +684,63 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Following List */}
-                {following && following.length > 0 && (
-                  <div className="glass rounded-2xl p-6">
-                    <h3 className="font-semibold mb-4">Following ({following.length})</h3>
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                      {following.map((f) => (
+                {/* Followers List */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Followers ({profile?.followers_count || 0})</h3>
+                  {followers && followers.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
+                      {followers.map((f) => (
                         <Link
-                          key={f.following_id}
-                          to={`/user/${f.following_id}`}
-                          className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+                          key={f.follower_id}
+                          to={`/user/${f.profile?.username || f.follower_id}`}
+                          className="group"
+                          title={f.profile?.display_name || f.profile?.username || "User"}
                         >
-                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-                            <User className="w-4 h-4" />
+                          <div className="w-12 h-12 rounded-full bg-secondary border-2 border-transparent group-hover:border-primary transition-all overflow-hidden">
+                            {f.profile?.avatar_url ? (
+                              <img src={f.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
                           </div>
-                          <span className="text-sm">View Profile</span>
                         </Link>
                       ))}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No followers yet</p>
+                  )}
+                </div>
+
+                {/* Following List */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4">Following ({following?.length || 0})</h3>
+                  {following && following.length > 0 ? (
+                    <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
+                      {following.map((f) => (
+                        <Link
+                          key={f.following_id}
+                          to={`/user/${f.profile?.username || f.following_id}`}
+                          className="group"
+                          title={f.profile?.display_name || f.profile?.username || "User"}
+                        >
+                          <div className="w-12 h-12 rounded-full bg-secondary border-2 border-transparent group-hover:border-primary transition-all overflow-hidden">
+                            {f.profile?.avatar_url ? (
+                              <img src={f.profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <User className="w-5 h-5 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Not following anyone yet</p>
+                  )}
+                </div>
 
                 {/* Profile Comments */}
                 <div className="glass rounded-2xl p-6">

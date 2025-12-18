@@ -29,12 +29,15 @@ interface BonusHunt {
   id: string;
   title: string;
   date: string;
-  status: "ongoing" | "complete";
+  status: "ongoing" | "complete" | "to_be_played";
   target_balance: number | null;
   ending_balance: number | null;
   average_bet: number | null;
   highest_win: number | null;
   highest_multiplier: number | null;
+  starting_balance?: number | null;
+  currency?: string;
+  winner_points?: number;
 }
 
 interface BonusHuntSlot {
@@ -61,12 +64,15 @@ export default function AdminBonusHunt() {
   const [huntForm, setHuntForm] = useState({
     title: "",
     date: new Date().toISOString().split("T")[0],
-    status: "ongoing" as "ongoing" | "complete",
+    status: "to_be_played" as "ongoing" | "complete" | "to_be_played",
+    starting_balance: "",
     target_balance: "",
     ending_balance: "",
     average_bet: "",
     highest_win: "",
     highest_multiplier: "",
+    currency: "USD",
+    winner_points: "1000",
   });
 
   const [slotForm, setSlotForm] = useState({
@@ -110,12 +116,15 @@ export default function AdminBonusHunt() {
     setHuntForm({
       title: "",
       date: new Date().toISOString().split("T")[0],
-      status: "ongoing",
+      status: "to_be_played",
+      starting_balance: "",
       target_balance: "",
       ending_balance: "",
       average_bet: "",
       highest_win: "",
       highest_multiplier: "",
+      currency: "USD",
+      winner_points: "1000",
     });
     setEditingHunt(null);
   };
@@ -306,17 +315,77 @@ export default function AdminBonusHunt() {
                   <Label>Status</Label>
                   <Select
                     value={huntForm.status}
-                    onValueChange={(value: "ongoing" | "complete") => setHuntForm({ ...huntForm, status: value })}
+                    onValueChange={(value: "ongoing" | "complete" | "to_be_played") => setHuntForm({ ...huntForm, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="to_be_played">To Be Played</SelectItem>
                       <SelectItem value="ongoing">Ongoing</SelectItem>
                       <SelectItem value="complete">Complete</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label>Currency</Label>
+                  <Select
+                    value={huntForm.currency}
+                    onValueChange={(value) => setHuntForm({ ...huntForm, currency: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">$ USD</SelectItem>
+                      <SelectItem value="EUR">€ EUR</SelectItem>
+                      <SelectItem value="GBP">£ GBP</SelectItem>
+                      <SelectItem value="SEK">kr SEK</SelectItem>
+                      <SelectItem value="CAD">C$ CAD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Starting Balance</Label>
+                  <Input
+                    type="number"
+                    value={huntForm.starting_balance}
+                    onChange={(e) => setHuntForm({ ...huntForm, starting_balance: e.target.value })}
+                    placeholder="5000"
+                  />
+                </div>
+                <div>
+                  <Label>Target Balance</Label>
+                  <Input
+                    type="number"
+                    value={huntForm.target_balance}
+                    onChange={(e) => setHuntForm({ ...huntForm, target_balance: e.target.value })}
+                    placeholder="10000"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Ending Balance</Label>
+                  <Input
+                    type="number"
+                    value={huntForm.ending_balance}
+                    onChange={(e) => setHuntForm({ ...huntForm, ending_balance: e.target.value })}
+                    placeholder="15000"
+                  />
+                </div>
+                <div>
+                  <Label>Winner Points Award</Label>
+                  <Input
+                    type="number"
+                    value={huntForm.winner_points}
+                    onChange={(e) => setHuntForm({ ...huntForm, winner_points: e.target.value })}
+                    placeholder="1000"
+                  />
+                </div>
+              </div>
                 <div>
                   <Label>Target Balance</Label>
                   <Input
@@ -396,7 +465,10 @@ export default function AdminBonusHunt() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-3 h-3 rounded-full ${hunt.status === "ongoing" ? "bg-green-500 animate-pulse" : "bg-muted"}`} />
+                <div className={`w-3 h-3 rounded-full ${
+                  hunt.status === "ongoing" ? "bg-green-500 animate-pulse" : 
+                  hunt.status === "to_be_played" ? "bg-amber-500" : "bg-muted"
+                }`} />
                 <div>
                   <h3 className="font-semibold">{hunt.title}</h3>
                   <p className="text-sm text-muted-foreground">{new Date(hunt.date).toLocaleDateString()}</p>
