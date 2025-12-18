@@ -132,7 +132,7 @@ export default function Profile() {
       // Kick must be able to reach the callback URL (localhost won't work).
       // For local dev, set a tunnel base URL in localStorage: kick_callback_base
       const isLocalhost =
-        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+        window.location.hostname === "localhost" || window.location.hostname === "127.0\.0\.1";
       const callbackBase = (localStorage.getItem("kick_callback_base") || "").trim();
       if (isLocalhost && !callbackBase) {
         throw new Error(
@@ -156,7 +156,6 @@ export default function Profile() {
         },
       });
 
-      // Prefer reading raw text first so we can surface useful errors even if JSON parsing fails
       const raw = await response.text();
       let data: any = null;
       try {
@@ -170,14 +169,30 @@ export default function Profile() {
         throw new Error(`Kick authorize failed: ${detail}`);
       }
 
-      if (data?.authorize_url) {
-        window.location.href = data.authorize_url;
-        return;
+      const authorizeUrl: string | undefined = data?.authorize_url;
+      if (!authorizeUrl) {
+        throw new Error(`Kick authorize response missing authorize_url. Received: ${raw || "<empty>"}`);
       }
 
-      throw new Error(
-        `Kick authorize response missing authorize_url. Received: ${raw || "<empty>"}`
-      );
+      // Guard against the "blank" redirect symptom (Kick root) which indicates params were rejected.
+      try {
+        const parsed = new URL(authorizeUrl);
+        const looksValid =
+          parsed.origin === "https://id.kick.com" &&
+          parsed.pathname.startsWith("/oauth/authorize") &&
+          !!parsed.searchParams.get("client_id") &&
+          !!parsed.searchParams.get("redirect_uri");
+
+        if (!looksValid) {
+          throw new Error(
+            `Kick authorize_url looks invalid. Got: ${authorizeUrl}. Check client_id + redirect_uri in your Kick app settings.`
+          );
+        }
+      } catch (e: any) {
+        throw new Error(e?.message || `Invalid authorize_url: ${authorizeUrl}`);
+      }
+
+      window.location.assign(authorizeUrl);
     } catch (error: any) {
       toast({ title: "Failed to connect Kick", description: error.message, variant: "destructive" });
       setConnectingProvider(null);
