@@ -1,21 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDailySignIn } from "@/hooks/useDailySignIn";
 import { useAchievements } from "@/hooks/useAchievements";
 
-// This component runs in the background to handle daily rewards and achievement checking
+// This component runs in the background to handle achievement checking sparingly
 export function DailyRewardsManager() {
   const { user, profile } = useAuth();
-  const { claimDailyReward, consecutiveDays, hasClaimedToday } = useDailySignIn();
+  const { consecutiveDays } = useDailySignIn();
   const { refreshAchievements } = useAchievements();
+  const lastCheckedDays = useRef<number | null>(null);
 
-  // Refresh achievements when consecutive days change (new sign-in streak milestone)
+  // Only refresh achievements when consecutive days actually increases (not on every render)
   useEffect(() => {
-    if (user && profile && consecutiveDays > 0) {
-      refreshAchievements();
+    if (user && profile && consecutiveDays > 0 && lastCheckedDays.current !== consecutiveDays) {
+      lastCheckedDays.current = consecutiveDays;
+      // Delay to prevent blocking
+      const timer = setTimeout(() => {
+        refreshAchievements();
+      }, 2000);
+      return () => clearTimeout(timer);
     }
-  }, [consecutiveDays, user, profile, refreshAchievements]);
+  }, [consecutiveDays, user?.id, profile?.id]);
 
-  // This component doesn't render anything visible
   return null;
 }

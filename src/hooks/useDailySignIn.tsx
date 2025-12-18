@@ -133,10 +133,13 @@ export function useDailySignIn() {
     }
   }, [user, profile, signInData, hasClaimedToday, refreshProfile, toast]);
 
-  // Auto-claim on first load if logged in
+  // Fetch on mount when user changes
   useEffect(() => {
-    fetchSignInData();
-  }, [fetchSignInData]);
+    if (user) {
+      fetchSignInData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Note: Auto-claim removed - now handled by DailyRewardPopup for better UX
 

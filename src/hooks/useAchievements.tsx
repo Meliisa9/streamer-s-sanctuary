@@ -219,16 +219,17 @@ export function useAchievements() {
     }
   }, [user, profile, stats, userAchievements, toast, fetchUserAchievements, awardXP]);
 
+  // Only run on mount and when user changes
   useEffect(() => {
-    fetchUserAchievements();
-    fetchStats();
-  }, [fetchUserAchievements, fetchStats]);
-
-  useEffect(() => {
-    if (stats.giveawayEntries > 0 || stats.comments > 0 || stats.pollVotes > 0 || stats.gtwGuesses > 0 || stats.consecutiveSignIns > 0) {
-      checkAndUnlockAchievements();
+    if (user) {
+      fetchUserAchievements();
+      fetchStats();
     }
-  }, [stats, checkAndUnlockAchievements]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  // Check achievements only when explicitly called via refreshAchievements
+  // NOT automatically on stats change to prevent infinite loops
 
   const getAchievementProgress = (achievementKey: string): { unlocked: boolean; progress: number; requirement: number } => {
     const achievement = ACHIEVEMENTS.find(a => a.key === achievementKey);
@@ -304,9 +305,11 @@ export function useAchievements() {
     stats,
     getAchievementProgress,
     getLevelInfo,
-    refreshAchievements: () => {
-      fetchUserAchievements();
-      fetchStats();
+    refreshAchievements: async () => {
+      await fetchStats();
+      await fetchUserAchievements();
+      // Only check achievements when explicitly requested
+      checkAndUnlockAchievements();
     },
   };
 }

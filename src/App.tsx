@@ -56,9 +56,21 @@ import AdminUserBans from "./pages/admin/AdminUserBans";
 import AdminScheduledPosts from "./pages/admin/AdminScheduledPosts";
 import AdminModerationQueue from "./pages/admin/AdminModerationQueue";
 import AdminBulkActions from "./pages/admin/AdminBulkActions";
+import BonusHunt from "./pages/BonusHunt";
+import UserProfile from "./pages/UserProfile";
+import AdminBonusHunt from "./pages/admin/AdminBonusHunt";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -93,6 +105,8 @@ const App = () => (
                 <Route path="/responsible-gambling" element={<ResponsibleGambling />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/achievements" element={<Achievements />} />
+                <Route path="/bonus-hunt" element={<BonusHunt />} />
+                <Route path="/user/:userId" element={<UserProfile />} />
                 
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
@@ -120,6 +134,7 @@ const App = () => (
                   <Route path="settings/scheduled" element={<AdminScheduledPosts />} />
                   <Route path="settings/moderation" element={<AdminModerationQueue />} />
                   <Route path="settings/bulk-actions" element={<AdminBulkActions />} />
+                  <Route path="bonus-hunt" element={<AdminBonusHunt />} />
                   <Route path="audit" element={<AdminAuditLog />} />
                   <Route path="activity" element={<AdminActivityLog />} />
                 </Route>
