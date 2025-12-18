@@ -291,14 +291,14 @@ export default function AdminEvents() {
                 <div className="space-y-2">
                   <Label>Start Time</Label>
                   <Select
-                    value={formData.event_time}
-                    onValueChange={(value) => setFormData({ ...formData, event_time: value })}
+                    value={formData.event_time || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, event_time: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      <SelectItem value="">No specific time</SelectItem>
+                      <SelectItem value="none">No specific time</SelectItem>
                       {timeOptions.map((time) => (
                         <SelectItem key={time} value={time}>{time}</SelectItem>
                       ))}
@@ -308,14 +308,14 @@ export default function AdminEvents() {
                 <div className="space-y-2">
                   <Label>End Time</Label>
                   <Select
-                    value={formData.end_time}
-                    onValueChange={(value) => setFormData({ ...formData, end_time: value })}
+                    value={formData.end_time || "none"}
+                    onValueChange={(value) => setFormData({ ...formData, end_time: value === "none" ? "" : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select time" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[200px]">
-                      <SelectItem value="">No end time</SelectItem>
+                      <SelectItem value="none">No end time</SelectItem>
                       {timeOptions.map((time) => (
                         <SelectItem key={time} value={time}>{time}</SelectItem>
                       ))}
