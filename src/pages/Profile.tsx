@@ -129,8 +129,17 @@ export default function Profile() {
     try {
       const frontendUrl = window.location.origin;
 
-      // Always use the deployed backend callback URL for Kick (works for localhost and public frontends)
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}`;
+      const isLocalhost =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const callbackBase = (localStorage.getItem("kick_callback_base") || "").trim();
+
+      if (isLocalhost && !callbackBase) {
+        throw new Error(
+          'For localhost, set localStorage key "kick_callback_base" to your ngrok/HTTPS tunnel base URL (e.g. https://xxxx.ngrok-free.app).'
+        );
+      }
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}${callbackBase ? `&callback_base=${encodeURIComponent(callbackBase)}` : ""}`;
 
       const {
         data: { session },
