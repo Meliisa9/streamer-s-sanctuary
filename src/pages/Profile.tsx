@@ -128,17 +128,35 @@ export default function Profile() {
     setConnectingProvider("kick");
     try {
       const frontendUrl = window.location.origin;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}`,
-        { headers: { "Content-Type": "application/json" } }
-      );
-      const data = await response.json();
-      
-      if (data.authorize_url) {
-        window.location.href = data.authorize_url;
-      } else {
-        throw new Error(data.error || "Failed to get authorization URL");
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}`;
+
+      const response = await fetch(url, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      // Prefer reading raw text first so we can surface useful errors even if JSON parsing fails
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
       }
+
+      if (!response.ok) {
+        const detail = data?.error || raw || `HTTP ${response.status}`;
+        throw new Error(`Kick authorize failed: ${detail}`);
+      }
+
+      if (data?.authorize_url) {
+        window.location.href = data.authorize_url;
+        return;
+      }
+
+      // Helpful fallback when the function returns JSON but not in the expected shape
+      throw new Error(
+        `Kick authorize response missing authorize_url. Received: ${raw || "<empty>"}`
+      );
     } catch (error: any) {
       toast({ title: "Failed to connect Kick", description: error.message, variant: "destructive" });
       setConnectingProvider(null);
