@@ -110,18 +110,11 @@ export function Sidebar() {
             />
           )}
           <Icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-primary")} />
-          <AnimatePresence mode="wait">
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: "auto" }}
-                exit={{ opacity: 0, width: 0 }}
-                className="font-medium whitespace-nowrap overflow-hidden"
-              >
-                {item.label}
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {!collapsed && (
+            <span className="font-medium whitespace-nowrap overflow-hidden">
+              {item.label}
+            </span>
+          )}
           {item.badge && !collapsed && (
             <motion.span
               initial={{ scale: 0 }}
@@ -161,21 +154,14 @@ export function Sidebar() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center flex-shrink-0">
               <span className="text-xl font-bold text-primary-foreground">{settings.site_name.charAt(0)}</span>
             </div>
-            <AnimatePresence mode="wait">
-              {!collapsed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="overflow-hidden"
-                >
-                  <h1 className="font-space-grotesk font-bold text-lg text-foreground leading-tight">
-                    {settings.site_name}
-                  </h1>
-                  <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {!collapsed && (
+              <div className="overflow-hidden">
+                <h1 className="font-space-grotesk font-bold text-lg text-foreground leading-tight">
+                  {settings.site_name}
+                </h1>
+                <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
+              </div>
+            )}
           </>
         )}
       </NavLink>
@@ -192,13 +178,9 @@ export function Sidebar() {
         {visibleCommunityItems.length > 0 && (
           <div className="pt-6">
             {!collapsed && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3"
-              >
+              <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Community
-              </motion.p>
+              </p>
             )}
             <div className="space-y-1">
               {visibleCommunityItems.map((item) => (
@@ -212,13 +194,9 @@ export function Sidebar() {
         {(isModerator || isWriter) && (
           <div className="pt-6">
             {!collapsed && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3"
-              >
+              <p className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Admin
-              </motion.p>
+              </p>
             )}
             <div className="space-y-1">
               {adminNavItems.map((item) => (

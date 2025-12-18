@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 import { AdminCodeGate } from "@/components/admin/AdminCodeGate";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 
+import { Crosshair } from "lucide-react";
+
 const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["admin", "moderator"] },
   { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["admin"] },
@@ -34,6 +36,7 @@ const adminNavItems = [
   { icon: Gift, label: "Giveaways", path: "/admin/giveaways", roles: ["admin", "moderator"] },
   { icon: Calendar, label: "Events", path: "/admin/events", roles: ["admin", "moderator"] },
   { icon: Target, label: "GTW Sessions", path: "/admin/gtw", roles: ["admin", "moderator"] },
+  { icon: Crosshair, label: "Bonus Hunt", path: "/admin/bonus-hunt", roles: ["admin", "moderator"] },
   { icon: BarChart, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
   { icon: Users, label: "Streamers", path: "/admin/streamers", roles: ["admin", "moderator"] },
   { icon: Tv, label: "Stream", path: "/admin/stream", roles: ["admin", "moderator"] },

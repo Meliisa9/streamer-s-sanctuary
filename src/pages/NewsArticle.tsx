@@ -264,6 +264,15 @@ export default function NewsArticlePage() {
       
       const isLiked = commentLikes[commentId];
       
+      // First get the current likes count from the database
+      const { data: currentComment } = await supabase
+        .from("news_comments")
+        .select("likes_count")
+        .eq("id", commentId)
+        .single();
+      
+      const currentLikesCount = currentComment?.likes_count || 0;
+      
       if (isLiked) {
         await supabase
           .from("comment_likes")
@@ -271,25 +280,19 @@ export default function NewsArticlePage() {
           .eq("comment_id", commentId)
           .eq("user_id", user.id);
 
-        const comment = comments.find(c => c.id === commentId);
-        if (comment) {
-          await supabase
-            .from("news_comments")
-            .update({ likes_count: Math.max(0, (comment.likes_count || 0) - 1) })
-            .eq("id", commentId);
-        }
+        await supabase
+          .from("news_comments")
+          .update({ likes_count: Math.max(0, currentLikesCount - 1) })
+          .eq("id", commentId);
       } else {
         await supabase
           .from("comment_likes")
           .insert({ comment_id: commentId, user_id: user.id });
 
-        const comment = comments.find(c => c.id === commentId);
-        if (comment) {
-          await supabase
-            .from("news_comments")
-            .update({ likes_count: (comment.likes_count || 0) + 1 })
-            .eq("id", commentId);
-        }
+        await supabase
+          .from("news_comments")
+          .update({ likes_count: currentLikesCount + 1 })
+          .eq("id", commentId);
       }
       
       return { commentId, wasLiked: isLiked };

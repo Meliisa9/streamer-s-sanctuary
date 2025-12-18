@@ -12,15 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { useAchievements, ACHIEVEMENTS, LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
+import { useQuery } from "@tanstack/react-query";
 import { 
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
-  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users, Bookmark
+  MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users, Bookmark,
+  Video, Newspaper
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useUserFollow } from "@/hooks/useUserFollow";
 import { ProfileComments } from "@/components/ProfileComments";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { FollowersModal } from "@/components/FollowersModal";
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -30,6 +33,8 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
   const { achievements, getAchievementProgress, stats, refreshAchievements, getLevelInfo } = useAchievements();
   const { following } = useUserFollow(user?.id);
   const { bookmarks, getBookmarksByType } = useBookmarks();
@@ -39,6 +44,53 @@ export default function Profile() {
     display_name: "",
     bio: "",
     avatar_url: "",
+  });
+
+  // Fetch bookmarked content details
+  const videoBookmarks = getBookmarksByType("video");
+  const articleBookmarks = getBookmarksByType("article");
+  const giveawayBookmarks = getBookmarksByType("giveaway");
+
+  const { data: bookmarkedVideos } = useQuery({
+    queryKey: ["bookmarked-videos", videoBookmarks.map(b => b.content_id)],
+    queryFn: async () => {
+      if (videoBookmarks.length === 0) return [];
+      const { data, error } = await supabase
+        .from("videos")
+        .select("id, title, thumbnail_url, video_url, created_at")
+        .in("id", videoBookmarks.map(b => b.content_id));
+      if (error) throw error;
+      return data;
+    },
+    enabled: videoBookmarks.length > 0,
+  });
+
+  const { data: bookmarkedArticles } = useQuery({
+    queryKey: ["bookmarked-articles", articleBookmarks.map(b => b.content_id)],
+    queryFn: async () => {
+      if (articleBookmarks.length === 0) return [];
+      const { data, error } = await supabase
+        .from("news_articles")
+        .select("id, title, image_url, slug, created_at")
+        .in("id", articleBookmarks.map(b => b.content_id));
+      if (error) throw error;
+      return data;
+    },
+    enabled: articleBookmarks.length > 0,
+  });
+
+  const { data: bookmarkedGiveaways } = useQuery({
+    queryKey: ["bookmarked-giveaways", giveawayBookmarks.map(b => b.content_id)],
+    queryFn: async () => {
+      if (giveawayBookmarks.length === 0) return [];
+      const { data, error } = await supabase
+        .from("giveaways")
+        .select("id, title, image_url, prize, end_date")
+        .in("id", giveawayBookmarks.map(b => b.content_id));
+      if (error) throw error;
+      return data;
+    },
+    enabled: giveawayBookmarks.length > 0,
   });
 
   // Handle Kick OAuth callback
@@ -324,14 +376,20 @@ export default function Profile() {
                   <p className="text-2xl font-bold text-orange-500">{stats.consecutiveSignIns}</p>
                   <p className="text-xs text-muted-foreground">🔥 Streak</p>
                 </div>
-                <div className="text-center">
+                <button 
+                  onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
+                  className="text-center hover:opacity-80 transition-opacity cursor-pointer"
+                >
                   <p className="text-2xl font-bold">{profile?.followers_count || 0}</p>
                   <p className="text-xs text-muted-foreground">Followers</p>
-                </div>
-                <div className="text-center">
+                </button>
+                <button 
+                  onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
+                  className="text-center hover:opacity-80 transition-opacity cursor-pointer"
+                >
                   <p className="text-2xl font-bold">{profile?.following_count || 0}</p>
                   <p className="text-xs text-muted-foreground">Following</p>
-                </div>
+                </button>
                 <div className="text-center">
                   <p className="text-2xl font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
                   <p className="text-xs text-muted-foreground">Achievements</p>
@@ -659,19 +717,30 @@ export default function Profile() {
               <div className="space-y-6">
                 {/* Video Bookmarks */}
                 <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Saved Videos ({getBookmarksByType("video").length})</h3>
-                  {getBookmarksByType("video").length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {getBookmarksByType("video").map((b) => (
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Video className="w-4 h-4 text-primary" />
+                    Saved Videos ({videoBookmarks.length})
+                  </h3>
+                  {bookmarkedVideos && bookmarkedVideos.length > 0 ? (
+                    <div className="space-y-2">
+                      {bookmarkedVideos.map((v) => (
                         <Link
-                          key={b.id}
+                          key={v.id}
                           to="/videos"
-                          className="p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                          className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
                         >
-                          <p className="text-sm text-muted-foreground">Video saved on {new Date(b.created_at).toLocaleDateString()}</p>
+                          {v.thumbnail_url && (
+                            <img src={v.thumbnail_url} alt={v.title} className="w-16 h-10 rounded object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{v.title}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</p>
+                          </div>
                         </Link>
                       ))}
                     </div>
+                  ) : videoBookmarks.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">No saved videos yet</p>
                   )}
@@ -679,19 +748,30 @@ export default function Profile() {
 
                 {/* Article Bookmarks */}
                 <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Saved Articles ({getBookmarksByType("article").length})</h3>
-                  {getBookmarksByType("article").length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {getBookmarksByType("article").map((b) => (
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Newspaper className="w-4 h-4 text-primary" />
+                    Saved Articles ({articleBookmarks.length})
+                  </h3>
+                  {bookmarkedArticles && bookmarkedArticles.length > 0 ? (
+                    <div className="space-y-2">
+                      {bookmarkedArticles.map((a) => (
                         <Link
-                          key={b.id}
-                          to="/news"
-                          className="p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                          key={a.id}
+                          to={`/news/${a.slug}`}
+                          className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
                         >
-                          <p className="text-sm text-muted-foreground">Article saved on {new Date(b.created_at).toLocaleDateString()}</p>
+                          {a.image_url && (
+                            <img src={a.image_url} alt={a.title} className="w-12 h-12 rounded object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{a.title}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</p>
+                          </div>
                         </Link>
                       ))}
                     </div>
+                  ) : articleBookmarks.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">No saved articles yet</p>
                   )}
@@ -699,19 +779,30 @@ export default function Profile() {
 
                 {/* Giveaway Bookmarks */}
                 <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Saved Giveaways ({getBookmarksByType("giveaway").length})</h3>
-                  {getBookmarksByType("giveaway").length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {getBookmarksByType("giveaway").map((b) => (
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-primary" />
+                    Saved Giveaways ({giveawayBookmarks.length})
+                  </h3>
+                  {bookmarkedGiveaways && bookmarkedGiveaways.length > 0 ? (
+                    <div className="space-y-2">
+                      {bookmarkedGiveaways.map((g) => (
                         <Link
-                          key={b.id}
+                          key={g.id}
                           to="/giveaways"
-                          className="p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                          className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
                         >
-                          <p className="text-sm text-muted-foreground">Giveaway saved on {new Date(b.created_at).toLocaleDateString()}</p>
+                          {g.image_url && (
+                            <img src={g.image_url} alt={g.title} className="w-12 h-12 rounded object-cover flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{g.title}</p>
+                            <p className="text-xs text-muted-foreground">{g.prize}</p>
+                          </div>
                         </Link>
                       ))}
                     </div>
+                  ) : giveawayBookmarks.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">Loading...</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">No saved giveaways yet</p>
                   )}
@@ -822,6 +913,16 @@ export default function Profile() {
             </TabsContent>
           </Tabs>
         </motion.div>
+
+        {/* Followers Modal */}
+        {user && (
+          <FollowersModal
+            isOpen={followersModalOpen}
+            onClose={() => setFollowersModalOpen(false)}
+            userId={user.id}
+            initialTab={followersModalTab}
+          />
+        )}
       </div>
     </div>
   );

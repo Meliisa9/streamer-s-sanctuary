@@ -45,6 +45,7 @@ export default function AdminGTW() {
     status: "upcoming" as string,
     actual_total: "",
     currency: "USD",
+    winner_points: "1000",
   });
   const { toast } = useToast();
   const { isAdmin, isModerator } = useAuth();
@@ -111,6 +112,7 @@ export default function AdminGTW() {
       status: "upcoming",
       actual_total: "",
       currency: "USD",
+      winner_points: "1000",
     });
     setEditingSession(null);
     setIsDialogOpen(false);
@@ -126,6 +128,7 @@ export default function AdminGTW() {
       status: session.status || "upcoming",
       actual_total: session.actual_total?.toString() || "",
       currency: (session as any).currency || "USD",
+      winner_points: "1000",
     });
     setIsDialogOpen(true);
   };
@@ -226,6 +229,8 @@ export default function AdminGTW() {
     if (updateError) {
       toast({ title: "Error determining winner", description: updateError.message, variant: "destructive" });
     } else {
+      const pointsToAward = parseInt(formData.winner_points) || 1000;
+      
       const { data: profile } = await supabase
         .from("profiles")
         .select("points")
@@ -235,11 +240,11 @@ export default function AdminGTW() {
       if (profile) {
         await supabase
           .from("profiles")
-          .update({ points: (profile.points || 0) + 1000 })
+          .update({ points: (profile.points || 0) + pointsToAward })
           .eq("user_id", winner.user_id);
       }
 
-      toast({ title: "Winner determined!", description: `Closest guess: $${Number(winner.guess_amount).toLocaleString()} - Awarded 1000 points!` });
+      toast({ title: "Winner determined!", description: `Closest guess: $${Number(winner.guess_amount).toLocaleString()} - Awarded ${pointsToAward} points!` });
       fetchSessions();
     }
   };
@@ -368,6 +373,16 @@ export default function AdminGTW() {
                   onChange={(e) => setFormData({ ...formData, actual_total: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
                   placeholder="Enter actual total to determine winner"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Winner Points Award</label>
+                <input
+                  type="number"
+                  value={formData.winner_points}
+                  onChange={(e) => setFormData({ ...formData, winner_points: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="Points to award winner (default: 1000)"
                 />
               </div>
               <div className="flex gap-3 pt-4">
