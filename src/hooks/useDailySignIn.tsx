@@ -138,16 +138,7 @@ export function useDailySignIn() {
     fetchSignInData();
   }, [fetchSignInData]);
 
-  // Attempt to auto-claim when user logs in
-  useEffect(() => {
-    if (user && profile && signInData !== null && !hasClaimedToday) {
-      // Small delay to ensure everything is loaded
-      const timer = setTimeout(() => {
-        claimDailyReward();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [user, profile, signInData, hasClaimedToday, claimDailyReward]);
+  // Note: Auto-claim removed - now handled by DailyRewardPopup for better UX
 
   return {
     signInData,

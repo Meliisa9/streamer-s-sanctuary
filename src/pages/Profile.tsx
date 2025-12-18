@@ -316,6 +316,10 @@ export default function Profile() {
                   <p className="text-xs text-muted-foreground">Points</p>
                 </div>
                 <div className="text-center">
+                  <p className="text-2xl font-bold text-orange-500">{stats.consecutiveSignIns}</p>
+                  <p className="text-xs text-muted-foreground">🔥 Streak</p>
+                </div>
+                <div className="text-center">
                   <p className="text-2xl font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
                   <p className="text-xs text-muted-foreground">Achievements</p>
                 </div>

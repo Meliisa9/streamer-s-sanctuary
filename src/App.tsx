@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DailyRewardsManager } from "@/components/DailyRewardsManager";
+import { DailyRewardPopup } from "@/components/DailyRewardPopup";
 import Index from "./pages/Index";
 import Videos from "./pages/Videos";
 import Bonuses from "./pages/Bonuses";
@@ -25,6 +26,7 @@ import TermsOfService from "./pages/TermsOfService";
 import CookiePolicy from "./pages/CookiePolicy";
 import ResponsibleGambling from "./pages/ResponsibleGambling";
 import Profile from "./pages/Profile";
+import Achievements from "./pages/Achievements";
 import Auth from "./pages/Auth";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -60,6 +62,7 @@ const App = () => (
       <SiteSettingsProvider>
         <TooltipProvider>
           <DailyRewardsManager />
+          <DailyRewardPopup />
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -85,6 +88,7 @@ const App = () => (
                 <Route path="/cookies" element={<CookiePolicy />} />
                 <Route path="/responsible-gambling" element={<ResponsibleGambling />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/achievements" element={<Achievements />} />
                 
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />

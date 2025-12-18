@@ -49,10 +49,14 @@ export function AdminNotifications() {
     };
   }, []);
 
+  // Important notification types that admins/mods should see
+  const IMPORTANT_TYPES = ['signup', 'article_created', 'article_published', 'giveaway_entry', 'report', 'admin_action', 'system'];
+
   const fetchNotifications = async () => {
     const { data, error } = await supabase
       .from("admin_notifications")
       .select("*")
+      .in("type", IMPORTANT_TYPES)
       .order("created_at", { ascending: false })
       .limit(50);
 
