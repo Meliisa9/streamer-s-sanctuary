@@ -242,11 +242,14 @@ export default function AdminBonusHunt() {
       title: hunt.title,
       date: hunt.date,
       status: hunt.status,
+      starting_balance: hunt.starting_balance?.toString() || "",
       target_balance: hunt.target_balance?.toString() || "",
       ending_balance: hunt.ending_balance?.toString() || "",
       average_bet: hunt.average_bet?.toString() || "",
       highest_win: hunt.highest_win?.toString() || "",
       highest_multiplier: hunt.highest_multiplier?.toString() || "",
+      currency: hunt.currency || "USD",
+      winner_points: hunt.winner_points?.toString() || "1000",
     });
     setIsHuntDialogOpen(true);
   };
@@ -377,42 +380,23 @@ export default function AdminBonusHunt() {
                   />
                 </div>
                 <div>
-                  <Label>Winner Points Award</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.winner_points}
-                    onChange={(e) => setHuntForm({ ...huntForm, winner_points: e.target.value })}
-                    placeholder="1000"
-                  />
-                </div>
-              </div>
-                <div>
-                  <Label>Target Balance</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.target_balance}
-                    onChange={(e) => setHuntForm({ ...huntForm, target_balance: e.target.value })}
-                    placeholder="10000"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Ending Balance</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.ending_balance}
-                    onChange={(e) => setHuntForm({ ...huntForm, ending_balance: e.target.value })}
-                    placeholder="15000"
-                  />
-                </div>
-                <div>
                   <Label>Average Bet</Label>
                   <Input
                     type="number"
                     value={huntForm.average_bet}
                     onChange={(e) => setHuntForm({ ...huntForm, average_bet: e.target.value })}
                     placeholder="5"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Winner Points Award</Label>
+                  <Input
+                    type="number"
+                    value={huntForm.winner_points}
+                    onChange={(e) => setHuntForm({ ...huntForm, winner_points: e.target.value })}
+                    placeholder="1000"
                   />
                 </div>
               </div>
