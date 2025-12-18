@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Target, Users, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface AboutSettings {
   about_title: string;
@@ -98,7 +99,7 @@ export default function About() {
         >
           <div
             className="prose prose-invert max-w-none prose-headings:text-foreground prose-p:text-muted-foreground prose-a:text-primary prose-strong:text-foreground prose-img:rounded-xl prose-video:rounded-xl"
-            dangerouslySetInnerHTML={{ __html: settings.about_content || defaultSettings.about_content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.about_content || defaultSettings.about_content) }}
           />
         </motion.div>
 

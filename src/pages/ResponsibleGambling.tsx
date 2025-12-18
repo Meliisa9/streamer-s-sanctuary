@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function ResponsibleGambling() {
   const { data: content, isLoading } = useQuery({
@@ -56,7 +57,7 @@ export default function ResponsibleGambling() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="glass rounded-2xl p-8 prose prose-invert max-w-none"
-          dangerouslySetInnerHTML={{ __html: content || defaultContent }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
         />
       )}
     </div>
