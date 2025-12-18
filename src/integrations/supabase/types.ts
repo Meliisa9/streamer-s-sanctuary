@@ -220,43 +220,52 @@ export type Database = {
           average_bet: number | null
           created_at: string
           created_by: string | null
+          currency: string | null
           date: string
           ending_balance: number | null
           highest_multiplier: number | null
           highest_win: number | null
           id: string
+          starting_balance: number | null
           status: string
           target_balance: number | null
           title: string
           updated_at: string
+          winner_points: number | null
         }
         Insert: {
           average_bet?: number | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           date?: string
           ending_balance?: number | null
           highest_multiplier?: number | null
           highest_win?: number | null
           id?: string
+          starting_balance?: number | null
           status?: string
           target_balance?: number | null
           title: string
           updated_at?: string
+          winner_points?: number | null
         }
         Update: {
           average_bet?: number | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           date?: string
           ending_balance?: number | null
           highest_multiplier?: number | null
           highest_win?: number | null
           id?: string
+          starting_balance?: number | null
           status?: string
           target_balance?: number | null
           title?: string
           updated_at?: string
+          winner_points?: number | null
         }
         Relationships: []
       }

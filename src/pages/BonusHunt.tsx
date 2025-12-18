@@ -18,12 +18,15 @@ interface BonusHunt {
   id: string;
   title: string;
   date: string;
-  status: "ongoing" | "complete";
+  status: "ongoing" | "complete" | "to_be_played";
+  starting_balance: number | null;
   target_balance: number | null;
   ending_balance: number | null;
   average_bet: number | null;
   highest_win: number | null;
   highest_multiplier: number | null;
+  currency: string | null;
+  winner_points: number | null;
   created_at: string;
 }
 
@@ -69,7 +72,7 @@ export default function BonusHunt() {
     },
   });
 
-  const currentHunt = hunts?.find(h => h.status === "ongoing");
+  const currentHunt = hunts?.find(h => h.status === "ongoing" || h.status === "to_be_played");
   const previousHunts = hunts?.filter(h => h.status === "complete") || [];
 
   // Fetch slots for selected or current hunt
@@ -165,6 +168,11 @@ export default function BonusHunt() {
   const totalWinnings = slots?.reduce((sum, s) => sum + (s.win_amount || 0), 0) || 0;
   const totalBets = slots?.reduce((sum, s) => sum + (s.bet_amount || 0), 0) || 0;
   const averageX = totalBets > 0 ? (totalWinnings / totalBets).toFixed(2) : "0";
+  const averageBet = totalBonuses > 0 ? (totalBets / totalBonuses).toFixed(2) : "0";
+  const breakEvenX = displayHunt?.starting_balance && totalBets > 0 
+    ? ((displayHunt.starting_balance) / totalBets).toFixed(2) 
+    : "0";
+  const currencySymbol = displayHunt?.currency === "EUR" ? "€" : displayHunt?.currency === "GBP" ? "£" : displayHunt?.currency === "SEK" ? "kr" : displayHunt?.currency === "CAD" ? "C$" : "$";
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -219,14 +227,16 @@ export default function BonusHunt() {
             >
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-2xl font-bold">{displayHunt.title}</h2>
-                    <Badge variant={displayHunt.status === "ongoing" ? "default" : "secondary"}>
-                      {displayHunt.status === "ongoing" ? (
-                        <><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />Ongoing</>
-                      ) : "Complete"}
-                    </Badge>
-                  </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-2xl font-bold">{displayHunt.title}</h2>
+                      <Badge variant={displayHunt.status === "ongoing" ? "default" : displayHunt.status === "to_be_played" ? "outline" : "secondary"}>
+                        {displayHunt.status === "ongoing" ? (
+                          <><span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />Ongoing</>
+                        ) : displayHunt.status === "to_be_played" ? (
+                          <><Clock className="w-3 h-3 mr-1" />To Be Played</>
+                        ) : "Complete"}
+                      </Badge>
+                    </div>
                   <p className="text-muted-foreground">
                     {new Date(displayHunt.date).toLocaleDateString("en-US", {
                       weekday: "long",
@@ -244,39 +254,54 @@ export default function BonusHunt() {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                  <Target className="w-5 h-5 mx-auto mb-2 text-primary" />
-                  <p className="text-xl font-bold">{totalBonuses}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <Target className="w-4 h-4 mx-auto mb-1 text-primary" />
+                  <p className="text-lg font-bold">{totalBonuses}</p>
                   <p className="text-xs text-muted-foreground">Total Bonuses</p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                  <DollarSign className="w-5 h-5 mx-auto mb-2 text-green-500" />
-                  <p className="text-xl font-bold">${displayHunt.target_balance?.toLocaleString() || "TBD"}</p>
-                  <p className="text-xs text-muted-foreground">Target</p>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <DollarSign className="w-4 h-4 mx-auto mb-1 text-emerald-500" />
+                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.starting_balance?.toLocaleString() || "TBD"}</p>
+                  <p className="text-xs text-muted-foreground">Starting Balance</p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                  <Trophy className="w-5 h-5 mx-auto mb-2 text-accent" />
-                  <p className="text-xl font-bold">
-                    ${displayHunt.ending_balance?.toLocaleString() || totalWinnings.toLocaleString()}
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <Target className="w-4 h-4 mx-auto mb-1 text-green-500" />
+                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.target_balance?.toLocaleString() || "TBD"}</p>
+                  <p className="text-xs text-muted-foreground">Target Balance</p>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <Trophy className="w-4 h-4 mx-auto mb-1 text-accent" />
+                  <p className="text-lg font-bold">
+                    {currencySymbol}{displayHunt.ending_balance?.toLocaleString() || totalWinnings.toLocaleString()}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {displayHunt.status === "complete" ? "Final" : "Current"}
+                    {displayHunt.status === "complete" ? "Final Balance" : "Current Balance"}
                   </p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                  <TrendingUp className="w-5 h-5 mx-auto mb-2 text-blue-500" />
-                  <p className="text-xl font-bold">{averageX}x</p>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <DollarSign className="w-4 h-4 mx-auto mb-1 text-blue-500" />
+                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.average_bet?.toLocaleString() || averageBet}</p>
+                  <p className="text-xs text-muted-foreground">Average Bet</p>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <TrendingUp className="w-4 h-4 mx-auto mb-1 text-cyan-500" />
+                  <p className="text-lg font-bold">{averageX}x</p>
                   <p className="text-xs text-muted-foreground">Average X</p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                  <Zap className="w-5 h-5 mx-auto mb-2 text-yellow-500" />
-                  <p className="text-xl font-bold">${displayHunt.highest_win?.toLocaleString() || "0"}</p>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <TrendingUp className="w-4 h-4 mx-auto mb-1 text-orange-500" />
+                  <p className="text-lg font-bold">{breakEvenX}x</p>
+                  <p className="text-xs text-muted-foreground">Break-Even X</p>
+                </div>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <Zap className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
+                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.highest_win?.toLocaleString() || "0"}</p>
                   <p className="text-xs text-muted-foreground">Highest Win</p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                  <Star className="w-5 h-5 mx-auto mb-2 text-purple-500" />
-                  <p className="text-xl font-bold">{displayHunt.highest_multiplier?.toLocaleString() || "0"}x</p>
+                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                  <Star className="w-4 h-4 mx-auto mb-1 text-purple-500" />
+                  <p className="text-lg font-bold">{displayHunt.highest_multiplier?.toLocaleString() || "0"}x</p>
                   <p className="text-xs text-muted-foreground">Highest X</p>
                 </div>
               </div>
