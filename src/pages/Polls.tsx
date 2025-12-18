@@ -554,7 +554,7 @@ export default function Polls() {
           </TabsList>
 
           <TabsContent value="official">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               <div className="lg:col-span-2 space-y-4">
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-primary" />
@@ -633,7 +633,7 @@ export default function Polls() {
           </TabsContent>
 
           <TabsContent value="community">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
               <div className="lg:col-span-2 space-y-4">
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <Users className="w-5 h-5 text-accent" />
