@@ -100,11 +100,36 @@ const navSections: NavSection[] = [
       { icon: Users, label: "Users", path: "/admin/users", roles: ["admin"] },
       { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
       { icon: FileText, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
-      { icon: Shield, label: "Auth Health", path: "/admin/settings/auth-health", roles: ["admin"] },
       { icon: Settings, label: "Settings", path: "/admin/settings", roles: ["admin"] },
     ],
   },
 ];
+
+// Helper function to check if a nav item is active
+function isNavItemActive(itemPath: string, currentPath: string): boolean {
+  // Exact match for dashboard
+  if (itemPath === "/admin") {
+    return currentPath === "/admin";
+  }
+  
+  // For streamers, only match exact path to avoid stream conflict
+  if (itemPath === "/admin/streamers") {
+    return currentPath === "/admin/streamers";
+  }
+  
+  // For stream, only match exact path
+  if (itemPath === "/admin/stream") {
+    return currentPath === "/admin/stream";
+  }
+  
+  // For settings, check if it starts with /admin/settings but NOT auth-health (which is separate)
+  if (itemPath === "/admin/settings") {
+    return currentPath.startsWith("/admin/settings") && !currentPath.includes("auth-health");
+  }
+  
+  // Standard prefix matching for other items
+  return currentPath.startsWith(itemPath);
+}
 
 function AdminNavItem({ item, isActive, collapsed }: { item: NavItem; isActive: boolean; collapsed: boolean }) {
   const Icon = item.icon;
@@ -164,17 +189,13 @@ function AdminNavSection({
   if (visibleItems.length === 0) return null;
 
   const isExpanded = expandedSections.includes(section.title);
-  const hasActiveItem = visibleItems.some(
-    (item) => location.pathname === item.path || 
-    (item.path !== "/admin" && location.pathname.startsWith(item.path))
-  );
+  const hasActiveItem = visibleItems.some((item) => isNavItemActive(item.path, location.pathname));
 
   if (collapsed) {
     return (
       <div className="space-y-1">
         {visibleItems.map((item) => {
-          const isActive = location.pathname === item.path ||
-            (item.path !== "/admin" && location.pathname.startsWith(item.path));
+          const isActive = isNavItemActive(item.path, location.pathname);
           return <AdminNavItem key={item.path} item={item} isActive={isActive} collapsed={collapsed} />;
         })}
       </div>
@@ -201,8 +222,7 @@ function AdminNavSection({
           >
             <div className="space-y-0.5 pl-1">
               {visibleItems.map((item) => {
-                const isActive = location.pathname === item.path ||
-                  (item.path !== "/admin" && location.pathname.startsWith(item.path));
+                const isActive = isNavItemActive(item.path, location.pathname);
                 return <AdminNavItem key={item.path} item={item} isActive={isActive} collapsed={collapsed} />;
               })}
             </div>
