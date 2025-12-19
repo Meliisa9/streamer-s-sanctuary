@@ -49,7 +49,8 @@ import { BarChart, Info } from "lucide-react";
 const communityNavItems: NavItem[] = [
   { icon: Calendar, label: "Events", path: "/events", settingKey: "nav_events_visible" },
   { icon: Crosshair, label: "Bonus Hunt", path: "/bonus-hunt", settingKey: "nav_bonus_hunt_visible" },
-  { icon: Target, label: "Guess The Win", path: "/guess-the-win", settingKey: "nav_gtw_visible" },
+  { icon: Target, label: "Guess The Win", path: "/bonus-hunt?tab=gtw", settingKey: "nav_gtw_visible" },
+  { icon: BarChart, label: "Average X", path: "/bonus-hunt?tab=avgx", settingKey: "nav_gtw_visible" },
   { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },
   { icon: BarChart, label: "Polls", path: "/polls", settingKey: "nav_polls_visible" },
   { icon: Info, label: "About", path: "/about", settingKey: "nav_about_visible" },

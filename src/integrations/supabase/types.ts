@@ -133,6 +133,41 @@ export type Database = {
         }
         Relationships: []
       }
+      bonus_hunt_avgx_guesses: {
+        Row: {
+          created_at: string
+          guess_x: number
+          hunt_id: string
+          id: string
+          points_earned: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          guess_x: number
+          hunt_id: string
+          id?: string
+          points_earned?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          guess_x?: number
+          hunt_id?: string
+          id?: string
+          points_earned?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bonus_hunt_avgx_guesses_hunt_id_fkey"
+            columns: ["hunt_id"]
+            isOneToOne: false
+            referencedRelation: "bonus_hunts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bonus_hunt_guesses: {
         Row: {
           created_at: string
@@ -226,6 +261,7 @@ export type Database = {
           highest_multiplier: number | null
           highest_win: number | null
           id: string
+          start_time: string | null
           starting_balance: number | null
           status: string
           target_balance: number | null
@@ -244,6 +280,7 @@ export type Database = {
           highest_multiplier?: number | null
           highest_win?: number | null
           id?: string
+          start_time?: string | null
           starting_balance?: number | null
           status?: string
           target_balance?: number | null
@@ -262,6 +299,7 @@ export type Database = {
           highest_multiplier?: number | null
           highest_win?: number | null
           id?: string
+          start_time?: string | null
           starting_balance?: number | null
           status?: string
           target_balance?: number | null
