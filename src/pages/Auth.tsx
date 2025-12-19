@@ -12,12 +12,13 @@ const emailSchema = z.string().email("Please enter a valid email address");
 const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
 
 function Auth() {
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -71,7 +72,19 @@ function Auth() {
     setIsLoading(true);
 
     try {
-      if (mode === "signup") {
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth?mode=reset`,
+        });
+        
+        if (error) throw error;
+        
+        setResetEmailSent(true);
+        toast({
+          title: "Check your email",
+          description: "We've sent you a password reset link.",
+        });
+      } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -181,38 +194,54 @@ function Auth() {
               <span className="text-3xl font-bold text-primary-foreground">S</span>
             </div>
             <h1 className="text-2xl font-bold mb-2">
-              {mode === "login" ? "Welcome Back" : "Join StreamerX"}
+              {mode === "login" ? "Welcome Back" : mode === "signup" ? "Join StreamerX" : "Reset Password"}
             </h1>
             <p className="text-muted-foreground">
               {mode === "login"
                 ? "Sign in to access your account"
-                : "Create an account to get started"}
+                : mode === "signup"
+                ? "Create an account to get started"
+                : "Enter your email to receive a reset link"}
             </p>
           </div>
 
-          {/* OAuth Buttons */}
-          <div className="space-y-3 mb-6">
-            <Button
-              type="button"
-              variant="glow"
-              className="w-full gap-3"
-              onClick={() => handleOAuthLogin("twitch")}
-              disabled={isLoading}
-            >
-              <Twitch className="w-5 h-5" />
-              Continue with Twitch
-            </Button>
-            <Button
-              type="button"
-              variant="glass"
-              className="w-full gap-3"
-              onClick={() => handleOAuthLogin("discord")}
-              disabled={isLoading}
-            >
-              <MessageCircle className="w-5 h-5" />
-              Continue with Discord
-            </Button>
-          </div>
+          {/* OAuth Buttons - Hide for forgot password */}
+          {mode !== "forgot" && (
+            <>
+              <div className="space-y-3 mb-6">
+                <Button
+                  type="button"
+                  variant="glow"
+                  className="w-full gap-3"
+                  onClick={() => handleOAuthLogin("twitch")}
+                  disabled={isLoading}
+                >
+                  <Twitch className="w-5 h-5" />
+                  Continue with Twitch
+                </Button>
+                <Button
+                  type="button"
+                  variant="glass"
+                  className="w-full gap-3"
+                  onClick={() => handleOAuthLogin("discord")}
+                  disabled={isLoading}
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Continue with Discord
+                </Button>
+              </div>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Divider */}
           <div className="relative my-6">
@@ -264,45 +293,61 @@ function Auth() {
               )}
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-1 block">Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setErrors((prev) => ({ ...prev, password: undefined }));
-                  }}
-                  placeholder="Enter your password"
-                  className={`w-full pl-10 pr-4 py-3 bg-secondary border rounded-xl focus:outline-none transition-colors ${
-                    errors.password ? "border-destructive" : "border-border focus:border-primary"
-                  }`}
-                />
+            {mode !== "forgot" && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setErrors((prev) => ({ ...prev, password: undefined }));
+                    }}
+                    placeholder="Enter your password"
+                    className={`w-full pl-10 pr-4 py-3 bg-secondary border rounded-xl focus:outline-none transition-colors ${
+                      errors.password ? "border-destructive" : "border-border focus:border-primary"
+                    }`}
+                  />
+                </div>
+                {errors.password && (
+                  <p className="text-sm text-destructive mt-1">{errors.password}</p>
+                )}
               </div>
-              {errors.password && (
-                <p className="text-sm text-destructive mt-1">{errors.password}</p>
-              )}
-            </div>
+            )}
 
-            <Button type="submit" variant="gold" className="w-full" disabled={isLoading}>
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={() => { setMode("forgot"); setResetEmailSent(false); }}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
+            )}
+
+            <Button type="submit" variant="gold" className="w-full" disabled={isLoading || (mode === "forgot" && resetEmailSent)}>
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : mode === "login" ? (
                 "Sign In"
-              ) : (
+              ) : mode === "signup" ? (
                 "Create Account"
+              ) : resetEmailSent ? (
+                "Email Sent!"
+              ) : (
+                "Send Reset Link"
               )}
             </Button>
           </form>
 
           {/* Toggle Mode */}
           <p className="text-center text-sm text-muted-foreground mt-6">
-            {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+            {mode === "login" ? "Don't have an account?" : mode === "signup" ? "Already have an account?" : "Remember your password?"}{" "}
             <button
               type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+              onClick={() => { setMode(mode === "forgot" ? "login" : mode === "login" ? "signup" : "login"); setResetEmailSent(false); }}
               className="text-primary hover:underline font-medium"
             >
               {mode === "login" ? "Sign up" : "Sign in"}

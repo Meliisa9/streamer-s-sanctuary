@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link } from "react-router-dom";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
@@ -62,6 +63,7 @@ export default function Leaderboard() {
     points: profile.points || 0,
     avatar: profile.avatar_url,
     userId: profile.user_id,
+    profileUsername: profile.username,
     giveawayEntries: giveawayStats?.[profile.user_id] || 0,
     gtwGuesses: gtwStats?.[profile.user_id]?.guesses || 0,
     gtwWins: gtwStats?.[profile.user_id]?.wins || 0,
@@ -117,7 +119,7 @@ export default function Leaderboard() {
             >
               {/* 2nd Place */}
               {leaderboardData[1] && (
-                <div className="order-1 flex flex-col items-center pt-8">
+                <Link to={leaderboardData[1].profileUsername ? `/user/${leaderboardData[1].profileUsername}` : "#"} className="order-1 flex flex-col items-center pt-8 hover:scale-105 transition-transform">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center text-4xl mb-4 shadow-xl overflow-hidden">
                     {leaderboardData[1].avatar ? (
                       <img src={leaderboardData[1].avatar} alt="" className="w-full h-full object-cover" />
@@ -129,12 +131,12 @@ export default function Leaderboard() {
                   <p className="text-2xl font-bold text-gray-400 mb-1">2nd</p>
                   <p className="text-sm text-muted-foreground">{leaderboardData[1].points.toLocaleString()} pts</p>
                   <div className="mt-4 w-full h-24 bg-gradient-to-t from-gray-500/30 to-transparent rounded-t-xl" />
-                </div>
+                </Link>
               )}
 
               {/* 1st Place */}
               {leaderboardData[0] && (
-                <div className="order-2 flex flex-col items-center">
+                <Link to={leaderboardData[0].profileUsername ? `/user/${leaderboardData[0].profileUsername}` : "#"} className="order-2 flex flex-col items-center hover:scale-105 transition-transform">
                   <Crown className="w-8 h-8 text-yellow-500 mb-2 animate-pulse" />
                   <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-5xl mb-4 shadow-xl glow-gold overflow-hidden">
                     {leaderboardData[0].avatar ? (
@@ -147,12 +149,12 @@ export default function Leaderboard() {
                   <p className="text-3xl font-bold gradient-text-gold mb-1">1st</p>
                   <p className="text-sm text-muted-foreground">{leaderboardData[0].points.toLocaleString()} pts</p>
                   <div className="mt-4 w-full h-32 bg-gradient-to-t from-yellow-500/30 to-transparent rounded-t-xl" />
-                </div>
+                </Link>
               )}
 
               {/* 3rd Place */}
               {leaderboardData[2] && (
-                <div className="order-3 flex flex-col items-center pt-12">
+                <Link to={leaderboardData[2].profileUsername ? `/user/${leaderboardData[2].profileUsername}` : "#"} className="order-3 flex flex-col items-center pt-12 hover:scale-105 transition-transform">
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-3xl mb-4 shadow-xl overflow-hidden">
                     {leaderboardData[2].avatar ? (
                       <img src={leaderboardData[2].avatar} alt="" className="w-full h-full object-cover" />
@@ -164,7 +166,7 @@ export default function Leaderboard() {
                   <p className="text-xl font-bold text-amber-600 mb-1">3rd</p>
                   <p className="text-sm text-muted-foreground">{leaderboardData[2].points.toLocaleString()} pts</p>
                   <div className="mt-4 w-full h-16 bg-gradient-to-t from-amber-600/30 to-transparent rounded-t-xl" />
-                </div>
+                </Link>
               )}
             </motion.div>
 
@@ -240,7 +242,7 @@ export default function Leaderboard() {
                           </span>
                         </td>
                         <td className="p-4">
-                          <div className="flex items-center gap-3">
+                          <Link to={player.profileUsername ? `/user/${player.profileUsername}` : "#"} className="flex items-center gap-3 hover:text-primary transition-colors">
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-secondary flex items-center justify-center">
                               {player.avatar ? (
                                 <img src={player.avatar} alt="" className="w-full h-full object-cover" />
@@ -249,7 +251,7 @@ export default function Leaderboard() {
                               )}
                             </div>
                             <span className="font-medium">{player.username}</span>
-                          </div>
+                          </Link>
                         </td>
                         <td className="p-4 text-center">
                           <span className="font-bold text-primary">{player.points.toLocaleString()}</span>

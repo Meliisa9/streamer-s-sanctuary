@@ -95,11 +95,11 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!user) throw new Error("Must be logged in");
-      const { error } = await supabase.from("profile_comments").insert({
+      const { data, error } = await supabase.from("profile_comments").insert({
         profile_user_id: profileUserId,
         author_id: user.id,
         content,
-      });
+      }).select('id').single();
       if (error) throw error;
       
       // Send notification if commenting on someone else's profile
@@ -117,7 +117,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
           .maybeSingle();
         
         const commenterName = commenterProfile?.display_name || commenterProfile?.username || "Someone";
-        await notifyComment(profileUserId, commenterName, profileOwner?.username || profileUserId);
+        await notifyComment(profileUserId, commenterName, profileOwner?.username || profileUserId, data?.id);
       }
     },
     onSuccess: () => {
@@ -265,10 +265,11 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
             return (
               <motion.div
                 key={comment.id}
+                id={`comment-${comment.id}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="flex gap-3 p-3 bg-secondary/30 rounded-xl"
+                className="flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20"
               >
                 <Link to={author?.username ? `/user/${author.username}` : "#"} className="flex-shrink-0">
                   <Avatar className="w-8 h-8 hover:ring-2 hover:ring-primary transition-all cursor-pointer">

@@ -253,56 +253,61 @@ export default function BonusHunt() {
                 )}
               </div>
 
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
-                  <Target className="w-4 h-4 mx-auto mb-1 text-primary" />
-                  <p className="text-lg font-bold">{totalBonuses}</p>
+              {/* Stats Grid - Improved Layout */}
+              <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+                {/* Row 1: Main Stats */}
+                <div className="glass p-4 rounded-xl text-center">
+                  <Target className="w-5 h-5 mx-auto mb-2 text-primary" />
+                  <p className="text-2xl font-bold">{totalBonuses}</p>
                   <p className="text-xs text-muted-foreground">Total Bonuses</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
-                  <DollarSign className="w-4 h-4 mx-auto mb-1 text-emerald-500" />
-                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.starting_balance?.toLocaleString() || "TBD"}</p>
+                <div className="glass p-4 rounded-xl text-center">
+                  <DollarSign className="w-5 h-5 mx-auto mb-2 text-emerald-500" />
+                  <p className="text-2xl font-bold">{currencySymbol}{displayHunt.starting_balance?.toLocaleString() || "TBD"}</p>
                   <p className="text-xs text-muted-foreground">Starting Balance</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
-                  <Target className="w-4 h-4 mx-auto mb-1 text-green-500" />
-                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.target_balance?.toLocaleString() || "TBD"}</p>
+                <div className="glass p-4 rounded-xl text-center">
+                  <Target className="w-5 h-5 mx-auto mb-2 text-blue-500" />
+                  <p className="text-2xl font-bold">{currencySymbol}{displayHunt.target_balance?.toLocaleString() || "TBD"}</p>
                   <p className="text-xs text-muted-foreground">Target Balance</p>
                 </div>
                 {displayHunt.status === "complete" && (
-                  <div className="p-3 bg-secondary/30 rounded-xl text-center">
-                    <Trophy className="w-4 h-4 mx-auto mb-1 text-accent" />
-                    <p className="text-lg font-bold">
+                  <div className="glass p-4 rounded-xl text-center border border-accent/30">
+                    <Trophy className="w-5 h-5 mx-auto mb-2 text-accent" />
+                    <p className="text-2xl font-bold text-accent">
                       {currencySymbol}{displayHunt.ending_balance?.toLocaleString() || totalWinnings.toLocaleString()}
                     </p>
                     <p className="text-xs text-muted-foreground">Final Balance</p>
                   </div>
                 )}
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
-                  <DollarSign className="w-4 h-4 mx-auto mb-1 text-blue-500" />
-                  <p className="text-lg font-bold">{currencySymbol}{displayHunt.average_bet?.toLocaleString() || averageBet}</p>
-                  <p className="text-xs text-muted-foreground">Average Bet</p>
+                <div className="glass p-4 rounded-xl text-center">
+                  <DollarSign className="w-5 h-5 mx-auto mb-2 text-cyan-500" />
+                  <p className="text-2xl font-bold">{currencySymbol}{displayHunt.average_bet?.toLocaleString() || averageBet}</p>
+                  <p className="text-xs text-muted-foreground">Avg Bet</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+              </div>
+              
+              {/* Row 2: Performance Stats */}
+              <div className="grid grid-cols-4 gap-4 mt-4">
+                <div className="glass p-3 rounded-xl text-center">
                   <TrendingUp className="w-4 h-4 mx-auto mb-1 text-cyan-500" />
                   <p className="text-lg font-bold">{averageX}x</p>
-                  <p className="text-xs text-muted-foreground">Average X</p>
+                  <p className="text-xs text-muted-foreground">Avg X</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                <div className="glass p-3 rounded-xl text-center">
                   <TrendingUp className="w-4 h-4 mx-auto mb-1 text-orange-500" />
                   <p className="text-lg font-bold">{breakEvenX}x</p>
-                  <p className="text-xs text-muted-foreground">Break-Even X</p>
+                  <p className="text-xs text-muted-foreground">Break-Even</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                <div className="glass p-3 rounded-xl text-center">
                   <Zap className="w-4 h-4 mx-auto mb-1 text-yellow-500" />
                   <p className="text-lg font-bold">{currencySymbol}{displayHunt.highest_win?.toLocaleString() || "0"}</p>
-                  <p className="text-xs text-muted-foreground">Highest Win</p>
+                  <p className="text-xs text-muted-foreground">Top Win</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                <div className="glass p-3 rounded-xl text-center">
                   <Star className="w-4 h-4 mx-auto mb-1 text-purple-500" />
                   <p className="text-lg font-bold">{displayHunt.highest_multiplier?.toLocaleString() || "0"}x</p>
-                  <p className="text-xs text-muted-foreground">Highest X</p>
+                  <p className="text-xs text-muted-foreground">Top X</p>
                 </div>
               </div>
             </motion.div>

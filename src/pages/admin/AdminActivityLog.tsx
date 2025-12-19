@@ -46,10 +46,14 @@ export default function AdminActivityLog() {
         .limit(200);
 
       // If on logins tab, filter to only login actions
+      // If on all tab, exclude login actions
       if (activeTab === "logins") {
         query = query.eq("action", "login");
-      } else if (filterAction) {
-        query = query.eq("action", filterAction);
+      } else {
+        query = query.neq("action", "login");
+        if (filterAction) {
+          query = query.eq("action", filterAction);
+        }
       }
 
       const { data, error } = await query;
