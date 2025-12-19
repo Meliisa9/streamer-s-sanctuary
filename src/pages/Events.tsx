@@ -3,10 +3,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Calendar as CalendarIcon, Clock, Users, Bell, BellOff, ChevronLeft, ChevronRight, User, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Event = Tables<"events">;
@@ -111,7 +112,6 @@ export default function Events() {
       return;
     }
     
-    // Enable push notifications if not already subscribed
     if (!isSubscribed && isSupported) {
       await subscribeToPush();
     }
@@ -153,11 +153,29 @@ export default function Events() {
     return events.filter((e) => e.event_date === dateStr);
   };
 
-  // Get today's date string
   const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
   
-  // Separate current events (today) from upcoming
-  const currentEvents = events?.filter((e) => e.event_date === todayStr) || [];
+  // Filter current events: must be today AND not past end_time
+  const currentEvents = useMemo(() => {
+    if (!events) return [];
+    return events.filter((e) => {
+      if (e.event_date !== todayStr) return false;
+      
+      // If event has an end_time, check if it's still ongoing
+      if (e.end_time) {
+        const [hours, minutes] = e.end_time.split(':').map(Number);
+        const endDateTime = new Date();
+        endDateTime.setHours(hours, minutes, 0, 0);
+        
+        // If current time is past end time, exclude this event
+        if (now > endDateTime) return false;
+      }
+      
+      return true;
+    });
+  }, [events, todayStr, now]);
+
   const upcomingEvents = events
     ?.filter((e) => new Date(e.event_date) > new Date(todayStr))
     .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
@@ -276,66 +294,69 @@ export default function Events() {
               transition={{ delay: 0.2 }}
               className="space-y-6"
             >
-              {/* Current Events - Today */}
+              {/* Current Events - Today with Scrollable Container */}
               {currentEvents && currentEvents.length > 0 && (
                 <div className="glass rounded-2xl p-6">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                     <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
                     Current Events (Today)
                   </h2>
-                  <div className="space-y-4">
-                    {currentEvents.map((event) => {
-                      const streamer = getStreamerById(event.streamer_id);
-                      const isEventSubscribed = userSubscriptions.includes(event.id);
-                      
-                      return (
-                        <div
-                          key={event.id}
-                          className="p-4 rounded-xl border border-green-500/30 bg-green-500/5"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${
-                              eventTypes[event.event_type || "Stream"] || eventTypes.Stream
-                            }`}>
-                              {event.event_type}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-green-400 font-medium">LIVE TODAY</span>
-                              <button
-                                onClick={() => handleToggleSubscription(event.id)}
-                                className={`p-1.5 rounded-lg transition-colors ${
-                                  isEventSubscribed 
-                                    ? "bg-primary/20 text-primary" 
-                                    : "bg-secondary/50 text-muted-foreground hover:text-primary"
-                                }`}
-                              >
-                                <Bell className={`w-4 h-4 ${isEventSubscribed ? "fill-current" : ""}`} />
-                              </button>
+                  <ScrollArea className={currentEvents.length > 3 ? "h-[400px] pr-4" : ""}>
+                    <div className="space-y-4">
+                      {currentEvents.map((event) => {
+                        const streamer = getStreamerById(event.streamer_id);
+                        const isEventSubscribed = userSubscriptions.includes(event.id);
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            className="p-4 rounded-xl border border-green-500/30 bg-green-500/5"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                eventTypes[event.event_type || "Stream"] || eventTypes.Stream
+                              }`}>
+                                {event.event_type}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-green-400 font-medium">LIVE TODAY</span>
+                                <button
+                                  onClick={() => handleToggleSubscription(event.id)}
+                                  className={`p-1.5 rounded-lg transition-colors ${
+                                    isEventSubscribed 
+                                      ? "bg-primary/20 text-primary" 
+                                      : "bg-secondary/50 text-muted-foreground hover:text-primary"
+                                  }`}
+                                >
+                                  <Bell className={`w-4 h-4 ${isEventSubscribed ? "fill-current" : ""}`} />
+                                </button>
+                              </div>
+                            </div>
+                            <h3 className="font-semibold mb-2">{event.title}</h3>
+                            {streamer && (
+                              <div className="flex items-center gap-2 mb-3 p-2 bg-secondary/50 rounded-lg">
+                                {streamer.image_url ? (
+                                  <img src={streamer.image_url} alt={streamer.name} className="w-8 h-8 rounded-full object-cover" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                    <User className="w-4 h-4 text-primary" />
+                                  </div>
+                                )}
+                                <span className="text-sm font-medium">{streamer.name}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {event.event_time || "TBA"}
+                                {event.end_time && ` - ${event.end_time}`}
+                              </span>
                             </div>
                           </div>
-                          <h3 className="font-semibold mb-2">{event.title}</h3>
-                          {streamer && (
-                            <div className="flex items-center gap-2 mb-3 p-2 bg-secondary/50 rounded-lg">
-                              {streamer.image_url ? (
-                                <img src={streamer.image_url} alt={streamer.name} className="w-8 h-8 rounded-full object-cover" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                                  <User className="w-4 h-4 text-primary" />
-                                </div>
-                              )}
-                              <span className="text-sm font-medium">{streamer.name}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {event.event_time || "TBA"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
                 </div>
               )}
 
@@ -394,7 +415,6 @@ export default function Events() {
                             </p>
                           )}
                           
-                          {/* Streamer Info */}
                           {streamer && (
                             <div className="flex items-center gap-2 mb-3 p-2 bg-secondary/50 rounded-lg">
                               {streamer.image_url ? (
@@ -408,105 +428,33 @@ export default function Events() {
                                   <User className="w-4 h-4 text-primary" />
                                 </div>
                               )}
-                              <div>
-                                <p className="text-sm font-medium">{streamer.name}</p>
-                                <p className="text-xs text-muted-foreground">Host</p>
-                              </div>
+                              <span className="text-sm font-medium">{streamer.name}</span>
                             </div>
                           )}
                           
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3" />
+                              {new Date(event.event_date).toLocaleDateString()}
+                            </span>
+                            <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {new Date(event.event_date).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}{" "}
-                              {event.event_time}
+                              {event.event_time || "TBA"}
                             </span>
-                            {event.expected_viewers && (
-                              <span className="flex items-center gap-1">
-                                <Users className="w-3 h-3" />
-                                {event.expected_viewers}
-                              </span>
-                            )}
                           </div>
-                          {event.platform && (
-                            <span className="inline-block mt-2 text-xs px-2 py-1 bg-secondary rounded">
-                              {event.platform}
-                            </span>
-                          )}
-                          
-                          {isEventSubscribed && (
-                            <div className="mt-3 flex items-center gap-1.5 text-xs text-green-400">
-                              <Check className="w-3 h-3" />
-                              You'll be notified when this starts
-                            </div>
-                          )}
                         </div>
                       );
                     })}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No upcoming events</p>
+                  <p className="text-muted-foreground text-center py-8">
+                    No upcoming events scheduled
+                  </p>
                 )}
-
-                <div className="mt-6 pt-6 border-t border-border">
-                  <Button 
-                    variant="glow" 
-                    className="w-full gap-2"
-                    onClick={async () => {
-                      if (!user) {
-                        toast({ title: "Please login to enable notifications", variant: "destructive" });
-                        return;
-                      }
-                      if (isSubscribed) {
-                        toast({ title: "Notifications already enabled!" });
-                        return;
-                      }
-                      const success = await subscribeToPush();
-                      if (success) {
-                        showNotification("Notifications enabled!", { body: "You'll be notified about your subscribed events." });
-                      }
-                    }}
-                  >
-                    {isSubscribed ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Notifications Enabled
-                      </>
-                    ) : (
-                      <>
-                        <Bell className="w-4 h-4" />
-                        Enable Notifications
-                      </>
-                    )}
-                  </Button>
-                  {!user && (
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      Login to enable event notifications
-                    </p>
-                  )}
-                </div>
               </div>
             </motion.div>
           </div>
         )}
-
-        {/* Legend */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="mt-8 flex flex-wrap gap-4"
-        >
-          {Object.entries(eventTypes).map(([type, classes]) => (
-            <div key={type} className="flex items-center gap-2">
-              <span className={`w-3 h-3 rounded-full ${classes.replace("text-", "bg-").split(" ")[0]}`} />
-              <span className="text-sm text-muted-foreground">{type}</span>
-            </div>
-          ))}
-        </motion.div>
       </div>
     </div>
   );

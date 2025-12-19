@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { CoverPhotoUpload } from "@/components/CoverPhotoUpload";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { useAchievements, ACHIEVEMENTS, LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +18,7 @@ import {
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
   MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users, Bookmark,
-  Video, Newspaper
+  Video, Newspaper, Mail, AlertCircle, MapPin, Cake, Star, Gamepad2
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useUserFollow } from "@/hooks/useUserFollow";
@@ -25,6 +26,20 @@ import { ProfileComments } from "@/components/ProfileComments";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { FollowersModal } from "@/components/FollowersModal";
 import { UserImageLink } from "@/components/UserAvatarLink";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const COUNTRIES = [
+  "United States", "Canada", "United Kingdom", "Australia", "Germany", 
+  "France", "Sweden", "Norway", "Finland", "Denmark", "Netherlands",
+  "Spain", "Italy", "Brazil", "Mexico", "Japan", "South Korea",
+  "Other"
+];
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -41,6 +56,10 @@ export default function Profile() {
   const { following, followers, followersCount, followingCount } = useUserFollow(user?.id);
   const { bookmarks, getBookmarksByType } = useBookmarks();
   
+  // Email change state
+  const [newEmail, setNewEmail] = useState("");
+  const [emailChangePending, setEmailChangePending] = useState(false);
+  
   const [formData, setFormData] = useState({
     username: "",
     bio: "",
@@ -49,7 +68,6 @@ export default function Profile() {
     age: "",
     country: "",
     city: "",
-    website: "",
     favorite_slot: "",
     favorite_casino: "",
   });
@@ -108,7 +126,6 @@ export default function Profile() {
     const kickError = searchParams.get("kick_error");
 
     if (kickSuccess && kickUsername && user) {
-      // Update profile with kick username
       supabase
         .from("profiles")
         .update({ kick_username: kickUsername })
@@ -122,7 +139,6 @@ export default function Profile() {
           }
         });
       
-      // Clear URL params
       setSearchParams({});
     } else if (kickError) {
       toast({ title: "Failed to connect Kick", description: kickError, variant: "destructive" });
@@ -130,13 +146,11 @@ export default function Profile() {
     }
   }, [searchParams, user]);
 
-  // Handle hash-based comment navigation (e.g., #comment-123)
+  // Handle hash-based navigation
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith("#comment-")) {
-      // Switch to social tab first
       setActiveTab("social");
-      // Wait for tab content to render, then scroll to comment
       setTimeout(() => {
         const commentId = hash.replace("#", "");
         const element = document.getElementById(commentId);
@@ -163,7 +177,6 @@ export default function Profile() {
         age: (profile as any).age?.toString() || "",
         country: (profile as any).country || "",
         city: (profile as any).city || "",
-        website: (profile as any).website || "",
         favorite_slot: (profile as any).favorite_slot || "",
         favorite_casino: (profile as any).favorite_casino || "",
       });
@@ -173,6 +186,7 @@ export default function Profile() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    setLoading(true);
 
     const updatePayload = {
       username: formData.username,
@@ -182,7 +196,6 @@ export default function Profile() {
       age: formData.age ? parseInt(formData.age) : null,
       country: formData.country || null,
       city: formData.city || null,
-      website: formData.website || null,
       favorite_slot: formData.favorite_slot || null,
       favorite_casino: formData.favorite_casino || null,
     };
@@ -200,6 +213,34 @@ export default function Profile() {
       toast({ title: "Profile updated successfully" });
       setIsEditing(false);
       refreshAchievements();
+      refreshProfile();
+    }
+  };
+
+  const handleEmailChange = async () => {
+    if (!newEmail || !newEmail.includes("@")) {
+      toast({ title: "Please enter a valid email", variant: "destructive" });
+      return;
+    }
+    
+    setEmailChangePending(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({ 
+        email: newEmail 
+      });
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: "Verification email sent", 
+        description: "Please check your new email inbox and click the confirmation link." 
+      });
+      setNewEmail("");
+    } catch (error: any) {
+      toast({ title: "Error changing email", description: error.message, variant: "destructive" });
+    } finally {
+      setEmailChangePending(false);
     }
   };
 
@@ -234,23 +275,16 @@ export default function Profile() {
     setConnectingProvider("kick");
     try {
       const frontendUrl = window.location.origin;
-
-      const isLocalhost =
-        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
       const callbackBase = (localStorage.getItem("kick_callback_base") || "").trim();
 
       if (isLocalhost && !callbackBase) {
-        throw new Error(
-          'For localhost, set localStorage key "kick_callback_base" to your ngrok/HTTPS tunnel base URL (e.g. https://xxxx.ngrok-free.app).'
-        );
+        throw new Error('For localhost, set localStorage key "kick_callback_base" to your ngrok/HTTPS tunnel base URL.');
       }
 
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}${callbackBase ? `&callback_base=${encodeURIComponent(callbackBase)}` : ""}`;
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (!session?.access_token) throw new Error("Not authenticated");
 
@@ -276,25 +310,7 @@ export default function Profile() {
 
       const authorizeUrl: string | undefined = data?.authorize_url;
       if (!authorizeUrl) {
-        throw new Error(`Kick authorize response missing authorize_url. Received: ${raw || "<empty>"}`);
-      }
-
-      // Guard against the "blank" redirect symptom (Kick root) which indicates params were rejected.
-      try {
-        const parsed = new URL(authorizeUrl);
-        const looksValid =
-          parsed.origin === "https://id.kick.com" &&
-          parsed.pathname.startsWith("/oauth/authorize") &&
-          !!parsed.searchParams.get("client_id") &&
-          !!parsed.searchParams.get("redirect_uri");
-
-        if (!looksValid) {
-          throw new Error(
-            `Kick authorize_url looks invalid. Got: ${authorizeUrl}. Check client_id + redirect_uri in your Kick app settings.`
-          );
-        }
-      } catch (e: any) {
-        throw new Error(e?.message || `Invalid authorize_url: ${authorizeUrl}`);
+        throw new Error(`Kick authorize response missing authorize_url.`);
       }
 
       window.location.assign(authorizeUrl);
@@ -319,14 +335,11 @@ export default function Profile() {
     : "Unknown";
 
   const level = getLevelInfo(profile?.points || 0);
-
-  // Check if accounts are connected via OAuth
   const identities = user.identities || [];
   const twitchConnected = identities.some((i) => i.provider === "twitch");
   const discordConnected = identities.some((i) => i.provider === "discord");
   const kickConnected = !!profile?.kick_username;
 
-  // Group achievements by category
   const achievementsByCategory = ACHIEVEMENTS.reduce((acc, achievement) => {
     if (!acc[achievement.category]) {
       acc[achievement.category] = [];
@@ -353,16 +366,34 @@ export default function Profile() {
           animate={{ opacity: 1, y: 0 }}
           className="glass rounded-2xl overflow-hidden mb-6"
         >
-          {/* Profile Header Banner */}
-          <div className="h-28 bg-gradient-to-r from-primary/30 via-primary/20 to-accent/30 relative">
-            <div className="absolute -bottom-10 left-6">
+          {/* Profile Header Banner with Cover Photo */}
+          <div 
+            className="h-36 md:h-44 relative bg-gradient-to-r from-primary/30 via-primary/20 to-accent/30"
+            style={formData.cover_url ? { 
+              backgroundImage: `url(${formData.cover_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            } : undefined}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+            
+            {/* Cover Photo Upload Button */}
+            {isEditing && (
+              <CoverPhotoUpload
+                currentCoverUrl={formData.cover_url}
+                userId={user.id}
+                onCoverChange={(url) => setFormData({ ...formData, cover_url: url })}
+              />
+            )}
+            
+            <div className="absolute -bottom-12 left-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-2xl bg-background border-4 border-background overflow-hidden shadow-xl">
+                <div className="w-28 h-28 rounded-2xl bg-background border-4 border-background overflow-hidden shadow-xl">
                   {formData.avatar_url ? (
                     <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-secondary flex items-center justify-center">
-                      <User className="w-10 h-10 text-muted-foreground" />
+                      <User className="w-12 h-12 text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -382,14 +413,7 @@ export default function Profile() {
                 onClick={() => setIsEditing(!isEditing)}
                 className="gap-2"
               >
-                {isEditing ? (
-                  <>Cancel</>
-                ) : (
-                  <>
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </>
-                )}
+                {isEditing ? <>Cancel</> : <><Edit2 className="w-4 h-4" />Edit</>}
               </Button>
               <Button 
                 variant="outline" 
@@ -403,16 +427,12 @@ export default function Profile() {
           </div>
 
           {/* Profile Info */}
-          <div className="pt-14 px-6 pb-6">
+          <div className="pt-16 px-6 pb-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold">
-                    {formData.username || "Anonymous"}
-                  </h1>
-                  <Badge variant="outline" className={level.color}>
-                    {level.name}
-                  </Badge>
+                  <h1 className="text-2xl font-bold">{formData.username || "Anonymous"}</h1>
+                  <Badge variant="outline" className={level.color}>{level.name}</Badge>
                 </div>
                 <p className="text-muted-foreground text-sm">@{formData.username || "username"}</p>
               </div>
@@ -475,28 +495,22 @@ export default function Profile() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start mb-6 bg-secondary/30 p-1 rounded-xl flex-wrap">
               <TabsTrigger value="profile" className="gap-2">
-                <User className="w-4 h-4" />
-                Profile
+                <User className="w-4 h-4" />Profile
               </TabsTrigger>
               <TabsTrigger value="social" className="gap-2">
-                <Users className="w-4 h-4" />
-                Social
+                <Users className="w-4 h-4" />Social
               </TabsTrigger>
               <TabsTrigger value="bookmarks" className="gap-2">
-                <Bookmark className="w-4 h-4" />
-                Bookmarks
+                <Bookmark className="w-4 h-4" />Bookmarks
               </TabsTrigger>
               <TabsTrigger value="achievements" className="gap-2">
-                <Award className="w-4 h-4" />
-                Achievements
+                <Award className="w-4 h-4" />Achievements
               </TabsTrigger>
               <TabsTrigger value="activity" className="gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Activity
+                <TrendingUp className="w-4 h-4" />Activity
               </TabsTrigger>
               <TabsTrigger value="settings" className="gap-2">
-                <Settings className="w-4 h-4" />
-                Settings
+                <Settings className="w-4 h-4" />Settings
               </TabsTrigger>
             </TabsList>
 
@@ -515,6 +529,83 @@ export default function Profile() {
                           onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                           disabled={!isEditing}
                           placeholder="username"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Cake className="w-4 h-4 text-muted-foreground" />
+                          Age (Optional)
+                        </label>
+                        <Input
+                          type="number"
+                          value={formData.age}
+                          onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                          disabled={!isEditing}
+                          placeholder="Your age"
+                          min="13"
+                          max="120"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          Country (Optional)
+                        </label>
+                        <Select
+                          value={formData.country}
+                          onValueChange={(value) => setFormData({ ...formData, country: value })}
+                          disabled={!isEditing}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {COUNTRIES.map((country) => (
+                              <SelectItem key={country} value={country}>{country}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          City (Optional)
+                        </label>
+                        <Input
+                          value={formData.city}
+                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                          disabled={!isEditing}
+                          placeholder="Your city"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+                          Favorite Slot (Optional)
+                        </label>
+                        <Input
+                          value={formData.favorite_slot}
+                          onChange={(e) => setFormData({ ...formData, favorite_slot: e.target.value })}
+                          disabled={!isEditing}
+                          placeholder="e.g., Gates of Olympus"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium flex items-center gap-2">
+                          <Star className="w-4 h-4 text-muted-foreground" />
+                          Favorite Casino (Optional)
+                        </label>
+                        <Input
+                          value={formData.favorite_casino}
+                          onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
+                          disabled={!isEditing}
+                          placeholder="e.g., Stake"
                         />
                       </div>
                     </div>
@@ -563,14 +654,12 @@ export default function Profile() {
                     <div className="space-y-2">
                       <Link to="/giveaways">
                         <Button variant="ghost" className="w-full justify-start gap-2 h-9">
-                          <Gift className="w-4 h-4" />
-                          Browse Giveaways
+                          <Gift className="w-4 h-4" />Browse Giveaways
                         </Button>
                       </Link>
                       <Link to="/leaderboard">
                         <Button variant="ghost" className="w-full justify-start gap-2 h-9">
-                          <Trophy className="w-4 h-4" />
-                          Leaderboard
+                          <Trophy className="w-4 h-4" />Leaderboard
                         </Button>
                       </Link>
                     </div>
@@ -608,18 +697,8 @@ export default function Profile() {
                       </div>
                     </div>
                     {!twitchConnected && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleConnectTwitch}
-                        disabled={connectingProvider === "twitch"}
-                        className="h-8 text-xs"
-                      >
-                        {connectingProvider === "twitch" ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          "Connect"
-                        )}
+                      <Button size="sm" variant="outline" onClick={handleConnectTwitch} disabled={connectingProvider === "twitch"} className="h-8 text-xs">
+                        {connectingProvider === "twitch" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
                       </Button>
                     )}
                   </div>
@@ -647,18 +726,8 @@ export default function Profile() {
                       </div>
                     </div>
                     {!discordConnected && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleConnectDiscord}
-                        disabled={connectingProvider === "discord"}
-                        className="h-8 text-xs"
-                      >
-                        {connectingProvider === "discord" ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          "Connect"
-                        )}
+                      <Button size="sm" variant="outline" onClick={handleConnectDiscord} disabled={connectingProvider === "discord"} className="h-8 text-xs">
+                        {connectingProvider === "discord" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
                       </Button>
                     )}
                   </div>
@@ -677,25 +746,13 @@ export default function Profile() {
                               <CheckCircle2 className="w-3 h-3" />
                               @{profile?.kick_username}
                             </span>
-                          ) : (
-                            "Not connected"
-                          )}
+                          ) : "Not connected"}
                         </p>
                       </div>
                     </div>
                     {!kickConnected && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleConnectKick}
-                        disabled={connectingProvider === "kick"}
-                        className="h-8 text-xs"
-                      >
-                        {connectingProvider === "kick" ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          "Connect"
-                        )}
+                      <Button size="sm" variant="outline" onClick={handleConnectKick} disabled={connectingProvider === "kick"} className="h-8 text-xs">
+                        {connectingProvider === "kick" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
                       </Button>
                     )}
                   </div>
@@ -704,252 +761,129 @@ export default function Profile() {
             </TabsContent>
 
             {/* Social Tab */}
-            <TabsContent value="social">
-              <div className="space-y-6">
-                {/* Stats */}
-                <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    Social Stats
+            <TabsContent value="social" className="space-y-6">
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-primary" />
+                    Profile Wall
                   </h3>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
-                      className="flex-1 p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors cursor-pointer"
-                    >
-                      <p className="text-3xl font-bold text-primary">{followersCount || 0}</p>
-                      <p className="text-sm text-muted-foreground">Followers</p>
-                    </button>
-                    <button 
-                      onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
-                      className="flex-1 p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors cursor-pointer"
-                    >
-                      <p className="text-3xl font-bold text-accent">{followingCount || 0}</p>
-                      <p className="text-sm text-muted-foreground">Following</p>
-                    </button>
-                  </div>
                 </div>
-
-                {/* Followers List */}
-                <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Followers ({profile?.followers_count || 0})</h3>
-                  {followers && followers.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
-                      {followers.map((f) => (
-                        <UserImageLink
-                          key={f.follower_id}
-                          userId={f.follower_id}
-                          username={f.profile?.username}
-                          avatarUrl={f.profile?.avatar_url}
-                          className="group"
-                        >
-                          <div className="w-12 h-12 rounded-full bg-secondary border-2 border-transparent group-hover:border-primary transition-all overflow-hidden">
-                            {f.profile?.avatar_url ? (
-                              <img src={f.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <User className="w-5 h-5 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                        </UserImageLink>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No followers yet</p>
-                  )}
-                </div>
-
-                {/* Following List */}
-                <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Following ({following?.length || 0})</h3>
-                  {following && following.length > 0 ? (
-                    <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
-                      {following.map((f) => (
-                        <UserImageLink
-                          key={f.following_id}
-                          userId={f.following_id}
-                          username={f.profile?.username}
-                          avatarUrl={f.profile?.avatar_url}
-                          className="group"
-                        >
-                          <div className="w-12 h-12 rounded-full bg-secondary border-2 border-transparent group-hover:border-primary transition-all overflow-hidden">
-                            {f.profile?.avatar_url ? (
-                              <img src={f.profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <User className="w-5 h-5 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                        </UserImageLink>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Not following anyone yet</p>
-                  )}
-                </div>
-
-                {/* Profile Comments */}
-                <div className="glass rounded-2xl p-6">
-                  <ProfileComments profileUserId={user.id} />
-                </div>
+                <ProfileComments profileUserId={user.id} />
               </div>
             </TabsContent>
 
             {/* Bookmarks Tab */}
-            <TabsContent value="bookmarks">
-              <div className="space-y-6">
-                {/* Video Bookmarks */}
-                <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Video className="w-4 h-4 text-primary" />
-                    Saved Videos ({videoBookmarks.length})
-                  </h3>
-                  {bookmarkedVideos && bookmarkedVideos.length > 0 ? (
-                    <div className="space-y-2">
-                      {bookmarkedVideos.map((v) => (
-                        <Link
-                          key={v.id}
-                          to="/videos"
-                          className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
-                        >
-                          {v.thumbnail_url && (
-                            <img src={v.thumbnail_url} alt={v.title} className="w-16 h-10 rounded object-cover flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{v.title}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(v.created_at).toLocaleDateString()}</p>
-                          </div>
+            <TabsContent value="bookmarks" className="space-y-6">
+              <div className="glass rounded-2xl p-6">
+                <h3 className="font-semibold mb-6 flex items-center gap-2">
+                  <Bookmark className="w-4 h-4 text-primary" />
+                  Your Bookmarks
+                </h3>
+                
+                {/* Videos */}
+                {bookmarkedVideos && bookmarkedVideos.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Video className="w-4 h-4" />
+                      Videos ({bookmarkedVideos.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {bookmarkedVideos.map((video) => (
+                        <Link key={video.id} to="/videos" className="glass rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                          <p className="font-medium text-sm line-clamp-2">{video.title}</p>
                         </Link>
                       ))}
                     </div>
-                  ) : videoBookmarks.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">Loading...</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No saved videos yet</p>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Article Bookmarks */}
-                <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Newspaper className="w-4 h-4 text-primary" />
-                    Saved Articles ({articleBookmarks.length})
-                  </h3>
-                  {bookmarkedArticles && bookmarkedArticles.length > 0 ? (
-                    <div className="space-y-2">
-                      {bookmarkedArticles.map((a) => (
-                        <Link
-                          key={a.id}
-                          to={`/news/${a.slug}`}
-                          className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
-                        >
-                          {a.image_url && (
-                            <img src={a.image_url} alt={a.title} className="w-12 h-12 rounded object-cover flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{a.title}</p>
-                            <p className="text-xs text-muted-foreground">{new Date(a.created_at).toLocaleDateString()}</p>
-                          </div>
+                {/* Articles */}
+                {bookmarkedArticles && bookmarkedArticles.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Newspaper className="w-4 h-4" />
+                      Articles ({bookmarkedArticles.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {bookmarkedArticles.map((article) => (
+                        <Link key={article.id} to={`/news/${article.slug}`} className="glass rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                          <p className="font-medium text-sm line-clamp-2">{article.title}</p>
                         </Link>
                       ))}
                     </div>
-                  ) : articleBookmarks.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">Loading...</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No saved articles yet</p>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Giveaway Bookmarks */}
-                <div className="glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Gift className="w-4 h-4 text-primary" />
-                    Saved Giveaways ({giveawayBookmarks.length})
-                  </h3>
-                  {bookmarkedGiveaways && bookmarkedGiveaways.length > 0 ? (
-                    <div className="space-y-2">
-                      {bookmarkedGiveaways.map((g) => (
-                        <Link
-                          key={g.id}
-                          to="/giveaways"
-                          className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors"
-                        >
-                          {g.image_url && (
-                            <img src={g.image_url} alt={g.title} className="w-12 h-12 rounded object-cover flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{g.title}</p>
-                            <p className="text-xs text-muted-foreground">{g.prize}</p>
-                          </div>
+                {/* Giveaways */}
+                {bookmarkedGiveaways && bookmarkedGiveaways.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <Gift className="w-4 h-4" />
+                      Giveaways ({bookmarkedGiveaways.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {bookmarkedGiveaways.map((giveaway) => (
+                        <Link key={giveaway.id} to="/giveaways" className="glass rounded-lg p-3 hover:bg-secondary/50 transition-colors">
+                          <p className="font-medium text-sm line-clamp-2">{giveaway.title}</p>
+                          <p className="text-xs text-primary mt-1">{giveaway.prize}</p>
                         </Link>
                       ))}
                     </div>
-                  ) : giveawayBookmarks.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">Loading...</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No saved giveaways yet</p>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {(!bookmarkedVideos?.length && !bookmarkedArticles?.length && !bookmarkedGiveaways?.length) && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p>You haven't bookmarked anything yet.</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
 
             {/* Achievements Tab */}
-            <TabsContent value="achievements">
+            <TabsContent value="achievements" className="space-y-6">
               <div className="glass rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-semibold flex items-center gap-2">
-                    <Award className="w-5 h-5 text-accent" />
+                    <Award className="w-4 h-4 text-primary" />
                     Achievements ({unlockedCount}/{ACHIEVEMENTS.length})
                   </h3>
                 </div>
                 
                 {Object.entries(achievementsByCategory).map(([category, categoryAchievements]) => (
-                  <div key={category} className="mb-6 last:mb-0">
+                  <div key={category} className="mb-6">
                     <h4 className="text-sm font-medium text-muted-foreground mb-3">
-                      {categoryNames[category as keyof typeof categoryNames]}
+                      {categoryNames[category as keyof typeof categoryNames] || category}
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {categoryAchievements.map((achievement) => {
-                        const { unlocked, progress, requirement } = getAchievementProgress(achievement.key);
-                        const progressPercent = (progress / requirement) * 100;
-                        
+                        const progress = getAchievementProgress(achievement.key);
                         return (
                           <div
                             key={achievement.key}
                             className={`p-4 rounded-xl border transition-all ${
-                              unlocked
-                                ? `bg-${achievement.color}-500/10 border-${achievement.color}-500/30`
-                                : "bg-secondary/20 border-border/50 opacity-60"
+                              progress.unlocked
+                                ? "bg-primary/10 border-primary/30"
+                                : "bg-secondary/30 border-border/50 opacity-60"
                             }`}
                           >
-                            <div className="flex items-start gap-3">
-                              <div className={`text-2xl ${!unlocked ? "grayscale" : ""}`}>
-                                {achievement.icon}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className={`font-medium text-sm ${unlocked ? "text-foreground" : "text-muted-foreground"}`}>
-                                    {achievement.name}
-                                  </p>
-                                  {unlocked && (
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                  )}
-                                </div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {achievement.description}
-                                </p>
-                                {!unlocked && (
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{achievement.icon}</span>
+                              <div className="flex-1">
+                                <p className="font-medium text-sm">{achievement.name}</p>
+                                <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                                {!progress.unlocked && progress.current !== undefined && (
                                   <div className="mt-2">
-                                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                      <span>Progress</span>
-                                      <span>{progress}/{requirement}</span>
-                                    </div>
-                                    <Progress value={progressPercent} className="h-1.5" />
+                                    <Progress value={(progress.current / achievement.requirement) * 100} className="h-1" />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {progress.current}/{achievement.requirement}
+                                    </p>
                                   </div>
                                 )}
                               </div>
+                              {progress.unlocked && <CheckCircle2 className="w-5 h-5 text-primary" />}
                             </div>
                           </div>
                         );
@@ -961,53 +895,91 @@ export default function Profile() {
             </TabsContent>
 
             {/* Activity Tab */}
-            <TabsContent value="activity">
+            <TabsContent value="activity" className="space-y-6">
               <div className="glass rounded-2xl p-6">
                 <h3 className="font-semibold mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  Activity Overview
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Activity Stats
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors">
-                    <Gift className="w-6 h-6 mx-auto mb-2 text-pink-500" />
+                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
+                    <Gift className="w-6 h-6 mx-auto mb-2 text-primary" />
                     <p className="text-2xl font-bold">{stats.giveawayEntries}</p>
-                    <p className="text-sm text-muted-foreground">Giveaways Entered</p>
+                    <p className="text-xs text-muted-foreground">Giveaway Entries</p>
                   </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors">
+                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
                     <Target className="w-6 h-6 mx-auto mb-2 text-green-500" />
                     <p className="text-2xl font-bold">{stats.gtwGuesses}</p>
-                    <p className="text-sm text-muted-foreground">GTW Guesses</p>
+                    <p className="text-xs text-muted-foreground">GTW Guesses</p>
                   </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors">
+                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
                     <MessageSquare className="w-6 h-6 mx-auto mb-2 text-blue-500" />
                     <p className="text-2xl font-bold">{stats.comments}</p>
-                    <p className="text-sm text-muted-foreground">Comments</p>
+                    <p className="text-xs text-muted-foreground">Comments</p>
                   </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors">
+                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
                     <Heart className="w-6 h-6 mx-auto mb-2 text-red-500" />
                     <p className="text-2xl font-bold">{stats.articleLikes}</p>
-                    <p className="text-sm text-muted-foreground">Article Likes</p>
+                    <p className="text-xs text-muted-foreground">Likes</p>
                   </div>
                 </div>
               </div>
             </TabsContent>
 
             {/* Settings Tab */}
-            <TabsContent value="settings">
-              <NotificationPreferences />
+            <TabsContent value="settings" className="space-y-6">
+              {/* Email Change Section */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-primary" />
+                  Change Email
+                </h3>
+                <div className="space-y-4">
+                  <div className="p-4 bg-secondary/30 rounded-xl">
+                    <p className="text-sm text-muted-foreground mb-2">Current Email</p>
+                    <p className="font-medium">{user.email}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">New Email Address</label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder="Enter new email"
+                        className="flex-1"
+                      />
+                      <Button onClick={handleEmailChange} disabled={emailChangePending || !newEmail}>
+                        {emailChangePending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change"}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      A verification link will be sent to your new email.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notification Preferences */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-primary" />
+                  Notification Preferences
+                </h3>
+                <NotificationPreferences />
+              </div>
             </TabsContent>
           </Tabs>
         </motion.div>
 
         {/* Followers Modal */}
-        {user && (
-          <FollowersModal
-            isOpen={followersModalOpen}
-            onClose={() => setFollowersModalOpen(false)}
-            userId={user.id}
-            initialTab={followersModalTab}
-          />
-        )}
+        <FollowersModal
+          isOpen={followersModalOpen}
+          onClose={() => setFollowersModalOpen(false)}
+          userId={user.id}
+          initialTab={followersModalTab}
+        />
       </div>
     </div>
   );
