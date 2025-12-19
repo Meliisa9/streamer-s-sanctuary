@@ -101,6 +101,7 @@ const navSections: NavSection[] = [
       { icon: Users, label: "Users", path: "/admin/users", roles: ["admin"] },
       { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
       { icon: FileText, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
+      { icon: Shield, label: "Auth Health", path: "/admin/settings/auth-health", roles: ["admin"] },
       { icon: Settings, label: "Settings", path: "/admin/settings", roles: ["admin"] },
     ],
   },
