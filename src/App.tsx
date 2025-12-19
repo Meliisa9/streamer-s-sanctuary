@@ -15,7 +15,7 @@ import News from "./pages/News";
 import NewsArticle from "./pages/NewsArticle";
 import Giveaways from "./pages/Giveaways";
 import Events from "./pages/Events";
-import GuessTheWin from "./pages/GuessTheWin";
+import { Navigate } from "react-router-dom";
 import Leaderboard from "./pages/Leaderboard";
 import Polls from "./pages/Polls";
 import About from "./pages/About";
@@ -37,7 +37,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
 import AdminNews from "./pages/admin/AdminNews";
 import AdminEvents from "./pages/admin/AdminEvents";
-import AdminGTW from "./pages/admin/AdminGTW";
+
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminBranding from "./pages/admin/AdminBranding";
 import AdminNavigation from "./pages/admin/AdminNavigation";
@@ -95,7 +95,7 @@ const App = () => (
                 <Route path="/news/:slug" element={<NewsArticle />} />
                 <Route path="/giveaways" element={<Giveaways />} />
                 <Route path="/events" element={<Events />} />
-                <Route path="/guess-the-win" element={<GuessTheWin />} />
+                <Route path="/guess-the-win" element={<Navigate to="/bonus-hunt" replace />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/polls" element={<Polls />} />
                 <Route path="/about" element={<About />} />
@@ -120,7 +120,7 @@ const App = () => (
                 <Route path="giveaways" element={<AdminGiveaways />} />
                 <Route path="news" element={<AdminNews />} />
                 <Route path="events" element={<AdminEvents />} />
-                <Route path="gtw" element={<AdminGTW />} />
+                <Route path="gtw" element={<Navigate to="/admin/bonus-hunt" replace />} />
                 <Route path="polls" element={<AdminPolls />} />
                 <Route path="streamers" element={<AdminStreamers />} />
                 <Route path="stream" element={<AdminStream />} />

@@ -232,6 +232,7 @@ export type Database = {
           title: string
           updated_at: string
           winner_points: number | null
+          winner_user_id: string | null
         }
         Insert: {
           average_bet?: number | null
@@ -249,6 +250,7 @@ export type Database = {
           title: string
           updated_at?: string
           winner_points?: number | null
+          winner_user_id?: string | null
         }
         Update: {
           average_bet?: number | null
@@ -266,6 +268,7 @@ export type Database = {
           title?: string
           updated_at?: string
           winner_points?: number | null
+          winner_user_id?: string | null
         }
         Relationships: []
       }
