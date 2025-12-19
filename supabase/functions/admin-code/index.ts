@@ -154,12 +154,12 @@ serve(async (req) => {
         const [salt, storedHash] = storedValue.split(':');
         const inputHash = await hashCode(code, salt);
         isValid = inputHash === storedHash;
-        console.log(`Hash comparison - stored length: ${storedHash.length}, input length: ${inputHash.length}, match: ${isValid}`);
+        console.log(`Hash comparison - match: ${isValid}`);
       } else {
-        // Legacy format - user needs to reset their code
-        console.log('Legacy hash format detected, user needs to reset');
+        // Legacy format - user needs to delete their code from DB and create a new one
+        console.log('Legacy hash format detected');
         return new Response(
-          JSON.stringify({ verified: false, needsReset: true, error: 'Your access code uses an old format. Please reset it.' }),
+          JSON.stringify({ verified: false, error: 'Please delete your access code from the database and create a new one' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -168,25 +168,6 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ verified: isValid }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (action === 'reset') {
-      // Delete the user's existing access code so they can set a new one
-      const { error } = await supabaseAdmin
-        .from('admin_access_codes')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error('Error resetting access code:', error);
-        throw error;
-      }
-
-      console.log('Access code reset successfully for user:', user.id);
-      return new Response(
-        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
