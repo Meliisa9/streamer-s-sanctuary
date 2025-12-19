@@ -18,6 +18,7 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasAccessCode, setHasAccessCode] = useState(false);
   const [isSettingCode, setIsSettingCode] = useState(false);
+  const [isResettingCode, setIsResettingCode] = useState(false);
   const [newCode, setNewCode] = useState("");
   const [confirmCode, setConfirmCode] = useState("");
   const { toast } = useToast();
@@ -108,6 +109,13 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       if (data?.verified) {
         setIsVerified(true);
         toast({ title: "Access granted" });
+      } else if (data?.needsReset) {
+        toast({ 
+          title: "Code reset required", 
+          description: "Your access code uses an old format. Please reset it.",
+          variant: "destructive" 
+        });
+        setIsResettingCode(true);
       } else {
         toast({ 
           title: "Invalid code", 
@@ -120,6 +128,30 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     } finally {
       setIsSubmitting(false);
       setCode("");
+    }
+  };
+
+  const handleResetCode = async () => {
+    if (!user) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-code', {
+        body: { action: 'reset' }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setHasAccessCode(false);
+      setIsSettingCode(true);
+      setIsResettingCode(false);
+      toast({ title: "Code reset", description: "You can now set a new access code" });
+    } catch (error: any) {
+      toast({ title: "Error resetting code", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -199,6 +231,49 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     );
   }
 
+  // Show reset confirmation
+  if (isResettingCode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass rounded-2xl p-8 max-w-md w-full text-center"
+        >
+          <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-8 h-8 text-yellow-500" />
+          </div>
+          
+          <h1 className="text-2xl font-bold mb-2">Reset Access Code</h1>
+          <p className="text-muted-foreground mb-6">
+            Your access code uses an outdated format and needs to be reset. Click below to delete your old code and create a new one.
+          </p>
+
+          <div className="space-y-3">
+            <Button 
+              onClick={handleResetCode}
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Reset & Create New Code
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setIsResettingCode(false)}
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   // Show verification form
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -241,9 +316,12 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
           </Button>
         </form>
 
-        <p className="text-xs text-muted-foreground mt-4">
-          Forgot your code? Contact an administrator to reset it.
-        </p>
+        <button 
+          onClick={() => setIsResettingCode(true)}
+          className="text-xs text-muted-foreground mt-4 hover:text-primary transition-colors underline"
+        >
+          Forgot your code? Reset it here
+        </button>
       </motion.div>
     </div>
   );
