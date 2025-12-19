@@ -30,7 +30,7 @@ interface Streamer {
 
 export default function Streamers() {
   const [selectedStreamer, setSelectedStreamer] = useState<Streamer | null>(null);
-  const [filter, setFilter] = useState<"all" | "featured" | "team">("all");
+  const [filter, setFilter] = useState<"featured" | "team">("featured");
 
   const { data: streamers, isLoading } = useQuery({
     queryKey: ["streamers"],
@@ -51,9 +51,7 @@ export default function Streamers() {
 
   const filteredStreamers = filter === "featured" 
     ? mainStreamers 
-    : filter === "team" 
-    ? otherStreamers 
-    : streamers || [];
+    : otherStreamers;
 
   const getPlatforms = (streamer: Streamer) => {
     const platforms = [];
@@ -160,7 +158,6 @@ export default function Streamers() {
         >
           <div className="inline-flex p-1 bg-secondary/50 rounded-xl">
             {[
-              { value: "all", label: "All Streamers", icon: Users },
               { value: "featured", label: "Streamers", icon: Star },
               { value: "team", label: "Team Members", icon: Sparkles },
             ].map((tab) => (
@@ -176,7 +173,7 @@ export default function Streamers() {
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
                 <span className="ml-1 px-1.5 py-0.5 text-xs rounded bg-background/20">
-                  {tab.value === "all" ? streamers?.length || 0 : tab.value === "featured" ? mainStreamers.length : otherStreamers.length}
+                  {tab.value === "featured" ? mainStreamers.length : otherStreamers.length}
                 </span>
               </button>
             ))}
