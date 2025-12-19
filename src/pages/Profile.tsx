@@ -43,9 +43,15 @@ export default function Profile() {
   
   const [formData, setFormData] = useState({
     username: "",
-    display_name: "",
     bio: "",
     avatar_url: "",
+    cover_url: "",
+    age: "",
+    country: "",
+    city: "",
+    website: "",
+    favorite_slot: "",
+    favorite_casino: "",
   });
 
   // Fetch bookmarked content details
@@ -151,9 +157,15 @@ export default function Profile() {
     if (profile) {
       setFormData({
         username: profile.username || "",
-        display_name: profile.display_name || "",
         bio: profile.bio || "",
         avatar_url: profile.avatar_url || "",
+        cover_url: (profile as any).cover_url || "",
+        age: (profile as any).age?.toString() || "",
+        country: (profile as any).country || "",
+        city: (profile as any).city || "",
+        website: (profile as any).website || "",
+        favorite_slot: (profile as any).favorite_slot || "",
+        favorite_casino: (profile as any).favorite_casino || "",
       });
     }
   }, [profile]);
@@ -162,10 +174,22 @@ export default function Profile() {
     e.preventDefault();
     if (!user) return;
 
-    setLoading(true);
+    const updatePayload = {
+      username: formData.username,
+      bio: formData.bio,
+      avatar_url: formData.avatar_url,
+      cover_url: formData.cover_url,
+      age: formData.age ? parseInt(formData.age) : null,
+      country: formData.country || null,
+      city: formData.city || null,
+      website: formData.website || null,
+      favorite_slot: formData.favorite_slot || null,
+      favorite_casino: formData.favorite_casino || null,
+    };
+    
     const { error } = await supabase
       .from("profiles")
-      .update(formData)
+      .update(updatePayload)
       .eq("user_id", user.id);
 
     setLoading(false);
@@ -384,13 +408,13 @@ export default function Profile() {
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h1 className="text-2xl font-bold">
-                    {formData.display_name || formData.username || "Anonymous"}
+                    {formData.username || "Anonymous"}
                   </h1>
                   <Badge variant="outline" className={level.color}>
                     {level.name}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground text-sm">@{formData.username || "username"} • {user.email}</p>
+                <p className="text-muted-foreground text-sm">@{formData.username || "username"}</p>
               </div>
               <div className="flex items-center gap-6">
                 <div className="text-center">
@@ -491,15 +515,6 @@ export default function Profile() {
                           onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                           disabled={!isEditing}
                           placeholder="username"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Display Name</label>
-                        <Input
-                          value={formData.display_name}
-                          onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                          disabled={!isEditing}
-                          placeholder="Your display name"
                         />
                       </div>
                     </div>
@@ -697,15 +712,21 @@ export default function Profile() {
                     <Users className="w-5 h-5 text-primary" />
                     Social Stats
                   </h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                      <p className="text-3xl font-bold text-primary">{profile?.followers_count || 0}</p>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
+                      className="flex-1 p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors cursor-pointer"
+                    >
+                      <p className="text-3xl font-bold text-primary">{followersCount || 0}</p>
                       <p className="text-sm text-muted-foreground">Followers</p>
-                    </div>
-                    <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                      <p className="text-3xl font-bold text-accent">{profile?.following_count || 0}</p>
+                    </button>
+                    <button 
+                      onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
+                      className="flex-1 p-4 bg-secondary/30 rounded-xl text-center hover:bg-secondary/50 transition-colors cursor-pointer"
+                    >
+                      <p className="text-3xl font-bold text-accent">{followingCount || 0}</p>
                       <p className="text-sm text-muted-foreground">Following</p>
-                    </div>
+                    </button>
                   </div>
                 </div>
 

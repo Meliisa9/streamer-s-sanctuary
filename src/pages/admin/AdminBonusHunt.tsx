@@ -1135,11 +1135,12 @@ export default function AdminBonusHunt() {
                   <h4 className="font-medium">Add Slot/Bonus</h4>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
-                      <SlotPicker
+                    <SlotPicker
                         value={{ slot_name: newSlotForm.slot_name, provider: newSlotForm.provider }}
                         onChange={(data) => setNewSlotForm({ ...newSlotForm, slot_name: data.slot_name, provider: data.provider })}
                         placeholder="Search for a slot..."
                         showProviderField={true}
+                        excludeSlots={tempSlots.map(s => s.slot_name)}
                       />
                     </div>
                     <div>

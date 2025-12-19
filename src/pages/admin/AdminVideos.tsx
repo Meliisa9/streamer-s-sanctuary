@@ -314,15 +314,16 @@ export default function AdminVideos() {
 
               {formData.is_external ? (
                 <div>
-                  <label className="text-sm font-medium mb-1 block">Video URL (YouTube, etc.) *</label>
+                  <label className="text-sm font-medium mb-1 block">Video URL (YouTube, Twitch, Kick) *</label>
                   <input
                     type="url"
                     value={formData.video_url}
                     onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
                     required
-                    placeholder="https://youtube.com/watch?v=..."
+                    placeholder="https://youtube.com/watch?v=... or https://twitch.tv/videos/... or https://kick.com/video/..."
                     className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Supports YouTube, Twitch VODs, and Kick VODs</p>
                 </div>
               ) : (
                 <div>

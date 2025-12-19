@@ -1080,58 +1080,82 @@ export type Database = {
       }
       profiles: {
         Row: {
+          age: number | null
           avatar_url: string | null
           bio: string | null
+          city: string | null
+          country: string | null
+          cover_url: string | null
           created_at: string
           discord_tag: string | null
           display_name: string | null
           equipped_badge: string | null
           equipped_title: string | null
+          favorite_casino: string | null
+          favorite_slot: string | null
           followers_count: number | null
           following_count: number | null
           id: string
+          is_private: boolean | null
           kick_username: string | null
           points: number | null
           twitch_username: string | null
           updated_at: string
           user_id: string
           username: string | null
+          website: string | null
         }
         Insert: {
+          age?: number | null
           avatar_url?: string | null
           bio?: string | null
+          city?: string | null
+          country?: string | null
+          cover_url?: string | null
           created_at?: string
           discord_tag?: string | null
           display_name?: string | null
           equipped_badge?: string | null
           equipped_title?: string | null
+          favorite_casino?: string | null
+          favorite_slot?: string | null
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          is_private?: boolean | null
           kick_username?: string | null
           points?: number | null
           twitch_username?: string | null
           updated_at?: string
           user_id: string
           username?: string | null
+          website?: string | null
         }
         Update: {
+          age?: number | null
           avatar_url?: string | null
           bio?: string | null
+          city?: string | null
+          country?: string | null
+          cover_url?: string | null
           created_at?: string
           discord_tag?: string | null
           display_name?: string | null
           equipped_badge?: string | null
           equipped_title?: string | null
+          favorite_casino?: string | null
+          favorite_slot?: string | null
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          is_private?: boolean | null
           kick_username?: string | null
           points?: number | null
           twitch_username?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
+          website?: string | null
         }
         Relationships: []
       }
