@@ -153,11 +153,14 @@ export default function Events() {
     return events.filter((e) => e.event_date === dateStr);
   };
 
-  const upcomingEvents = events
-    ?.filter((e) => new Date(e.event_date) >= new Date())
-    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+  // Get today's date string
+  const todayStr = new Date().toISOString().split('T')[0];
   
-  // Show up to 3 events visible, rest scrollable
+  // Separate current events (today) from upcoming
+  const currentEvents = events?.filter((e) => e.event_date === todayStr) || [];
+  const upcomingEvents = events
+    ?.filter((e) => new Date(e.event_date) > new Date(todayStr))
+    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -266,12 +269,77 @@ export default function Events() {
               </div>
             </motion.div>
 
-            {/* Upcoming Events */}
+            {/* Events Lists */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              className="space-y-6"
             >
+              {/* Current Events - Today */}
+              {currentEvents && currentEvents.length > 0 && (
+                <div className="glass rounded-2xl p-6">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                    Current Events (Today)
+                  </h2>
+                  <div className="space-y-4">
+                    {currentEvents.map((event) => {
+                      const streamer = getStreamerById(event.streamer_id);
+                      const isEventSubscribed = userSubscriptions.includes(event.id);
+                      
+                      return (
+                        <div
+                          key={event.id}
+                          className="p-4 rounded-xl border border-green-500/30 bg-green-500/5"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              eventTypes[event.event_type || "Stream"] || eventTypes.Stream
+                            }`}>
+                              {event.event_type}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-green-400 font-medium">LIVE TODAY</span>
+                              <button
+                                onClick={() => handleToggleSubscription(event.id)}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  isEventSubscribed 
+                                    ? "bg-primary/20 text-primary" 
+                                    : "bg-secondary/50 text-muted-foreground hover:text-primary"
+                                }`}
+                              >
+                                <Bell className={`w-4 h-4 ${isEventSubscribed ? "fill-current" : ""}`} />
+                              </button>
+                            </div>
+                          </div>
+                          <h3 className="font-semibold mb-2">{event.title}</h3>
+                          {streamer && (
+                            <div className="flex items-center gap-2 mb-3 p-2 bg-secondary/50 rounded-lg">
+                              {streamer.image_url ? (
+                                <img src={streamer.image_url} alt={streamer.name} className="w-8 h-8 rounded-full object-cover" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                                  <User className="w-4 h-4 text-primary" />
+                                </div>
+                              )}
+                              <span className="text-sm font-medium">{streamer.name}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {event.event_time || "TBA"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Upcoming Events */}
               <div className="glass rounded-2xl p-6">
                 <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5 text-primary" />

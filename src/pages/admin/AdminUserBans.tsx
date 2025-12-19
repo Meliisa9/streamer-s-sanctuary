@@ -277,19 +277,21 @@ export default function AdminUserBans() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="ipBan"
-                    checked={banForm.ipBan}
-                    onChange={(e) => setBanForm({ ...banForm, ipBan: e.target.checked })}
-                    className="rounded"
-                  />
-                  <label htmlFor="ipBan" className="text-sm font-medium flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    IP Ban
-                  </label>
-                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="ipBan"
+                      checked={banForm.ipBan}
+                      onChange={(e) => setBanForm({ ...banForm, ipBan: e.target.checked })}
+                      className="rounded"
+                    />
+                    <label htmlFor="ipBan" className="text-sm font-medium flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      IP Ban (Admin Only)
+                    </label>
+                  </div>
+                )}
 
                 {banForm.ipBan && (
                   <div className="space-y-2">
