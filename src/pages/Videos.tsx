@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -164,9 +164,18 @@ export default function Videos() {
 
   const isVideoLiked = (videoId: string) => userLikes?.includes(videoId) || false;
 
-  // Featured Carousel Component - 3D Perspective Style matching screenshot
+  // Featured Carousel Component - Exact match to screenshot design
   const FeaturedCarousel = ({ videos }: { videos: Video[] }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
+    
+    // Auto-play
+    useEffect(() => {
+      if (videos.length <= 1) return;
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev === videos.length - 1 ? 0 : prev + 1));
+      }, 5000);
+      return () => clearInterval(interval);
+    }, [videos.length]);
     
     const goToPrevious = () => {
       setCurrentIndex((prev) => (prev === 0 ? videos.length - 1 : prev - 1));
@@ -185,196 +194,175 @@ export default function Videos() {
       return index;
     };
 
-    const getCardStyle = (position: number): React.CSSProperties => {
-      const baseTransform = {
-        center: {
-          transform: 'translateX(-50%) scale(1) rotateY(0deg)',
-          zIndex: 30,
-          opacity: 1,
-          left: '50%',
-        },
-        left: {
-          transform: 'translateX(-85%) scale(0.75) rotateY(25deg)',
-          zIndex: 20,
-          opacity: 0.7,
-          left: '30%',
-        },
-        right: {
-          transform: 'translateX(35%) scale(0.75) rotateY(-25deg)',
-          zIndex: 20,
-          opacity: 0.7,
-          left: '70%',
-        },
-        farLeft: {
-          transform: 'translateX(-120%) scale(0.55) rotateY(35deg)',
-          zIndex: 10,
-          opacity: 0.4,
-          left: '15%',
-        },
-        farRight: {
-          transform: 'translateX(70%) scale(0.55) rotateY(-35deg)',
-          zIndex: 10,
-          opacity: 0.4,
-          left: '85%',
-        },
-      };
-
-      switch (position) {
-        case 0: return baseTransform.center;
-        case -1: return baseTransform.left;
-        case 1: return baseTransform.right;
-        case -2: return baseTransform.farLeft;
-        case 2: return baseTransform.farRight;
-        default: return { opacity: 0, zIndex: 0 };
-      }
-    };
-
     return (
-      <div className="relative py-8 overflow-hidden">
-        {/* Purple/Blue Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-violet-950/50 via-purple-900/30 to-violet-950/50 rounded-3xl" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-500/5 to-transparent" />
+      <div className="relative py-12 px-4 overflow-hidden rounded-3xl" style={{
+        background: 'linear-gradient(135deg, hsl(270, 60%, 15%) 0%, hsl(280, 70%, 8%) 50%, hsl(270, 60%, 15%) 100%)'
+      }}>
+        {/* Purple Glow Effects */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-600/20 rounded-full blur-[120px]" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px]" />
         
         {/* 3D Carousel Container */}
         <div 
-          className="relative h-[320px] md:h-[420px] lg:h-[480px]"
-          style={{ perspective: '1500px', perspectiveOrigin: 'center center' }}
+          className="relative h-[280px] md:h-[380px] lg:h-[450px] flex items-center justify-center"
+          style={{ perspective: '1200px' }}
         >
-          {/* Carousel Cards */}
-          {[-2, -1, 0, 1, 2].map((offset) => {
-            if (videos.length <= Math.abs(offset)) return null;
-            const videoIndex = getVideoIndex(offset);
-            const video = videos[videoIndex];
-            const style = getCardStyle(offset);
-            
-            return (
-              <motion.div
-                key={`${video.id}-${offset}`}
-                className="absolute top-1/2 cursor-pointer"
-                initial={false}
-                animate={{
-                  opacity: style.opacity,
-                  scale: offset === 0 ? 1 : offset === -1 || offset === 1 ? 0.75 : 0.55,
-                  x: offset === 0 ? '-50%' : offset === -1 ? '-85%' : offset === 1 ? '35%' : offset === -2 ? '-120%' : '70%',
-                  rotateY: offset === 0 ? 0 : offset < 0 ? 25 + Math.abs(offset) * 10 : -25 - Math.abs(offset) * 10,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 30,
-                }}
-                style={{
-                  left: style.left as string,
-                  zIndex: style.zIndex,
-                  transformStyle: 'preserve-3d',
-                  translateY: '-50%',
-                }}
-                onClick={() => offset === 0 ? handleVideoClick(video) : setCurrentIndex(videoIndex)}
-              >
-                {/* Card with Purple Glow Border */}
-                <div 
-                  className={`relative rounded-2xl overflow-hidden shadow-2xl ${
-                    offset === 0 ? 'ring-4 ring-purple-500/60 shadow-purple-500/30' : ''
-                  }`}
-                  style={{
-                    width: offset === 0 ? 'min(700px, 85vw)' : 'min(500px, 70vw)',
-                    aspectRatio: '16/9',
-                  }}
-                >
-                  {/* Video Thumbnail */}
-                  <img
-                    src={getThumbnail(video)}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
-                  
-                  {/* Play Button on Center Card */}
-                  {offset === 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary/90 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-primary/40">
-                        <Play className="w-7 h-7 md:w-9 md:h-9 text-primary-foreground ml-1" />
-                      </div>
-                    </div>
+          {/* Left Side Card */}
+          {videos.length > 1 && (
+            <motion.div
+              key={`left-${getVideoIndex(-1)}`}
+              className="absolute cursor-pointer"
+              initial={false}
+              animate={{
+                x: '-65%',
+                scale: 0.7,
+                rotateY: 35,
+                opacity: 0.6,
+                zIndex: 10,
+              }}
+              transition={{ type: "spring", stiffness: 200, damping: 30 }}
+              style={{ transformStyle: 'preserve-3d' }}
+              onClick={() => setCurrentIndex(getVideoIndex(-1))}
+            >
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-purple-500/30"
+                style={{ width: 'min(400px, 60vw)', aspectRatio: '16/9' }}>
+                <img
+                  src={getThumbnail(videos[getVideoIndex(-1)])}
+                  alt={videos[getVideoIndex(-1)].title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40" />
+              </div>
+            </motion.div>
+          )}
+
+          {/* Center Card - Main Featured */}
+          <motion.div
+            key={`center-${currentIndex}`}
+            className="relative cursor-pointer z-30"
+            initial={false}
+            animate={{
+              scale: 1,
+              x: 0,
+              rotateY: 0,
+              opacity: 1,
+            }}
+            transition={{ type: "spring", stiffness: 200, damping: 30 }}
+            style={{ transformStyle: 'preserve-3d' }}
+            onClick={() => handleVideoClick(videos[currentIndex])}
+          >
+            <div 
+              className="relative rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(168,85,247,0.4)] border-4 border-purple-500/60"
+              style={{ width: 'min(650px, 85vw)', aspectRatio: '16/9' }}
+            >
+              <img
+                src={getThumbnail(videos[currentIndex])}
+                alt={videos[currentIndex].title}
+                className="w-full h-full object-cover"
+              />
+              
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+              
+              {/* Play Button */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/40">
+                  <Play className="w-10 h-10 text-white ml-1" fill="white" />
+                </div>
+              </div>
+              
+              {/* Video Info */}
+              <div className="absolute bottom-0 left-0 right-0 p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  {videos[currentIndex].multiplier && (
+                    <span className="px-3 py-1 bg-accent text-accent-foreground text-sm font-bold rounded-lg">
+                      {videos[currentIndex].multiplier}
+                    </span>
                   )}
-                  
-                  {/* Video Info Overlay - Only on center */}
-                  {offset === 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-                      <div className="flex items-center gap-2 mb-2">
-                        {video.multiplier && (
-                          <span className="px-2 py-1 bg-accent text-accent-foreground text-xs font-bold rounded">
-                            {video.multiplier}
-                          </span>
-                        )}
-                        {video.duration && (
-                          <span className="px-2 py-1 bg-black/60 backdrop-blur-sm text-xs rounded flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {video.duration}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="text-lg md:text-xl font-bold text-white line-clamp-1 drop-shadow-lg">
-                        {video.title}
-                      </h3>
-                      <div className="flex items-center gap-4 mt-2 text-white/80 text-sm">
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-4 h-4" />
-                          {video.views?.toLocaleString() || 0}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-red-500 text-red-500" : ""}`} />
-                          {video.likes_count?.toLocaleString() || 0}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Side card title */}
-                  {offset !== 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
-                      <h4 className="text-sm font-medium text-white/90 line-clamp-1">
-                        {video.title}
-                      </h4>
-                    </div>
+                  {videos[currentIndex].duration && (
+                    <span className="px-3 py-1 bg-black/60 backdrop-blur-sm text-sm rounded-lg flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5" />
+                      {videos[currentIndex].duration}
+                    </span>
                   )}
                 </div>
-              </motion.div>
-            );
-          })}
+                <h3 className="text-xl md:text-2xl font-bold text-white line-clamp-2 drop-shadow-lg mb-2">
+                  {videos[currentIndex].title}
+                </h3>
+                <div className="flex items-center gap-4 text-white/80 text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <Eye className="w-4 h-4" />
+                    {videos[currentIndex].views?.toLocaleString() || 0}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <Heart className={`w-4 h-4 ${isVideoLiked(videos[currentIndex].id) ? "fill-red-500 text-red-500" : ""}`} />
+                    {videos[currentIndex].likes_count?.toLocaleString() || 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right Side Card */}
+          {videos.length > 1 && (
+            <motion.div
+              key={`right-${getVideoIndex(1)}`}
+              className="absolute cursor-pointer"
+              initial={false}
+              animate={{
+                x: '65%',
+                scale: 0.7,
+                rotateY: -35,
+                opacity: 0.6,
+                zIndex: 10,
+              }}
+              transition={{ type: "spring", stiffness: 200, damping: 30 }}
+              style={{ transformStyle: 'preserve-3d' }}
+              onClick={() => setCurrentIndex(getVideoIndex(1))}
+            >
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-purple-500/30"
+                style={{ width: 'min(400px, 60vw)', aspectRatio: '16/9' }}>
+                <img
+                  src={getThumbnail(videos[getVideoIndex(1)])}
+                  alt={videos[getVideoIndex(1)].title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40" />
+              </div>
+            </motion.div>
+          )}
         </div>
 
-        {/* Large Navigation Arrows */}
+        {/* Large Navigation Arrows - Outside cards */}
         {videos.length > 1 && (
           <>
             <button
               onClick={goToPrevious}
-              className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 transition-all duration-300 group"
+              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-40 w-14 h-14 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 hover:border-purple-400/50 transition-all duration-300 group shadow-xl"
             >
-              <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:text-primary transition-colors" />
+              <ChevronLeft className="w-8 h-8 text-white group-hover:text-purple-300 transition-colors" />
             </button>
             <button
               onClick={goToNext}
-              className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 transition-all duration-300 group"
+              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 w-14 h-14 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 hover:border-purple-400/50 transition-all duration-300 group shadow-xl"
             >
-              <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:text-primary transition-colors" />
+              <ChevronRight className="w-8 h-8 text-white group-hover:text-purple-300 transition-colors" />
             </button>
           </>
         )}
 
         {/* Carousel Dots */}
         {videos.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-40">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-40">
             {videos.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                className={`h-2.5 rounded-full transition-all duration-300 ${
                   index === currentIndex 
-                    ? "bg-primary w-8 shadow-lg shadow-primary/50" 
-                    : "bg-white/30 hover:bg-white/50 w-2"
+                    ? "bg-purple-400 w-10 shadow-lg shadow-purple-500/50" 
+                    : "bg-white/30 hover:bg-white/50 w-2.5"
                 }`}
               />
             ))}
@@ -454,12 +442,12 @@ export default function Videos() {
                     </span>
                     <button
                       onClick={(e) => handleLike(e, video.id)}
-                      className={`flex items-center gap-1 transition-colors ${
-                        isVideoLiked(video.id) ? "text-destructive" : "hover:text-destructive"
+                      className={`flex items-center gap-1 hover:text-red-500 transition-colors ${
+                        isVideoLiked(video.id) ? "text-red-500" : ""
                       }`}
                     >
                       <Heart className={`w-3 h-3 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
-                      {video.likes_count?.toLocaleString() || 0}
+                      {video.likes_count || 0}
                     </button>
                   </div>
                   <BookmarkButton contentType="video" contentId={video.id} size="sm" />
@@ -474,117 +462,161 @@ export default function Videos() {
 
   return (
     <div className="min-h-screen py-8 px-6">
-      <div className="container mx-auto">
-        {/* Header */}
+      <div className="container mx-auto space-y-10">
+        {/* Page Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="text-center"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             <span className="gradient-text">Videos</span>
           </h1>
           <p className="text-lg text-muted-foreground">
-            Watch our biggest wins, bonus hunts, and highlights
+            Watch our latest wins, highlights, and exclusive content
           </p>
         </motion.div>
 
-        {/* Search & Filters */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-col md:flex-row gap-4 mb-8"
-        >
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        {/* Featured Carousel */}
+        {featuredVideos && featuredVideos.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <FeaturedCarousel videos={featuredVideos} />
+          </motion.div>
+        )}
+
+        {/* Category Sections */}
+        <div className="space-y-10">
+          <VideoSection 
+            title="Big Wins" 
+            icon={Flame} 
+            videos={bigWinsVideos} 
+            iconColor="text-orange-500" 
+          />
+          <VideoSection 
+            title="Max Wins" 
+            icon={Crown} 
+            videos={maxWinsVideos} 
+            iconColor="text-yellow-500" 
+          />
+        </div>
+
+        {/* Search and Filter */}
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full md:w-auto">
+            {categoryNames.map((cat) => (
+              <Button
+                key={cat}
+                variant={selectedCategory === cat ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCategory(cat)}
+                className="whitespace-nowrap"
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search videos..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary transition-colors"
+              className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
-        </motion.div>
+        </div>
 
-        {/* Categories */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex flex-wrap gap-2 mb-8"
-        >
-          {categoryNames.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
-                selectedCategory === category
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                  : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </motion.div>
-
+        {/* All Videos Grid */}
         {isLoading ? (
-          <div className="text-center py-20">Loading videos...</div>
-        ) : (
-          <div className="space-y-12">
-            {/* Featured Video Carousel */}
-            {featuredVideos && featuredVideos.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 }}
-              >
-                <FeaturedCarousel videos={featuredVideos} />
-              </motion.div>
-            )}
-
-            {/* Big Wins Section */}
-            <VideoSection 
-              title="Big Wins" 
-              icon={Flame} 
-              videos={bigWinsVideos} 
-              iconColor="text-orange-500"
-            />
-
-            {/* Max Wins Section */}
-            <VideoSection 
-              title="Max Wins" 
-              icon={Crown} 
-              videos={maxWinsVideos} 
-              iconColor="text-yellow-500"
-            />
-
-            {/* Latest Videos Section */}
-            <VideoSection 
-              title="Latest Videos" 
-              icon={Clock} 
-              videos={latestVideos} 
-              iconColor="text-primary"
-            />
-
-            {/* Show message if no videos */}
-            {(!filteredVideos || filteredVideos.length === 0) && (
-              <div className="text-center py-20 text-muted-foreground">
-                No videos found matching your criteria.
-              </div>
-            )}
+          <div className="text-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading videos...</p>
           </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-4"
+          >
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              {selectedCategory === "All" ? "Latest Videos" : selectedCategory}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredVideos?.map((video, index) => (
+                <motion.div
+                  key={video.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * index }}
+                  onClick={() => handleVideoClick(video)}
+                  className="glass rounded-xl overflow-hidden card-hover group cursor-pointer"
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <img
+                      src={getThumbnail(video)}
+                      alt={video.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center">
+                        <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
+                      </div>
+                    </div>
+                    {video.duration && (
+                      <span className="absolute bottom-2 right-2 px-2 py-0.5 bg-background/90 text-xs rounded">
+                        {video.duration}
+                      </span>
+                    )}
+                    {video.multiplier && (
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-accent text-accent-foreground text-xs font-bold rounded">
+                        {video.multiplier}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+                      {video.title}
+                    </h3>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {video.views?.toLocaleString() || 0}
+                        </span>
+                        <button
+                          onClick={(e) => handleLike(e, video.id)}
+                          className={`flex items-center gap-1 hover:text-red-500 transition-colors ${
+                            isVideoLiked(video.id) ? "text-red-500" : ""
+                          }`}
+                        >
+                          <Heart className={`w-3 h-3 ${isVideoLiked(video.id) ? "fill-current" : ""}`} />
+                          {video.likes_count || 0}
+                        </button>
+                      </div>
+                      <BookmarkButton contentType="video" contentId={video.id} size="sm" />
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
         )}
 
+        {/* Video Player Modal */}
         {selectedVideo && (
           <VideoPlayerModal
             isOpen={!!selectedVideo}
             onClose={() => setSelectedVideo(null)}
             videoUrl={selectedVideo.video_file_url || selectedVideo.video_url}
             title={selectedVideo.title}
-            isExternal={selectedVideo.is_external ?? true}
           />
         )}
       </div>

@@ -1,15 +1,19 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Gift, Users, Clock, Trophy, CheckCircle2, Lock, Sparkles, ArrowRight, Crown, Infinity } from "lucide-react";
+import { Gift, Users, Clock, Trophy, CheckCircle2, Lock, Sparkles, ArrowRight, Crown, Infinity, X, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserImageLink } from "@/components/UserAvatarLink";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Giveaway = Tables<"giveaways">;
+type Profile = Tables<"profiles">;
 
 function CountdownTimer({ endDate }: { endDate: string }) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -45,10 +49,107 @@ function CountdownTimer({ endDate }: { endDate: string }) {
   );
 }
 
+// Past Giveaway Winner Modal
+function WinnerModal({ 
+  giveaway, 
+  isOpen, 
+  onClose 
+}: { 
+  giveaway: Giveaway | null; 
+  isOpen: boolean; 
+  onClose: () => void;
+}) {
+  const { data: winners } = useQuery({
+    queryKey: ["giveaway-winners", giveaway?.id],
+    queryFn: async () => {
+      if (!giveaway?.winner_ids || giveaway.winner_ids.length === 0) return [];
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("user_id", giveaway.winner_ids);
+      if (error) throw error;
+      return data as Profile[];
+    },
+    enabled: isOpen && !!giveaway?.winner_ids?.length,
+  });
+
+  if (!giveaway) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            {giveaway.title} - Winners
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Giveaway Info */}
+          <div className="p-4 bg-secondary/30 rounded-xl text-center">
+            <p className="text-2xl font-bold gradient-text-gold mb-2">{giveaway.prize}</p>
+            <p className="text-sm text-muted-foreground">
+              Ended {new Date(giveaway.end_date).toLocaleDateString()}
+            </p>
+          </div>
+
+          {/* Winners List */}
+          {winners && winners.length > 0 ? (
+            <div className="space-y-3">
+              <h4 className="font-medium flex items-center gap-2">
+                <Award className="w-4 h-4 text-primary" />
+                {winners.length} Winner{winners.length > 1 ? "s" : ""}
+              </h4>
+              <div className="space-y-2">
+                {winners.map((winner, index) => (
+                  <UserImageLink
+                    key={winner.user_id}
+                    userId={winner.user_id}
+                    username={winner.username}
+                    className="flex items-center gap-3 p-3 bg-secondary/50 rounded-xl hover:bg-secondary/70 transition-colors"
+                  >
+                    <div className="relative">
+                      <Avatar className="w-12 h-12 ring-2 ring-yellow-500/50">
+                        <AvatarImage src={winner.avatar_url || undefined} />
+                        <AvatarFallback className="bg-gradient-to-br from-yellow-400 to-amber-600 text-white font-bold">
+                          {(winner.username || "U")[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center text-xs font-bold text-black">
+                        {index + 1}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="font-semibold">{winner.username || "Anonymous"}</p>
+                      <p className="text-xs text-muted-foreground">@{winner.username}</p>
+                    </div>
+                    <Crown className="w-5 h-5 text-yellow-500 ml-auto" />
+                  </UserImageLink>
+                ))}
+              </div>
+            </div>
+          ) : giveaway.winner_ids && giveaway.winner_ids.length > 0 ? (
+            <div className="text-center py-6">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+              <p className="text-muted-foreground">Loading winners...</p>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-muted-foreground">
+              <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No winners announced yet</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Giveaways() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedGiveaway, setSelectedGiveaway] = useState<Giveaway | null>(null);
 
   const { data: giveaways, isLoading } = useQuery({
     queryKey: ["giveaways"],
@@ -117,7 +218,6 @@ export default function Giveaways() {
     return acc + (match ? parseInt(match[1].replace(/,/g, "")) : 0);
   }, 0) || 0;
 
-  // Check if entry limit reached (null or 0 max_entries = unlimited)
   const isEntryLimitReached = (giveaway: Giveaway) => {
     if (!giveaway.max_entries || giveaway.max_entries === 0) return false;
     const currentEntries = entryCounts?.[giveaway.id] || 0;
@@ -202,14 +302,9 @@ export default function Giveaways() {
                         className="glass rounded-2xl overflow-hidden neon-border"
                       >
                         <div className="flex flex-col lg:flex-row">
-                          {/* Image */}
                           <div className="lg:w-80 h-48 lg:h-auto relative overflow-hidden">
                             {giveaway.image_url ? (
-                              <img
-                                src={giveaway.image_url}
-                                alt={giveaway.title}
-                                className="w-full h-full object-cover"
-                              />
+                              <img src={giveaway.image_url} alt={giveaway.title} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full bg-secondary flex items-center justify-center">
                                 <Gift className="w-16 h-16 text-muted-foreground" />
@@ -223,27 +318,17 @@ export default function Giveaways() {
                             )}
                           </div>
 
-                          {/* Content */}
                           <div className="flex-1 p-6">
                             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                               <div className="flex-1">
                                 <h3 className="text-2xl font-bold mb-2">{giveaway.title}</h3>
-                                
-                                {/* Description */}
                                 {giveaway.description && (
                                   <p className="text-muted-foreground mb-4">{giveaway.description}</p>
                                 )}
-                                
                                 <div className="flex items-center gap-4 mb-4">
-                                  <span className="text-3xl font-bold gradient-text-gold">
-                                    {giveaway.prize}
-                                  </span>
-                                  <span className="px-3 py-1 bg-secondary text-sm rounded-full">
-                                    {giveaway.prize_type}
-                                  </span>
+                                  <span className="text-3xl font-bold gradient-text-gold">{giveaway.prize}</span>
+                                  <span className="px-3 py-1 bg-secondary text-sm rounded-full">{giveaway.prize_type}</span>
                                 </div>
-
-                                {/* Requirements */}
                                 {giveaway.requirements && giveaway.requirements.length > 0 && (
                                   <div className="space-y-2 mb-4">
                                     {giveaway.requirements.map((req, i) => (
@@ -254,8 +339,6 @@ export default function Giveaways() {
                                     ))}
                                   </div>
                                 )}
-
-                                {/* Stats */}
                                 <div className="flex items-center gap-6 text-sm text-muted-foreground">
                                   <span className="flex items-center gap-1">
                                     <Users className="w-4 h-4" />
@@ -263,9 +346,7 @@ export default function Giveaways() {
                                     {giveaway.max_entries && giveaway.max_entries > 0 ? (
                                       <span>/ {giveaway.max_entries.toLocaleString()}</span>
                                     ) : (
-                                      <span className="flex items-center gap-1">
-                                        <Infinity className="w-3 h-3" /> unlimited
-                                      </span>
+                                      <span className="flex items-center gap-1"><Infinity className="w-3 h-3" /> unlimited</span>
                                     )}
                                   </span>
                                   <span className="flex items-center gap-1">
@@ -276,24 +357,20 @@ export default function Giveaways() {
                                 </div>
                               </div>
 
-                              {/* Countdown & CTA */}
                               <div className="flex flex-col items-center lg:items-end gap-4">
                                 <div className="text-center lg:text-right">
                                   <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1 justify-center lg:justify-end">
-                                    <Clock className="w-3 h-3" />
-                                    Ends in
+                                    <Clock className="w-3 h-3" />Ends in
                                   </p>
                                   <CountdownTimer endDate={giveaway.end_date} />
                                 </div>
                                 {hasEntered ? (
                                   <Button variant="outline" size="lg" disabled className="w-full lg:w-auto gap-2">
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    Entered
+                                    <CheckCircle2 className="w-4 h-4" />Entered
                                   </Button>
                                 ) : limitReached ? (
                                   <Button variant="outline" size="lg" disabled className="w-full lg:w-auto gap-2">
-                                    <Lock className="w-4 h-4" />
-                                    Entry Limit Reached
+                                    <Lock className="w-4 h-4" />Entry Limit Reached
                                   </Button>
                                 ) : (
                                   <Button
@@ -309,8 +386,7 @@ export default function Giveaways() {
                                     }}
                                     disabled={enterMutation.isPending}
                                   >
-                                    Enter Giveaway
-                                    <ArrowRight className="w-4 h-4" />
+                                    Enter Giveaway<ArrowRight className="w-4 h-4" />
                                   </Button>
                                 )}
                               </div>
@@ -324,7 +400,7 @@ export default function Giveaways() {
               </motion.div>
             )}
 
-            {/* Ended Giveaways */}
+            {/* Past Giveaways - Clickable */}
             {endedGiveaways && endedGiveaways.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -337,21 +413,18 @@ export default function Giveaways() {
                 </h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {endedGiveaways.slice(0, 4).map((giveaway, index) => (
+                  {endedGiveaways.slice(0, 6).map((giveaway, index) => (
                     <motion.div
                       key={giveaway.id}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 * index }}
-                      className="glass rounded-2xl overflow-hidden opacity-80"
+                      onClick={() => setSelectedGiveaway(giveaway)}
+                      className="glass rounded-2xl overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                     >
                       <div className="relative h-32 overflow-hidden">
                         {giveaway.image_url ? (
-                          <img
-                            src={giveaway.image_url}
-                            alt={giveaway.title}
-                            className="w-full h-full object-cover grayscale"
-                          />
+                          <img src={giveaway.image_url} alt={giveaway.title} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full bg-secondary" />
                         )}
@@ -359,6 +432,12 @@ export default function Giveaways() {
                         <span className="absolute top-4 right-4 px-3 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-full">
                           ENDED
                         </span>
+                        {giveaway.winner_ids && giveaway.winner_ids.length > 0 && (
+                          <span className="absolute top-4 left-4 px-3 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full flex items-center gap-1">
+                            <Trophy className="w-3 h-3" />
+                            {giveaway.winner_ids.length} Winner{giveaway.winner_ids.length > 1 ? "s" : ""}
+                          </span>
+                        )}
                       </div>
                       <div className="p-4">
                         <h3 className="font-bold mb-2">{giveaway.title}</h3>
@@ -366,9 +445,10 @@ export default function Giveaways() {
                           <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{giveaway.description}</p>
                         )}
                         <p className="text-xl font-bold text-muted-foreground mb-3">{giveaway.prize}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {entryCounts?.[giveaway.id] || 0} entries
-                        </p>
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>{entryCounts?.[giveaway.id] || 0} entries</span>
+                          <span className="text-primary text-xs">Click to view winners →</span>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -383,6 +463,13 @@ export default function Giveaways() {
             )}
           </>
         )}
+
+        {/* Winner Modal */}
+        <WinnerModal
+          giveaway={selectedGiveaway}
+          isOpen={!!selectedGiveaway}
+          onClose={() => setSelectedGiveaway(null)}
+        />
       </div>
     </div>
   );

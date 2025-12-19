@@ -10,20 +10,32 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
 
+interface HowToEarnConfig {
+  box1_icon: string;
+  box1_title: string;
+  box1_text: string;
+  box2_icon: string;
+  box2_title: string;
+  box2_text: string;
+  box3_icon: string;
+  box3_title: string;
+  box3_text: string;
+}
+
 export default function Leaderboard() {
   const [category, setCategory] = useState<"overall" | "bonushunt" | "giveaways">("overall");
 
-  // Fetch leaderboard how to earn text from settings
-  const { data: howToEarnText } = useQuery({
-    queryKey: ["leaderboard-how-to-earn"],
+  // Fetch configurable "How to Earn Points" boxes
+  const { data: howToEarnConfig } = useQuery({
+    queryKey: ["leaderboard-how-to-earn-config"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("site_settings")
         .select("value")
-        .eq("key", "leaderboard_how_to_earn")
+        .eq("key", "leaderboard_how_to_earn_boxes")
         .maybeSingle();
       if (error) throw error;
-      return typeof data?.value === 'string' ? data.value : null;
+      return data?.value as unknown as HowToEarnConfig | null;
     },
   });
 
@@ -57,7 +69,7 @@ export default function Leaderboard() {
     },
   });
 
-  // Fetch bonus hunt guess stats (combined GTW + Bonus Hunt guesses)
+  // Fetch bonus hunt guess stats
   const { data: bonusHuntStats } = useQuery({
     queryKey: ["leaderboard-bonushunt-stats"],
     queryFn: async () => {
@@ -78,11 +90,10 @@ export default function Leaderboard() {
     },
   });
 
-  // Build leaderboard based on category
   const leaderboardData = profiles?.map((profile) => ({
     ...profile,
     userId: profile.user_id,
-    username: profile.display_name || profile.username || "Anonymous",
+    username: profile.username || "Anonymous",
     profileUsername: profile.username,
     avatar: profile.avatar_url,
     points: profile.points || 0,
@@ -92,7 +103,6 @@ export default function Leaderboard() {
     bonusHuntPoints: bonusHuntStats?.[profile.user_id]?.totalPoints || 0,
   }));
 
-  // Sort based on category
   const sortedData = [...(leaderboardData || [])].sort((a, b) => {
     if (category === "bonushunt") {
       return b.bonusHuntPoints - a.bonusHuntPoints || b.bonusHuntWins - a.bonusHuntWins;
@@ -116,6 +126,33 @@ export default function Leaderboard() {
     if (category === "giveaways") return `${player.giveawayEntries} entries`;
     return `${player.points.toLocaleString()} pts`;
   };
+
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case "Target": return Target;
+      case "Gift": return Gift;
+      case "Trophy": return Trophy;
+      case "Star": return Star;
+      case "Zap": return Zap;
+      case "Crown": return Crown;
+      default: return Target;
+    }
+  };
+
+  // Default config if not set
+  const defaultConfig: HowToEarnConfig = {
+    box1_icon: "Target",
+    box1_title: "Bonus Hunt GTW",
+    box1_text: "Win up to 300 points by guessing the closest to the final bonus hunt balance!",
+    box2_icon: "Gift",
+    box2_title: "Giveaways",
+    box2_text: "Enter giveaways for a chance to win prizes and earn participation points!",
+    box3_icon: "Zap",
+    box3_title: "Daily Activity",
+    box3_text: "Sign in daily to maintain your streak and earn bonus points each day!",
+  };
+
+  const config = howToEarnConfig || defaultConfig;
 
   return (
     <div className="min-h-screen py-8 px-4 md:px-6">
@@ -348,7 +385,7 @@ export default function Leaderboard() {
               </div>
             </motion.div>
 
-            {/* How Points Work - Configurable */}
+            {/* How Points Work - 3 Configurable Boxes */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -359,46 +396,48 @@ export default function Leaderboard() {
                 <TrendingUp className="w-5 h-5 text-primary" />
                 How to Earn Points
               </h2>
-              {howToEarnText ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Box 1 */}
                 <div className="p-4 bg-muted/20 rounded-xl">
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{howToEarnText}</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    {(() => {
+                      const IconComponent = getIconComponent(config.box1_icon);
+                      return <IconComponent className="w-5 h-5 text-green-500" />;
+                    })()}
+                    <span className="font-semibold">{config.box1_title}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{config.box1_text}</p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="w-5 h-5 text-green-500" />
-                      <span className="font-semibold">Bonus Hunt GTW</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Win up to 300 points by guessing the closest to the final bonus hunt balance!
-                    </p>
+                {/* Box 2 */}
+                <div className="p-4 bg-muted/20 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    {(() => {
+                      const IconComponent = getIconComponent(config.box2_icon);
+                      return <IconComponent className="w-5 h-5 text-primary" />;
+                    })()}
+                    <span className="font-semibold">{config.box2_title}</span>
                   </div>
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Gift className="w-5 h-5 text-primary" />
-                      <span className="font-semibold">Giveaway Entries</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      100 points per giveaway entry. Winners get 5,000 bonus points!
-                    </p>
-                  </div>
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Zap className="w-5 h-5 text-yellow-500" />
-                      <span className="font-semibold">Daily Activity</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Daily login: 50 pts. Stream watching: 10 pts/hour. Comments: 25 pts.
-                    </p>
-                  </div>
+                  <p className="text-sm text-muted-foreground">{config.box2_text}</p>
                 </div>
-              )}
+                {/* Box 3 */}
+                <div className="p-4 bg-muted/20 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    {(() => {
+                      const IconComponent = getIconComponent(config.box3_icon);
+                      return <IconComponent className="w-5 h-5 text-yellow-500" />;
+                    })()}
+                    <span className="font-semibold">{config.box3_title}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{config.box3_text}</p>
+                </div>
+              </div>
             </motion.div>
           </>
         ) : (
-          <div className="text-center py-20 text-muted-foreground">
-            No players found. Be the first to join!
+          <div className="text-center py-20 glass rounded-2xl">
+            <Trophy className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
+            <h2 className="text-2xl font-bold mb-2">No Players Yet</h2>
+            <p className="text-muted-foreground">Be the first to earn points!</p>
           </div>
         )}
       </div>
