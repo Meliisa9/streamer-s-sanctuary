@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,7 @@ import {
   ChevronsLeft, ChevronsRight, Zap, Star,
   Lock, Users, ArrowUpDown, LayoutList, Calendar, History
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 interface BonusHunt {
   id: string;
@@ -39,6 +39,7 @@ interface BonusHunt {
   currency: string | null;
   winner_points: number | null;
   winner_user_id: string | null;
+  start_time: string | null;
   created_at: string;
 }
 
@@ -62,6 +63,14 @@ interface UserGuess {
   points_earned: number | null;
 }
 
+interface UserAvgXGuess {
+  id: string;
+  hunt_id: string;
+  user_id: string;
+  guess_x: number;
+  points_earned: number;
+}
+
 interface WinnerInfo {
   username: string | null;
   display_name: string | null;
@@ -74,16 +83,36 @@ export default function BonusHunt() {
   const { user, isAdmin, isModerator } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentHuntIndex, setCurrentHuntIndex] = useState(0);
   const [slotSearch, setSlotSearch] = useState("");
   const [slotPage, setSlotPage] = useState(0);
   const [guessAmount, setGuessAmount] = useState("");
+  const [avgXGuess, setAvgXGuess] = useState("");
   const [savingSlotId, setSavingSlotId] = useState<string | null>(null);
   const [sortField, setSortField] = useState<"sort_order" | "bet_amount" | "multiplier" | "win_amount">("sort_order");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [activeTab, setActiveTab] = useState("stats");
+  const [activeTab, setActiveTab] = useState(() => searchParams.get("tab") || "stats");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const SLOTS_PER_PAGE = 10;
+  
+  // Sync tab with URL params
+  useEffect(() => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab && ["stats", "gtw", "avgx"].includes(urlTab)) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams]);
+  
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === "stats") {
+      searchParams.delete("tab");
+    } else {
+      searchParams.set("tab", tab);
+    }
+    setSearchParams(searchParams, { replace: true });
+  };
   
   const canEditSlots = isAdmin || isModerator;
 
@@ -139,6 +168,39 @@ export default function BonusHunt() {
     enabled: !!displayHunt?.id && !!user?.id,
   });
 
+  // Fetch user's AvgX guess for current hunt
+  const { data: userAvgXGuess } = useQuery({
+    queryKey: ["bonus-hunt-avgx-guess", displayHunt?.id, user?.id],
+    queryFn: async () => {
+      if (!displayHunt?.id || !user?.id) return null;
+      const { data, error } = await supabase
+        .from("bonus_hunt_avgx_guesses")
+        .select("*")
+        .eq("hunt_id", displayHunt.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as UserAvgXGuess | null;
+    },
+    enabled: !!displayHunt?.id && !!user?.id,
+  });
+
+  // Fetch all AvgX guesses for current hunt
+  const { data: allAvgXGuesses } = useQuery({
+    queryKey: ["bonus-hunt-all-avgx-guesses", displayHunt?.id],
+    queryFn: async () => {
+      if (!displayHunt?.id) return [];
+      const { data, error } = await supabase
+        .from("bonus_hunt_avgx_guesses")
+        .select("*")
+        .eq("hunt_id", displayHunt.id)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!displayHunt?.id,
+  });
+
   // Fetch all guesses for current hunt
   const { data: allGuesses } = useQuery({
     queryKey: ["bonus-hunt-all-guesses", displayHunt?.id],
@@ -186,6 +248,13 @@ export default function BonusHunt() {
   });
 
   const guessCount = allGuesses?.length || 0;
+  const avgXGuessCount = allAvgXGuesses?.length || 0;
+
+  // Check if guesses are locked (hunt has started)
+  const isGuessLocked = useMemo(() => {
+    if (!displayHunt?.start_time) return false;
+    return new Date(displayHunt.start_time) <= new Date();
+  }, [displayHunt?.start_time]);
 
   const submitGuessMutation = useMutation({
     mutationFn: async (amount: number) => {
@@ -206,7 +275,42 @@ export default function BonusHunt() {
     },
   });
 
+  const submitAvgXMutation = useMutation({
+    mutationFn: async (guessX: number) => {
+      if (!user || !displayHunt) throw new Error("Not authenticated or no active hunt");
+      const { error } = await supabase
+        .from("bonus_hunt_avgx_guesses")
+        .insert({ hunt_id: displayHunt.id, user_id: user.id, guess_x: guessX });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunt-avgx-guess"] });
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunt-all-avgx-guesses"] });
+      toast({ title: "Avg X guess submitted! Good luck!" });
+      setAvgXGuess("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleSubmitGuess = () => {
+    const amount = parseFloat(guessAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({ title: "Please enter a valid amount", variant: "destructive" });
+      return;
+    }
+    submitGuessMutation.mutate(amount);
+  };
+
+  const handleSubmitAvgX = () => {
+    const xValue = parseFloat(avgXGuess);
+    if (isNaN(xValue) || xValue <= 0) {
+      toast({ title: "Please enter a valid multiplier", variant: "destructive" });
+      return;
+    }
+    submitAvgXMutation.mutate(xValue);
+  };
     const amount = parseFloat(guessAmount);
     if (isNaN(amount) || amount <= 0) {
       toast({ title: "Please enter a valid amount", variant: "destructive" });
@@ -685,7 +789,7 @@ export default function BonusHunt() {
                 transition={{ delay: 0.1 }}
               >
                 <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden">
-                  <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <Tabs value={activeTab} onValueChange={handleTabChange}>
                     <TabsList className="w-full rounded-none bg-muted/20 border-b border-border/50">
                       <TabsTrigger value="stats" className="flex-1">STATS</TabsTrigger>
                       <TabsTrigger value="gtw" className="flex-1">GTW</TabsTrigger>
@@ -784,6 +888,19 @@ export default function BonusHunt() {
 
                       {(displayHunt.status === "ongoing" || displayHunt.status === "to_be_played") && (
                         <>
+                          {/* Show locked message if hunt started and no guess */}
+                          {isGuessLocked && !userGuess && (
+                            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Lock className="w-5 h-5 text-destructive" />
+                                <span className="font-medium text-destructive">Guessing is Locked</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                The hunt has started. Guesses are no longer accepted.
+                              </p>
+                            </div>
+                          )}
+                          
                           {userGuess ? (
                             <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-2">
@@ -795,11 +912,16 @@ export default function BonusHunt() {
                                 Winner determined when hunt ends
                               </p>
                             </div>
-                          ) : user ? (
+                          ) : !isGuessLocked && user ? (
                             <div className="space-y-3">
                               <p className="text-sm text-muted-foreground">
                                 Predict the final balance of this bonus hunt!
                               </p>
+                              {displayHunt.start_time && (
+                                <p className="text-xs text-yellow-500">
+                                  Guesses lock at {new Date(displayHunt.start_time).toLocaleString()}
+                                </p>
+                              )}
                               <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
                                 <Input
@@ -822,20 +944,25 @@ export default function BonusHunt() {
                                 Closest guess wins {displayHunt.winner_points || 1000} points!
                               </p>
                             </div>
-                          ) : (
+                          ) : !isGuessLocked ? (
                             <div className="text-center p-4 bg-muted/20 rounded-lg">
                               <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
                               <p className="text-sm text-muted-foreground">
                                 <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess!
                               </p>
                             </div>
-                          )}
+                          ) : null}
                         </>
                       )}
                     </TabsContent>
 
                     {/* AVG X Tab */}
                     <TabsContent value="avgx" className="p-4 space-y-4 mt-0">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground border-b border-border/50 pb-3">
+                        <Users className="w-4 h-4" />
+                        <span>{avgXGuessCount} {avgXGuessCount === 1 ? 'guess' : 'guesses'} submitted</span>
+                      </div>
+
                       <div className="space-y-3">
                         <div className="bg-muted/20 rounded-lg p-4 text-center">
                           <p className="text-xs text-muted-foreground mb-1">CURRENT AVG X</p>
@@ -870,6 +997,75 @@ export default function BonusHunt() {
                           </div>
                         )}
                       </div>
+
+                      {/* Avg X Guessing Section */}
+                      {(displayHunt.status === "ongoing" || displayHunt.status === "to_be_played") && (
+                        <div className="border-t border-border/50 pt-4 mt-4">
+                          <h4 className="font-medium mb-3">Guess the Average X</h4>
+                          
+                          {isGuessLocked && !userAvgXGuess && (
+                            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Lock className="w-5 h-5 text-destructive" />
+                                <span className="font-medium text-destructive">Guessing is Locked</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                The hunt has started. Guesses are no longer accepted.
+                              </p>
+                            </div>
+                          )}
+                          
+                          {userAvgXGuess ? (
+                            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                <span className="font-medium text-green-500">Your Avg X Guess is Locked!</span>
+                              </div>
+                              <p className="text-2xl font-bold">{userAvgXGuess.guess_x.toFixed(2)}x</p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Winner determined when hunt ends
+                              </p>
+                            </div>
+                          ) : !isGuessLocked && user ? (
+                            <div className="space-y-3">
+                              <p className="text-sm text-muted-foreground">
+                                Predict the final average multiplier!
+                              </p>
+                              {displayHunt.start_time && (
+                                <p className="text-xs text-yellow-500">
+                                  Guesses lock at {new Date(displayHunt.start_time).toLocaleString()}
+                                </p>
+                              )}
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Enter your X guess..."
+                                  value={avgXGuess}
+                                  onChange={(e) => setAvgXGuess(e.target.value)}
+                                  className="bg-background/50 pr-8"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">x</span>
+                              </div>
+                              <Button 
+                                className="w-full gap-2" 
+                                onClick={handleSubmitAvgX}
+                                disabled={submitAvgXMutation.isPending}
+                              >
+                                <Lock className="w-4 h-4" />
+                                Lock In Avg X
+                              </Button>
+                            </div>
+                          ) : !isGuessLocked ? (
+                            <div className="text-center p-4 bg-muted/20 rounded-lg">
+                              <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">
+                                <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess!
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
                     </TabsContent>
                   </Tabs>
                 </div>
