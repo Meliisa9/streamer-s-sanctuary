@@ -1483,6 +1483,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_restrictions: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          reason: string | null
+          restriction_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          reason?: string | null
+          restriction_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          reason?: string | null
+          restriction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1501,6 +1534,30 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_warnings: {
+        Row: {
+          created_at: string | null
+          id: string
+          reason: string
+          user_id: string
+          warned_by: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          reason: string
+          user_id: string
+          warned_by: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          reason?: string
+          user_id?: string
+          warned_by?: string
         }
         Relationships: []
       }
