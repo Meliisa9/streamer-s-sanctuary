@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Check, X, Edit2, Loader2 } from "lucide-react";
+import { Check, X, Edit2, Loader2, RotateCcw } from "lucide-react";
 
 interface InlineWinEditorProps {
   slotId: string;
@@ -10,6 +10,7 @@ interface InlineWinEditorProps {
   currencySymbol: string;
   isPlayed: boolean;
   onSave: (slotId: string, winAmount: number) => Promise<void>;
+  onReset?: (slotId: string) => Promise<void>;
   isSaving: boolean;
 }
 
@@ -20,10 +21,12 @@ export function InlineWinEditor({
   currencySymbol,
   isPlayed,
   onSave,
+  onReset,
   isSaving,
 }: InlineWinEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [winValue, setWinValue] = useState(currentWin?.toString() || "");
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleSave = async () => {
     const amount = parseFloat(winValue);
@@ -31,6 +34,18 @@ export function InlineWinEditor({
     
     await onSave(slotId, amount);
     setIsEditing(false);
+  };
+
+  const handleReset = async () => {
+    if (!onReset) return;
+    setIsResetting(true);
+    try {
+      await onReset(slotId);
+      setWinValue("");
+      setIsEditing(false);
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -53,14 +68,14 @@ export function InlineWinEditor({
           onKeyDown={handleKeyDown}
           className="h-7 w-24 text-sm font-mono"
           autoFocus
-          disabled={isSaving}
+          disabled={isSaving || isResetting}
         />
         <Button
           size="icon"
           variant="ghost"
           className="h-6 w-6"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || isResetting}
         >
           {isSaving ? (
             <Loader2 className="w-3 h-3 animate-spin" />
@@ -68,6 +83,22 @@ export function InlineWinEditor({
             <Check className="w-3 h-3 text-green-500" />
           )}
         </Button>
+        {onReset && isPlayed && (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6"
+            onClick={handleReset}
+            disabled={isSaving || isResetting}
+            title="Reset slot"
+          >
+            {isResetting ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <RotateCcw className="w-3 h-3 text-orange-500" />
+            )}
+          </Button>
+        )}
         <Button
           size="icon"
           variant="ghost"
@@ -76,7 +107,7 @@ export function InlineWinEditor({
             setIsEditing(false);
             setWinValue(currentWin?.toString() || "");
           }}
-          disabled={isSaving}
+          disabled={isSaving || isResetting}
         >
           <X className="w-3 h-3 text-destructive" />
         </Button>

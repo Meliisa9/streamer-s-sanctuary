@@ -365,6 +365,32 @@ export default function BonusHunt() {
     }
   };
 
+  // Reset slot function for admins/mods
+  const handleResetSlot = async (slotId: string) => {
+    try {
+      const { error } = await supabase
+        .from("bonus_hunt_slots")
+        .update({ 
+          win_amount: null, 
+          multiplier: null,
+          is_played: false 
+        })
+        .eq("id", slotId);
+      
+      if (error) throw error;
+      
+      if (displayHunt?.id) {
+        await updateBonusHuntStats(displayHunt.id);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunt-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunts"] });
+      toast({ title: "Slot reset!" });
+    } catch (error: any) {
+      toast({ title: "Error resetting slot", description: error.message, variant: "destructive" });
+    }
+  };
+
   // Calculate stats
   const stats = useMemo(() => {
     return calculateBonusHuntStats(slots || [], displayHunt?.starting_balance || null);
@@ -688,6 +714,7 @@ export default function BonusHunt() {
                                       currencySymbol={currencySymbol}
                                       isPlayed={slot.is_played}
                                       onSave={handleInlineWinUpdate}
+                                      onReset={handleResetSlot}
                                       isSaving={savingSlotId === slot.id}
                                     />
                                   ) : (
@@ -804,6 +831,13 @@ export default function BonusHunt() {
                         value={displayHunt.status === "ongoing" ? "LIVE" : displayHunt.status === "to_be_played" ? "UPCOMING" : "ENDED"}
                         valueColor={displayHunt.status === "ongoing" ? "text-green-500" : displayHunt.status === "to_be_played" ? "text-yellow-500" : ""}
                       />
+                      {displayHunt.start_time && (
+                        <StatRow 
+                          icon="⏰" 
+                          label="START TIME" 
+                          value={new Date(displayHunt.start_time).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        />
+                      )}
                       <StatRow icon="🎁" label="BONUS" value={slots?.length || 0} />
                       <StatRow icon="🎯" label="TARGET BALANCE" value={`${currencySymbol}${displayHunt.target_balance?.toLocaleString() || '0'}`} />
                       <StatRow 

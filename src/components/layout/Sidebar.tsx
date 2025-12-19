@@ -83,12 +83,28 @@ export function Sidebar() {
   };
 
   const NavItemComponent = ({ item }: { item: NavItem }) => {
-    // Use exact matching for paths that could be prefixes of other paths
-    const isActive = item.path === "/" 
-      ? location.pathname === "/"
-      : item.path === "/stream" || item.path === "/streamers"
-        ? location.pathname === item.path
-        : location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+    // Handle special deep-link navigation items like GTW and AvgX
+    const currentTab = new URLSearchParams(location.search).get("tab");
+    const itemUrl = new URL(item.path, "http://placeholder");
+    const itemTab = itemUrl.searchParams.get("tab");
+    const itemPathname = itemUrl.pathname;
+    
+    // Determine if this item is active
+    let isActive = false;
+    if (item.path === "/") {
+      isActive = location.pathname === "/";
+    } else if (itemTab) {
+      // This is a deep-link with a tab param (GTW, AvgX)
+      isActive = location.pathname === itemPathname && currentTab === itemTab;
+    } else if (item.path === "/stream" || item.path === "/streamers") {
+      isActive = location.pathname === item.path;
+    } else if (item.path === "/bonus-hunt") {
+      // Bonus Hunt is active only when on /bonus-hunt without a tab param
+      isActive = location.pathname === "/bonus-hunt" && !currentTab;
+    } else {
+      isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
+    }
+    
     const Icon = item.icon;
 
     return (
