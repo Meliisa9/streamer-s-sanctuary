@@ -311,13 +311,6 @@ export default function BonusHunt() {
     }
     submitAvgXMutation.mutate(xValue);
   };
-    const amount = parseFloat(guessAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({ title: "Please enter a valid amount", variant: "destructive" });
-      return;
-    }
-    submitGuessMutation.mutate(amount);
-  };
 
   // Inline win update function for admins/mods
   const handleInlineWinUpdate = async (slotId: string, winAmount: number) => {
