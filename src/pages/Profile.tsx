@@ -18,7 +18,7 @@ import {
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
   MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users, Bookmark,
-  Video, Newspaper, Mail, AlertCircle, MapPin, Cake, Star, Gamepad2
+  Video, Newspaper, Mail, AlertCircle, MapPin, Cake, Star, Gamepad2, Flame
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useUserFollow } from "@/hooks/useUserFollow";
@@ -65,7 +65,7 @@ export default function Profile() {
     bio: "",
     avatar_url: "",
     cover_url: "",
-    age: "",
+    birthdate: "",
     country: "",
     city: "",
     favorite_slot: "",
@@ -150,7 +150,7 @@ export default function Profile() {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith("#comment-")) {
-      setActiveTab("social");
+      setActiveTab("profile");
       setTimeout(() => {
         const commentId = hash.replace("#", "");
         const element = document.getElementById(commentId);
@@ -163,18 +163,26 @@ export default function Profile() {
         }
       }, 300);
     } else if (hash === "#wall") {
-      setActiveTab("social");
+      setActiveTab("profile");
     }
   }, []);
 
   useEffect(() => {
     if (profile) {
+      // Convert age to approximate birthdate for display
+      const age = (profile as any).age;
+      let birthdate = "";
+      if (age) {
+        const birthYear = new Date().getFullYear() - age;
+        birthdate = `${birthYear}-01-01`;
+      }
+      
       setFormData({
         username: profile.username || "",
         bio: profile.bio || "",
         avatar_url: profile.avatar_url || "",
         cover_url: (profile as any).cover_url || "",
-        age: (profile as any).age?.toString() || "",
+        birthdate: birthdate,
         country: (profile as any).country || "",
         city: (profile as any).city || "",
         favorite_slot: (profile as any).favorite_slot || "",
@@ -183,17 +191,32 @@ export default function Profile() {
     }
   }, [profile]);
 
+  // Calculate age from birthdate
+  const calculateAge = (birthdate: string): number | null => {
+    if (!birthdate) return null;
+    const birth = new Date(birthdate);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age >= 0 ? age : null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     setLoading(true);
+
+    const age = calculateAge(formData.birthdate);
 
     const updatePayload = {
       username: formData.username,
       bio: formData.bio,
       avatar_url: formData.avatar_url,
       cover_url: formData.cover_url,
-      age: formData.age ? parseInt(formData.age) : null,
+      age: age,
       country: formData.country || null,
       city: formData.city || null,
       favorite_slot: formData.favorite_slot || null,
@@ -234,7 +257,7 @@ export default function Profile() {
       
       toast({ 
         title: "Verification email sent", 
-        description: "Please check your new email inbox and click the confirmation link." 
+        description: "Please check both your current and new email inbox and click the confirmation links." 
       });
       setNewEmail("");
     } catch (error: any) {
@@ -356,6 +379,9 @@ export default function Profile() {
   };
 
   const unlockedCount = ACHIEVEMENTS.filter(a => getAchievementProgress(a.key).unlocked).length;
+  
+  // Get display age from profile
+  const displayAge = (profile as any)?.age;
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -377,13 +403,15 @@ export default function Profile() {
           >
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
             
-            {/* Cover Photo Upload Button */}
+            {/* Cover Photo Upload Button - positioned left of Edit button */}
             {isEditing && (
-              <CoverPhotoUpload
-                currentCoverUrl={formData.cover_url}
-                userId={user.id}
-                onCoverChange={(url) => setFormData({ ...formData, cover_url: url })}
-              />
+              <div className="absolute top-4 right-32">
+                <CoverPhotoUpload
+                  currentCoverUrl={formData.cover_url}
+                  userId={user.id}
+                  onCoverChange={(url) => setFormData({ ...formData, cover_url: url })}
+                />
+              </div>
             )}
             
             <div className="absolute -bottom-12 left-6">
@@ -436,32 +464,49 @@ export default function Profile() {
                 </div>
                 <p className="text-muted-foreground text-sm">@{formData.username || "username"}</p>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-primary">{profile?.points || 0}</p>
-                  <p className="text-xs text-muted-foreground">Points</p>
+              
+              {/* Enhanced Stats Tabs */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/20 shadow-sm">
+                  <Trophy className="w-4 h-4 text-primary" />
+                  <div>
+                    <p className="text-lg font-bold text-primary">{profile?.points || 0}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Points</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-500">{stats.consecutiveSignIns}</p>
-                  <p className="text-xs text-muted-foreground">🔥 Streak</p>
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-orange-500/20 to-orange-500/5 rounded-xl border border-orange-500/20 shadow-sm">
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  <div>
+                    <p className="text-lg font-bold text-orange-500">{stats.consecutiveSignIns}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Streak</p>
+                  </div>
                 </div>
                 <button 
                   onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
-                  className="text-center hover:opacity-80 transition-opacity cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-blue-500/20 to-blue-500/5 rounded-xl border border-blue-500/20 shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
-                  <p className="text-2xl font-bold">{followersCount}</p>
-                  <p className="text-xs text-muted-foreground">Followers</p>
+                  <Users className="w-4 h-4 text-blue-500" />
+                  <div>
+                    <p className="text-lg font-bold">{followersCount}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Followers</p>
+                  </div>
                 </button>
                 <button 
                   onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
-                  className="text-center hover:opacity-80 transition-opacity cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-purple-500/20 to-purple-500/5 rounded-xl border border-purple-500/20 shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
-                  <p className="text-2xl font-bold">{followingCount}</p>
-                  <p className="text-xs text-muted-foreground">Following</p>
+                  <Heart className="w-4 h-4 text-purple-500" />
+                  <div>
+                    <p className="text-lg font-bold">{followingCount}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Following</p>
+                  </div>
                 </button>
-                <div className="text-center">
-                  <p className="text-2xl font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
-                  <p className="text-xs text-muted-foreground">Achievements</p>
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20 shadow-sm">
+                  <Award className="w-4 h-4 text-yellow-500" />
+                  <div>
+                    <p className="text-lg font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Achievements</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -497,9 +542,6 @@ export default function Profile() {
               <TabsTrigger value="profile" className="gap-2">
                 <User className="w-4 h-4" />Profile
               </TabsTrigger>
-              <TabsTrigger value="social" className="gap-2">
-                <Users className="w-4 h-4" />Social
-              </TabsTrigger>
               <TabsTrigger value="bookmarks" className="gap-2">
                 <Bookmark className="w-4 h-4" />Bookmarks
               </TabsTrigger>
@@ -514,140 +556,89 @@ export default function Profile() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Profile Tab */}
+            {/* Profile Tab - Now includes display-only profile info, connected accounts, and wall */}
             <TabsContent value="profile" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Profile Form */}
+                {/* Profile Info Display */}
                 <div className="lg:col-span-2 glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4">Profile Information</h3>
-                  <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Username</label>
-                        <Input
-                          value={formData.username}
-                          onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                          disabled={!isEditing}
-                          placeholder="username"
-                        />
+                  <div className="space-y-4">
+                    {/* Bio */}
+                    {formData.bio && (
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">Bio</p>
+                        <p>{formData.bio}</p>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <Cake className="w-4 h-4 text-muted-foreground" />
-                          Age (Optional)
-                        </label>
-                        <Input
-                          type="number"
-                          value={formData.age}
-                          onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                          disabled={!isEditing}
-                          placeholder="Your age"
-                          min="13"
-                          max="120"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          Country (Optional)
-                        </label>
-                        <Select
-                          value={formData.country}
-                          onValueChange={(value) => setFormData({ ...formData, country: value })}
-                          disabled={!isEditing}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {COUNTRIES.map((country) => (
-                              <SelectItem key={country} value={country}>{country}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          City (Optional)
-                        </label>
-                        <Input
-                          value={formData.city}
-                          onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                          disabled={!isEditing}
-                          placeholder="Your city"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <Gamepad2 className="w-4 h-4 text-muted-foreground" />
-                          Favorite Slot (Optional)
-                        </label>
-                        <Input
-                          value={formData.favorite_slot}
-                          onChange={(e) => setFormData({ ...formData, favorite_slot: e.target.value })}
-                          disabled={!isEditing}
-                          placeholder="e.g., Gates of Olympus"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium flex items-center gap-2">
-                          <Star className="w-4 h-4 text-muted-foreground" />
-                          Favorite Casino (Optional)
-                        </label>
-                        <Input
-                          value={formData.favorite_casino}
-                          onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
-                          disabled={!isEditing}
-                          placeholder="e.g., Stake"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <label className="text-sm font-medium">Bio</label>
-                      <Textarea
-                        value={formData.bio}
-                        onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                        disabled={!isEditing}
-                        placeholder="Tell us about yourself..."
-                        rows={3}
-                      />
-                    </div>
-
-                    {isEditing && (
-                      <Button type="submit" disabled={loading} className="w-full gap-2">
-                        <Save className="w-4 h-4" />
-                        {loading ? "Saving..." : "Save Changes"}
-                      </Button>
                     )}
-                  </form>
+                    
+                    {/* Profile Details Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {displayAge && (
+                        <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Cake className="w-4 h-4" />
+                            <span className="text-sm">Age</span>
+                          </div>
+                          <p className="font-medium">{displayAge} years old</p>
+                        </div>
+                      )}
+                      {(profile as any)?.country && (
+                        <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <MapPin className="w-4 h-4" />
+                            <span className="text-sm">Country</span>
+                          </div>
+                          <p className="font-medium">{(profile as any).country}</p>
+                        </div>
+                      )}
+                      {(profile as any)?.city && (
+                        <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <MapPin className="w-4 h-4" />
+                            <span className="text-sm">City</span>
+                          </div>
+                          <p className="font-medium">{(profile as any).city}</p>
+                        </div>
+                      )}
+                      {(profile as any)?.favorite_slot && (
+                        <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Gamepad2 className="w-4 h-4" />
+                            <span className="text-sm">Favorite Slot</span>
+                          </div>
+                          <p className="font-medium">{(profile as any).favorite_slot}</p>
+                        </div>
+                      )}
+                      {(profile as any)?.favorite_casino && (
+                        <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Star className="w-4 h-4" />
+                            <span className="text-sm">Favorite Casino</span>
+                          </div>
+                          <p className="font-medium">{(profile as any).favorite_casino}</p>
+                        </div>
+                      )}
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                          <Calendar className="w-4 h-4" />
+                          <span className="text-sm">Member Since</span>
+                        </div>
+                        <p className="font-medium">{memberSince}</p>
+                      </div>
+                    </div>
+                    
+                    {!formData.bio && !displayAge && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <User className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                        <p>No profile information set yet.</p>
+                        <p className="text-sm">Go to Settings tab to add your details.</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Account Info Sidebar */}
+                {/* Sidebar */}
                 <div className="space-y-6">
-                  <div className="glass rounded-2xl p-6">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-primary" />
-                      Account Info
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl">
-                        <span className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          Member Since
-                        </span>
-                        <span className="text-sm font-medium">{memberSince}</span>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Quick Links */}
                   <div className="glass rounded-2xl p-6">
                     <h3 className="font-semibold mb-4">Quick Links</h3>
@@ -758,10 +749,8 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            </TabsContent>
 
-            {/* Social Tab */}
-            <TabsContent value="social" className="space-y-6">
+              {/* Profile Wall */}
               <div className="glass rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-semibold flex items-center gap-2">
@@ -926,8 +915,113 @@ export default function Profile() {
               </div>
             </TabsContent>
 
-            {/* Settings Tab */}
+            {/* Settings Tab - Now contains all editable profile fields */}
             <TabsContent value="settings" className="space-y-6">
+              {/* Profile Information Edit Form */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" />
+                  Edit Profile Information
+                </h3>
+                <form onSubmit={handleSubmit}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Username</label>
+                      <Input
+                        value={formData.username}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        placeholder="username"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Cake className="w-4 h-4 text-muted-foreground" />
+                        Birth Date (Optional)
+                      </label>
+                      <Input
+                        type="date"
+                        value={formData.birthdate}
+                        onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        Country (Optional)
+                      </label>
+                      <Select
+                        value={formData.country}
+                        onValueChange={(value) => setFormData({ ...formData, country: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>{country}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        City (Optional)
+                      </label>
+                      <Input
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        placeholder="Your city"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Gamepad2 className="w-4 h-4 text-muted-foreground" />
+                        Favorite Slot (Optional)
+                      </label>
+                      <Input
+                        value={formData.favorite_slot}
+                        onChange={(e) => setFormData({ ...formData, favorite_slot: e.target.value })}
+                        placeholder="e.g., Gates of Olympus"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Star className="w-4 h-4 text-muted-foreground" />
+                        Favorite Casino (Optional)
+                      </label>
+                      <Input
+                        value={formData.favorite_casino}
+                        onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
+                        placeholder="e.g., Stake"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm font-medium">Bio</label>
+                    <Textarea
+                      value={formData.bio}
+                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                      placeholder="Tell us about yourself..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <Button type="submit" disabled={loading} className="w-full gap-2">
+                    <Save className="w-4 h-4" />
+                    {loading ? "Saving..." : "Save Profile Changes"}
+                  </Button>
+                </form>
+              </div>
+
               {/* Email Change Section */}
               <div className="glass rounded-2xl p-6">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
@@ -955,7 +1049,7 @@ export default function Profile() {
                     </div>
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      A verification link will be sent to your new email.
+                      Verification links will be sent to both your current and new email addresses.
                     </p>
                   </div>
                 </div>

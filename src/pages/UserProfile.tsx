@@ -17,7 +17,7 @@ import {
   User, Trophy, Calendar, Users, MessageSquare, 
   Award, ArrowLeft, UserPlus, UserMinus, Loader2,
   TrendingUp, Target, Gift, Star, Shield, Zap,
-  ExternalLink, Heart, Share2, Flag
+  ExternalLink, Heart, Share2, Flag, BarChart3
 } from "lucide-react";
 import { LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
 import { ReportDialog } from "@/components/ReportDialog";
@@ -106,45 +106,142 @@ export default function UserProfile() {
     enabled: !!resolvedUserId,
   });
 
+  // Activity stats - GTW, Bonus Hunts, Giveaways, Polls
   const { data: activityStats } = useQuery({
     queryKey: ["user-activity-stats", resolvedUserId],
     queryFn: async () => {
-      if (!resolvedUserId) return { giveawayEntries: 0, comments: 0, pollVotes: 0, bonusHuntGuesses: 0 };
+      if (!resolvedUserId) return { 
+        gtwGuesses: 0, 
+        gtwWins: 0,
+        bonusHuntGuesses: 0, 
+        bonusHuntWins: 0,
+        giveawayEntries: 0, 
+        giveawayWins: 0,
+        pollVotes: 0,
+        pollsCreated: 0
+      };
       
-      const [entries, comments, votes, guesses] = await Promise.all([
-        supabase.from("giveaway_entries").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
-        supabase.from("news_comments").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
-        supabase.from("poll_votes").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
+      const [gtwGuesses, bonusHuntGuesses, giveawayEntries, pollVotes, pollsCreated] = await Promise.all([
+        supabase.from("gtw_guesses").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
         supabase.from("bonus_hunt_guesses").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
+        supabase.from("giveaway_entries").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
+        supabase.from("poll_votes").select("*", { count: "exact", head: true }).eq("user_id", resolvedUserId),
+        supabase.from("polls").select("*", { count: "exact", head: true }).eq("created_by", resolvedUserId).eq("is_community", true),
+      ]);
+
+      // Count wins
+      const [gtwWins, bonusHuntWins, giveawayWins] = await Promise.all([
+        supabase.from("gtw_sessions").select("*", { count: "exact", head: true }).eq("winner_id", resolvedUserId),
+        supabase.from("bonus_hunts").select("*", { count: "exact", head: true }).eq("winner_user_id", resolvedUserId),
+        supabase.from("giveaways").select("winner_ids").contains("winner_ids", [resolvedUserId]),
       ]);
 
       return {
-        giveawayEntries: entries.count || 0,
-        comments: comments.count || 0,
-        pollVotes: votes.count || 0,
-        bonusHuntGuesses: guesses.count || 0,
+        gtwGuesses: gtwGuesses.count || 0,
+        gtwWins: gtwWins.count || 0,
+        bonusHuntGuesses: bonusHuntGuesses.count || 0,
+        bonusHuntWins: bonusHuntWins.count || 0,
+        giveawayEntries: giveawayEntries.count || 0,
+        giveawayWins: giveawayWins.data?.length || 0,
+        pollVotes: pollVotes.count || 0,
+        pollsCreated: pollsCreated.count || 0,
       };
     },
     enabled: !!resolvedUserId,
   });
 
+  // Recent activity - excluding login/signup
   const { data: recentActivity } = useQuery({
-    queryKey: ["user-recent-activity", resolvedUserId],
+    queryKey: ["user-recent-activity-filtered", resolvedUserId],
     queryFn: async () => {
       if (!resolvedUserId) return [];
-      const { data, error } = await supabase
-        .from("user_activities")
-        .select("*")
-        .eq("user_id", resolvedUserId)
-        .in("action", [
-          "gtw_guess", "gtw_win", "bonus_hunt_guess", "bonus_hunt_win", 
-          "poll_vote", "poll_create", "giveaway_entry", "giveaway_win",
-          "points_earned", "achievement_unlocked"
-        ])
-        .order("created_at", { ascending: false })
-        .limit(10);
-      if (error) throw error;
-      return data;
+      
+      // Fetch from multiple tables to build activity feed
+      const [gtwGuesses, bonusGuesses, giveawayEntries, pollVotes] = await Promise.all([
+        supabase
+          .from("gtw_guesses")
+          .select("id, created_at, guess_amount, points_earned, session_id")
+          .eq("user_id", resolvedUserId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("bonus_hunt_guesses")
+          .select("id, created_at, guess_amount, points_earned, hunt_id")
+          .eq("user_id", resolvedUserId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("giveaway_entries")
+          .select("id, created_at, giveaway_id, giveaways(title)")
+          .eq("user_id", resolvedUserId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("poll_votes")
+          .select("id, created_at, poll_id, polls(title)")
+          .eq("user_id", resolvedUserId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ]);
+
+      // Combine and sort activities
+      const activities: Array<{
+        id: string;
+        type: string;
+        description: string;
+        link?: string;
+        created_at: string;
+        points?: number;
+      }> = [];
+
+      gtwGuesses.data?.forEach(g => {
+        activities.push({
+          id: g.id,
+          type: "gtw_guess",
+          description: `Guessed ${g.guess_amount?.toLocaleString()} in GTW`,
+          link: "/bonus-hunt?tab=gtw",
+          created_at: g.created_at,
+          points: g.points_earned || undefined,
+        });
+      });
+
+      bonusGuesses.data?.forEach(g => {
+        activities.push({
+          id: g.id,
+          type: "bonus_hunt_guess",
+          description: `Made a Bonus Hunt guess of ${g.guess_amount?.toLocaleString()}`,
+          link: "/bonus-hunt",
+          created_at: g.created_at,
+          points: g.points_earned || undefined,
+        });
+      });
+
+      giveawayEntries.data?.forEach(e => {
+        const giveaway = e.giveaways as any;
+        activities.push({
+          id: e.id,
+          type: "giveaway_entry",
+          description: `Entered giveaway: ${giveaway?.title || "Unknown"}`,
+          link: "/giveaways",
+          created_at: e.created_at,
+        });
+      });
+
+      pollVotes.data?.forEach(v => {
+        const poll = v.polls as any;
+        activities.push({
+          id: v.id,
+          type: "poll_vote",
+          description: `Voted on poll: ${poll?.title || "Unknown"}`,
+          link: "/polls",
+          created_at: v.created_at,
+        });
+      });
+
+      // Sort by date descending
+      activities.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return activities.slice(0, 10);
     },
     enabled: !!resolvedUserId,
   });
@@ -202,6 +299,16 @@ export default function UserProfile() {
       });
     } else {
       navigator.clipboard.writeText(window.location.href);
+    }
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case "gtw_guess": return <Target className="w-4 h-4 text-green-500" />;
+      case "bonus_hunt_guess": return <TrendingUp className="w-4 h-4 text-blue-500" />;
+      case "giveaway_entry": return <Gift className="w-4 h-4 text-primary" />;
+      case "poll_vote": return <BarChart3 className="w-4 h-4 text-purple-500" />;
+      default: return <Zap className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -435,101 +542,83 @@ export default function UserProfile() {
               >
                 {/* Activity Stats Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="glass rounded-xl p-4 text-center hover:border-primary/30 transition-colors">
-                    <Trophy className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-                    <p className="text-2xl font-bold">{activityStats?.giveawayEntries || 0}</p>
-                    <p className="text-sm text-muted-foreground">Giveaway Entries</p>
-                  </div>
-                  <div className="glass rounded-xl p-4 text-center hover:border-primary/30 transition-colors">
-                    <MessageSquare className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                    <p className="text-2xl font-bold">{activityStats?.comments || 0}</p>
-                    <p className="text-sm text-muted-foreground">Comments</p>
-                  </div>
-                  <div className="glass rounded-xl p-4 text-center hover:border-primary/30 transition-colors">
-                    <Users className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                    <p className="text-2xl font-bold">{activityStats?.pollVotes || 0}</p>
-                    <p className="text-sm text-muted-foreground">Poll Votes</p>
-                  </div>
-                  <div className="glass rounded-xl p-4 text-center hover:border-primary/30 transition-colors">
-                    <Target className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+                  <Link to="/bonus-hunt?tab=gtw" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
+                    <Target className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                    <p className="text-2xl font-bold">{activityStats?.gtwGuesses || 0}</p>
+                    <p className="text-xs text-muted-foreground">GTW Guesses</p>
+                    {(activityStats?.gtwWins || 0) > 0 && (
+                      <Badge className="mt-2" variant="outline">🏆 {activityStats?.gtwWins} Wins</Badge>
+                    )}
+                  </Link>
+                  <Link to="/bonus-hunt" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
+                    <TrendingUp className="w-8 h-8 mx-auto mb-2 text-blue-500" />
                     <p className="text-2xl font-bold">{activityStats?.bonusHuntGuesses || 0}</p>
-                    <p className="text-sm text-muted-foreground">GTW Guesses</p>
-                  </div>
-                </div>
-
-                {/* Member Since */}
-                <div className="glass rounded-xl p-4">
-                  <div className="flex items-center gap-3 text-muted-foreground">
-                    <Calendar className="w-5 h-5" />
-                    <span>
-                      Member since {new Date(profile.created_at).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
+                    <p className="text-xs text-muted-foreground">Bonus Hunt Guesses</p>
+                    {(activityStats?.bonusHuntWins || 0) > 0 && (
+                      <Badge className="mt-2" variant="outline">🏆 {activityStats?.bonusHuntWins} Wins</Badge>
+                    )}
+                  </Link>
+                  <Link to="/giveaways" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
+                    <Gift className="w-8 h-8 mx-auto mb-2 text-primary" />
+                    <p className="text-2xl font-bold">{activityStats?.giveawayEntries || 0}</p>
+                    <p className="text-xs text-muted-foreground">Giveaway Entries</p>
+                    {(activityStats?.giveawayWins || 0) > 0 && (
+                      <Badge className="mt-2" variant="outline">🏆 {activityStats?.giveawayWins} Wins</Badge>
+                    )}
+                  </Link>
+                  <Link to="/polls" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
+                    <BarChart3 className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+                    <p className="text-2xl font-bold">{activityStats?.pollVotes || 0}</p>
+                    <p className="text-xs text-muted-foreground">Poll Votes</p>
+                    {(activityStats?.pollsCreated || 0) > 0 && (
+                      <Badge className="mt-2" variant="outline">📝 {activityStats?.pollsCreated} Created</Badge>
+                    )}
+                  </Link>
                 </div>
 
                 {/* Recent Activity */}
-                {recentActivity && recentActivity.length > 0 && (
-                  <div className="glass rounded-xl p-5">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-primary" />
-                      Recent Activity
-                    </h3>
-                    <div className="space-y-3">
-                      {recentActivity.slice(0, 5).map((activity) => {
-                        // Determine link and icon based on activity type
-                        const getActivityInfo = (action: string) => {
-                          switch (action) {
-                            case "gtw_guess":
-                            case "gtw_win":
-                              return { link: "/bonus-hunt?tab=gtw", icon: Target, color: "text-green-500" };
-                            case "bonus_hunt_guess":
-                            case "bonus_hunt_win":
-                              return { link: "/bonus-hunt", icon: Trophy, color: "text-yellow-500" };
-                            case "poll_vote":
-                            case "poll_create":
-                              return { link: "/polls", icon: Users, color: "text-blue-500" };
-                            case "giveaway_entry":
-                            case "giveaway_win":
-                              return { link: "/giveaways", icon: Gift, color: "text-purple-500" };
-                            case "achievement_unlocked":
-                              return { link: "/achievements", icon: Award, color: "text-amber-500" };
-                            default:
-                              return { link: null, icon: Star, color: "text-primary" };
-                          }
-                        };
-                        
-                        const activityInfo = getActivityInfo(activity.action);
-                        const ActivityIcon = activityInfo.icon;
-                        
-                        const content = (
-                          <div className={`flex items-center justify-between py-2 border-b border-border/50 last:border-0 ${activityInfo.link ? "hover:bg-primary/5 -mx-2 px-2 rounded-lg cursor-pointer transition-colors" : ""}`}>
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center`}>
-                                <ActivityIcon className={`w-4 h-4 ${activityInfo.color}`} />
-                              </div>
-                              <span className="text-sm">{activity.action.replace(/_/g, ' ')}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(activity.created_at).toLocaleDateString()}
-                            </span>
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-primary" />
+                    Recent Activity
+                  </h3>
+                  <div className="space-y-3">
+                    {recentActivity && recentActivity.length > 0 ? (
+                      recentActivity.map((activity) => (
+                        <Link
+                          key={activity.id}
+                          to={activity.link || "#"}
+                          className="flex items-center gap-4 p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="p-2 rounded-lg bg-background">
+                            {getActivityIcon(activity.type)}
                           </div>
-                        );
-                        
-                        return activityInfo.link ? (
-                          <a key={activity.id} href={activityInfo.link}>
-                            {content}
-                          </a>
-                        ) : (
-                          <div key={activity.id}>{content}</div>
-                        );
-                      })}
-                    </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{activity.description}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(activity.created_at).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                          {activity.points && (
+                            <Badge variant="outline" className="text-primary">
+                              +{activity.points} pts
+                            </Badge>
+                          )}
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <TrendingUp className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                        <p>No recent activity</p>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </motion.div>
             </TabsContent>
 
@@ -538,53 +627,91 @@ export default function UserProfile() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
-                <div className="glass rounded-xl p-6">
+                {/* Bonus Hunt Stats */}
+                <div className="glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-green-500" />
+                    <Target className="w-4 h-4 text-primary" />
                     Bonus Hunt Stats
                   </h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
+                  <div className="space-y-3">
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
                       <span className="text-muted-foreground">Total Guesses</span>
                       <span className="font-bold">{activityStats?.bonusHuntGuesses || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Points Earned</span>
-                      <span className="font-bold text-primary">{profile.points?.toLocaleString() || 0}</span>
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">Wins</span>
+                      <span className="font-bold text-primary">{activityStats?.bonusHuntWins || 0}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">GTW Guesses</span>
+                      <span className="font-bold">{activityStats?.gtwGuesses || 0}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">GTW Wins</span>
+                      <span className="font-bold text-primary">{activityStats?.gtwWins || 0}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="glass rounded-xl p-6">
+                {/* Giveaway Stats */}
+                <div className="glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Gift className="w-5 h-5 text-primary" />
+                    <Gift className="w-4 h-4 text-primary" />
                     Giveaway Stats
                   </h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Entries</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">Total Entries</span>
                       <span className="font-bold">{activityStats?.giveawayEntries || 0}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Win Rate</span>
-                      <span className="font-bold">Coming Soon</span>
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">Wins</span>
+                      <span className="font-bold text-primary">{activityStats?.giveawayWins || 0}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">Poll Votes</span>
+                      <span className="font-bold">{activityStats?.pollVotes || 0}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-secondary/30 rounded-xl">
+                      <span className="text-muted-foreground">Polls Created</span>
+                      <span className="font-bold">{activityStats?.pollsCreated || 0}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="glass rounded-xl p-6 md:col-span-2">
+                {/* Account Status */}
+                <div className="glass rounded-2xl p-6 md:col-span-2">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-yellow-500" />
-                    Account Status
+                    <Shield className="w-4 h-4 text-primary" />
+                    Account Info
                   </h3>
-                  <div className="flex items-center gap-4">
-                    <div className="px-4 py-2 rounded-full bg-green-500/20 text-green-500 text-sm font-medium">
-                      Active Member
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                      <Calendar className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">Member Since</p>
+                      <p className="font-medium text-sm">
+                        {new Date(profile.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
                     </div>
-                    <div className="px-4 py-2 rounded-full bg-primary/20 text-primary text-sm font-medium">
-                      Level {levelInfo.level} {levelInfo.name}
+                    <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                      <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
+                      <p className="text-xs text-muted-foreground">Total Points</p>
+                      <p className="font-medium text-sm">{profile.points?.toLocaleString() || 0}</p>
+                    </div>
+                    <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                      <Star className="w-5 h-5 mx-auto mb-1 text-yellow-500" />
+                      <p className="text-xs text-muted-foreground">Level</p>
+                      <p className="font-medium text-sm">{levelInfo.level} - {levelInfo.name}</p>
+                    </div>
+                    <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                      <Award className="w-5 h-5 mx-auto mb-1 text-orange-500" />
+                      <p className="text-xs text-muted-foreground">Achievements</p>
+                      <p className="font-medium text-sm">{achievementsCount}</p>
                     </div>
                   </div>
                 </div>
@@ -596,36 +723,40 @@ export default function UserProfile() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
+                className="glass rounded-2xl p-6"
               >
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Award className="w-4 h-4 text-primary" />
+                  Badges & Titles
+                </h3>
                 {badges && badges.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {badges.map((badge) => (
-                      <div 
-                        key={badge.id} 
-                        className="glass rounded-xl p-5 text-center hover:border-primary/30 transition-all hover:scale-[1.02]"
-                        style={{ borderColor: badge.is_equipped ? badge.badge_color || undefined : undefined }}
+                      <div
+                        key={badge.id}
+                        className={`p-4 rounded-xl border ${
+                          badge.is_equipped ? "bg-primary/10 border-primary/30" : "bg-secondary/30 border-border/50"
+                        }`}
                       >
-                        <div 
-                          className="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-3xl"
-                          style={{ backgroundColor: `${badge.badge_color}20` }}
-                        >
-                          {badge.badge_icon || "🏆"}
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{badge.badge_icon || "🏆"}</span>
+                          <div>
+                            <p className="font-medium">{badge.badge_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {badge.is_title ? "Title" : "Badge"} • {new Date(badge.awarded_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {badge.is_equipped && (
+                            <Badge variant="outline" className="ml-auto">Equipped</Badge>
+                          )}
                         </div>
-                        <p className="font-medium">{badge.badge_name}</p>
-                        {badge.is_equipped && (
-                          <Badge variant="outline" className="mt-2 text-xs">Equipped</Badge>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {new Date(badge.awarded_at).toLocaleDateString()}
-                        </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="glass rounded-xl p-12 text-center">
-                    <Award className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-                    <h3 className="text-lg font-semibold mb-2">No Badges Yet</h3>
-                    <p className="text-muted-foreground">This user hasn't earned any badges yet.</p>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Award className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                    <p>No badges earned yet</p>
                   </div>
                 )}
               </motion.div>
@@ -636,7 +767,12 @@ export default function UserProfile() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
+                className="glass rounded-2xl p-6"
               >
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                  Profile Wall
+                </h3>
                 <ProfileComments profileUserId={resolvedUserId!} />
               </motion.div>
             </TabsContent>
@@ -652,14 +788,12 @@ export default function UserProfile() {
         />
 
         {/* Report Dialog */}
-        {resolvedUserId && (
-          <ReportDialog
-            open={reportOpen}
-            onOpenChange={setReportOpen}
-            contentType="profile"
-            contentId={resolvedUserId}
-          />
-        )}
+        <ReportDialog
+          open={reportOpen}
+          onOpenChange={setReportOpen}
+          contentType="profile"
+          contentId={resolvedUserId!}
+        />
       </div>
     </div>
   );
