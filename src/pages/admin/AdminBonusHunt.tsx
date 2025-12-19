@@ -194,6 +194,7 @@ export default function AdminBonusHunt() {
     title: "",
     date: new Date().toISOString().split("T")[0],
     start_time: "",
+    timezone: "UTC",
     status: "to_be_played" as "ongoing" | "complete" | "to_be_played",
     starting_balance: "",
     target_balance: "",
@@ -204,6 +205,19 @@ export default function AdminBonusHunt() {
     currency: "USD",
     winner_points: "1000",
   });
+  
+  const TIMEZONES = [
+    { value: "UTC", label: "UTC (Coordinated Universal Time)" },
+    { value: "Europe/London", label: "London (GMT/BST)" },
+    { value: "Europe/Paris", label: "Paris (CET/CEST)" },
+    { value: "Europe/Berlin", label: "Berlin (CET/CEST)" },
+    { value: "Europe/Stockholm", label: "Stockholm (CET/CEST)" },
+    { value: "America/New_York", label: "New York (EST/EDT)" },
+    { value: "America/Los_Angeles", label: "Los Angeles (PST/PDT)" },
+    { value: "America/Toronto", label: "Toronto (EST/EDT)" },
+    { value: "Australia/Sydney", label: "Sydney (AEST/AEDT)" },
+    { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  ];
 
   const [slotForm, setSlotForm] = useState({
     slot_name: "",
@@ -518,6 +532,7 @@ export default function AdminBonusHunt() {
       title: "",
       date: new Date().toISOString().split("T")[0],
       start_time: "",
+      timezone: "UTC",
       status: "to_be_played",
       starting_balance: "",
       target_balance: "",
@@ -809,6 +824,7 @@ export default function AdminBonusHunt() {
       title: hunt.title,
       date: hunt.date,
       start_time: hunt.start_time ? hunt.start_time.slice(0, 16) : "",
+      timezone: "UTC",
       status: hunt.status,
       starting_balance: hunt.starting_balance?.toString() || "",
       target_balance: hunt.target_balance?.toString() || "",
@@ -931,7 +947,7 @@ export default function AdminBonusHunt() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label>Start Time</Label>
                     <Input
@@ -940,7 +956,23 @@ export default function AdminBonusHunt() {
                       onChange={(e) => setHuntForm({ ...huntForm, start_time: e.target.value })}
                       placeholder="YYYY-MM-DDTHH:mm"
                     />
-                    <p className="mt-1 text-xs text-muted-foreground">Guesses lock automatically at this time.</p>
+                  </div>
+                  <div>
+                    <Label>Timezone</Label>
+                    <Select
+                      value={huntForm.timezone}
+                      onValueChange={(value) => setHuntForm({ ...huntForm, timezone: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEZONES.map(tz => (
+                          <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">Guesses lock at this time.</p>
                   </div>
                   <div>
                     <Label>Status</Label>
@@ -952,7 +984,7 @@ export default function AdminBonusHunt() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="to_be_played">To Be Played</SelectItem>
+                        <SelectItem value="to_be_played">Upcoming</SelectItem>
                         <SelectItem value="ongoing">Ongoing</SelectItem>
                         <SelectItem value="complete">Complete</SelectItem>
                       </SelectContent>
