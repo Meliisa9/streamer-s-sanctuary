@@ -1002,23 +1002,6 @@ export default function AdminBonusHunt() {
                     />
                   </div>
                 </div>
-                    <Input
-                      type="number"
-                      value={huntForm.starting_balance}
-                      onChange={(e) => setHuntForm({ ...huntForm, starting_balance: e.target.value })}
-                      placeholder="5000"
-                    />
-                  </div>
-                  <div>
-                    <Label>Target Balance</Label>
-                    <Input
-                      type="number"
-                      value={huntForm.target_balance}
-                      onChange={(e) => setHuntForm({ ...huntForm, target_balance: e.target.value })}
-                      placeholder="10000"
-                    />
-                  </div>
-                </div>
                 {editingHunt && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
