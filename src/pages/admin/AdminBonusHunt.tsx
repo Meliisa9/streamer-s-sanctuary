@@ -408,6 +408,19 @@ export default function AdminBonusHunt() {
     },
   });
 
+  const determineAvgxWinnersMutation = useMutation({
+    mutationFn: async (huntId: string) => {
+      const { error } = await supabase.rpc("determine_avgx_winners", { hunt_id_param: huntId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Avg X winners calculated (Top 10)" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Check if hunt should auto-complete (all slots played)
   const checkAutoComplete = async (huntId: string) => {
     // Fetch all slots for this hunt
@@ -1271,6 +1284,27 @@ export default function AdminBonusHunt() {
                           <Award className="w-4 h-4" />
                         )}
                         Pick Winner
+                      </Button>
+                    )}
+
+                    {hunt.status === "complete" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => {
+                          if (confirm("Calculate Avg X winners (Top 10)?")) {
+                            determineAvgxWinnersMutation.mutate(hunt.id);
+                          }
+                        }}
+                        disabled={determineAvgxWinnersMutation.isPending}
+                      >
+                        {determineAvgxWinnersMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Calculator className="w-4 h-4" />
+                        )}
+                        AvgX Winners
                       </Button>
                     )}
                     

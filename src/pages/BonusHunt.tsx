@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useBonusHuntRealtime } from "@/hooks/useBonusHuntRealtime";
 import { calculateMultiplier, updateBonusHuntStats, calculateBonusHuntStats } from "@/hooks/useBonusHuntCalculations";
+import { useCountdown } from "@/hooks/useCountdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -101,6 +102,9 @@ export default function BonusHunt() {
     const urlTab = searchParams.get("tab");
     if (urlTab && ["stats", "gtw", "avgx"].includes(urlTab)) {
       setActiveTab(urlTab);
+    } else {
+      // When the tab param is removed (e.g. clicking "Bonus Hunt" in nav), go back to Stats
+      setActiveTab("stats");
     }
   }, [searchParams]);
   
@@ -131,6 +135,7 @@ export default function BonusHunt() {
 
   const displayHunt = hunts?.[currentHuntIndex];
   const totalHunts = hunts?.length || 0;
+  const countdown = useCountdown(displayHunt?.start_time);
 
   // Fetch slots for displayed hunt
   const { data: slots } = useQuery({
@@ -340,17 +345,27 @@ export default function BonusHunt() {
         const allPlayed = updatedSlots?.every(s => s.is_played);
         
         if (allPlayed && displayHunt.status !== "complete") {
-          const endingBalance = updatedSlots?.reduce((sum, s) => sum + (s.id === slotId ? winAmount : (s.win_amount || 0)), 0) || 0;
-          
+          const endingBalance = updatedSlots?.reduce(
+            (sum, s) => sum + (s.id === slotId ? winAmount : (s.win_amount || 0)),
+            0
+          ) || 0;
+
           // Update hunt to complete
           await supabase
             .from("bonus_hunts")
             .update({ status: "complete", ending_balance: endingBalance })
             .eq("id", displayHunt.id);
-          
-          toast({ 
-            title: "Hunt Completed!", 
-            description: `All ${updatedSlots?.length} slots played. Final balance: ${currencySymbol}${endingBalance.toLocaleString()}` 
+
+          // Calculate AvgX winners (Top 10 placements)
+          try {
+            await supabase.rpc("determine_avgx_winners", { hunt_id_param: displayHunt.id });
+          } catch (e) {
+            console.warn("AvgX winner calculation failed", e);
+          }
+
+          toast({
+            title: "Hunt Completed!",
+            description: `All ${updatedSlots?.length} slots played. Final balance: ${currencySymbol}${endingBalance.toLocaleString()}`,
           });
         }
       }
@@ -832,11 +847,21 @@ export default function BonusHunt() {
                         valueColor={displayHunt.status === "ongoing" ? "text-green-500" : displayHunt.status === "to_be_played" ? "text-yellow-500" : ""}
                       />
                       {displayHunt.start_time && (
-                        <StatRow 
-                          icon="⏰" 
-                          label="START TIME" 
-                          value={new Date(displayHunt.start_time).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        />
+                        <>
+                          <StatRow 
+                            icon="⏰" 
+                            label="START TIME" 
+                            value={new Date(displayHunt.start_time).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          />
+                          {countdown.isActive && (
+                            <StatRow
+                              icon="⏳"
+                              label="STARTS IN"
+                              value={countdown.label}
+                              valueColor="text-primary"
+                            />
+                          )}
+                        </>
                       )}
                       <StatRow icon="🎁" label="BONUS" value={slots?.length || 0} />
                       <StatRow icon="🎯" label="TARGET BALANCE" value={`${currencySymbol}${displayHunt.target_balance?.toLocaleString() || '0'}`} />

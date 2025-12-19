@@ -10,11 +10,13 @@ import { AdminSettingsNav } from "@/components/admin/AdminSettingsNav";
 interface SettingsData {
   twitch_url: string;
   twitch_follow_url: string;
+  avgx_prize_pool: number;
 }
 
 const defaultSettings: SettingsData = {
   twitch_url: "https://twitch.tv",
   twitch_follow_url: "https://twitch.tv",
+  avgx_prize_pool: 0,
 };
 
 export default function AdminSettings() {
@@ -126,6 +128,25 @@ export default function AdminSettings() {
               className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
               placeholder="https://twitch.tv/username"
             />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Bonus Hunt */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
+        <h3 className="text-lg font-semibold mb-4">Bonus Hunt</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium">Avg X Prize Pool</label>
+            <input
+              type="number"
+              value={settings.avgx_prize_pool}
+              onChange={(e) => setSettings({ ...settings, avgx_prize_pool: Number(e.target.value) })}
+              className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+              placeholder="0"
+              min={0}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Displayed on the Average X tab.</p>
           </div>
         </div>
       </motion.div>

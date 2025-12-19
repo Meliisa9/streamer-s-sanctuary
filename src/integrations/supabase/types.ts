@@ -135,26 +135,32 @@ export type Database = {
       }
       bonus_hunt_avgx_guesses: {
         Row: {
+          bet_range: string | null
           created_at: string
           guess_x: number
           hunt_id: string
           id: string
+          placement: number | null
           points_earned: number
           user_id: string
         }
         Insert: {
+          bet_range?: string | null
           created_at?: string
           guess_x: number
           hunt_id: string
           id?: string
+          placement?: number | null
           points_earned?: number
           user_id: string
         }
         Update: {
+          bet_range?: string | null
           created_at?: string
           guess_x?: number
           hunt_id?: string
           id?: string
+          placement?: number | null
           points_earned?: number
           user_id?: string
         }
@@ -1624,6 +1630,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      determine_avgx_winners: {
+        Args: { hunt_id_param: string }
+        Returns: undefined
+      }
       has_permission: {
         Args: { _permission: string; _user_id: string }
         Returns: boolean
