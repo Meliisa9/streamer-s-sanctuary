@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { 
   Plus, Edit2, Trash2, Trophy, Target, Loader2, 
-  ListPlus, Eye, CheckCircle2
+  ListPlus, Eye, CheckCircle2, ArrowRight, ArrowLeft, X
 } from "lucide-react";
 
 interface BonusHunt {
@@ -52,6 +52,13 @@ interface BonusHuntSlot {
   sort_order: number;
 }
 
+interface TempSlot {
+  id: string;
+  slot_name: string;
+  provider: string;
+  bet_amount: string;
+}
+
 export default function AdminBonusHunt() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,6 +67,11 @@ export default function AdminBonusHunt() {
   const [editingHunt, setEditingHunt] = useState<BonusHunt | null>(null);
   const [selectedHuntForSlots, setSelectedHuntForSlots] = useState<BonusHunt | null>(null);
   const [editingSlot, setEditingSlot] = useState<BonusHuntSlot | null>(null);
+  
+  // Multi-step wizard state
+  const [wizardStep, setWizardStep] = useState(1);
+  const [tempSlots, setTempSlots] = useState<TempSlot[]>([]);
+  const [newSlotForm, setNewSlotForm] = useState({ slot_name: "", provider: "", bet_amount: "" });
 
   const [huntForm, setHuntForm] = useState({
     title: "",
@@ -127,6 +139,9 @@ export default function AdminBonusHunt() {
       winner_points: "1000",
     });
     setEditingHunt(null);
+    setWizardStep(1);
+    setTempSlots([]);
+    setNewSlotForm({ slot_name: "", provider: "", bet_amount: "" });
   };
 
   const resetSlotForm = () => {
@@ -141,6 +156,62 @@ export default function AdminBonusHunt() {
     });
     setEditingSlot(null);
   };
+
+  // Create hunt with slots in one go
+  const createHuntWithSlotsMutation = useMutation({
+    mutationFn: async () => {
+      const huntPayload = {
+        title: huntForm.title,
+        date: huntForm.date,
+        status: huntForm.status,
+        starting_balance: huntForm.starting_balance ? parseFloat(huntForm.starting_balance) : null,
+        target_balance: huntForm.target_balance ? parseFloat(huntForm.target_balance) : null,
+        ending_balance: huntForm.ending_balance ? parseFloat(huntForm.ending_balance) : null,
+        average_bet: huntForm.average_bet ? parseFloat(huntForm.average_bet) : null,
+        highest_win: huntForm.highest_win ? parseFloat(huntForm.highest_win) : null,
+        highest_multiplier: huntForm.highest_multiplier ? parseFloat(huntForm.highest_multiplier) : null,
+        currency: huntForm.currency,
+        winner_points: huntForm.winner_points ? parseInt(huntForm.winner_points) : 1000,
+      };
+
+      // Create the hunt first
+      const { data: newHunt, error: huntError } = await supabase
+        .from("bonus_hunts")
+        .insert(huntPayload)
+        .select()
+        .single();
+      
+      if (huntError) throw huntError;
+
+      // Then add all slots
+      if (tempSlots.length > 0) {
+        const slotsPayload = tempSlots.map((slot, index) => ({
+          hunt_id: newHunt.id,
+          slot_name: slot.slot_name,
+          provider: slot.provider || null,
+          bet_amount: slot.bet_amount ? parseFloat(slot.bet_amount) : null,
+          sort_order: index + 1,
+        }));
+
+        const { error: slotsError } = await supabase
+          .from("bonus_hunt_slots")
+          .insert(slotsPayload);
+
+        if (slotsError) throw slotsError;
+      }
+
+      return newHunt;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+      toast({ title: "Hunt created with slots!" });
+      setIsHuntDialogOpen(false);
+      resetHuntForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const huntMutation = useMutation({
     mutationFn: async (data: typeof huntForm) => {
@@ -161,14 +232,11 @@ export default function AdminBonusHunt() {
       if (editingHunt) {
         const { error } = await supabase.from("bonus_hunts").update(payload).eq("id", editingHunt.id);
         if (error) throw error;
-      } else {
-        const { error } = await supabase.from("bonus_hunts").insert(payload);
-        if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
-      toast({ title: editingHunt ? "Hunt updated" : "Hunt created" });
+      toast({ title: "Hunt updated" });
       setIsHuntDialogOpen(false);
       resetHuntForm();
     },
@@ -254,6 +322,7 @@ export default function AdminBonusHunt() {
       currency: hunt.currency || "USD",
       winner_points: hunt.winner_points?.toString() || "1000",
     });
+    setWizardStep(1);
     setIsHuntDialogOpen(true);
   };
 
@@ -271,6 +340,30 @@ export default function AdminBonusHunt() {
     setIsSlotDialogOpen(true);
   };
 
+  const addTempSlot = () => {
+    if (!newSlotForm.slot_name.trim()) {
+      toast({ title: "Please enter a slot name", variant: "destructive" });
+      return;
+    }
+    setTempSlots([...tempSlots, { 
+      id: crypto.randomUUID(),
+      ...newSlotForm 
+    }]);
+    setNewSlotForm({ slot_name: "", provider: "", bet_amount: "" });
+  };
+
+  const removeTempSlot = (id: string) => {
+    setTempSlots(tempSlots.filter(s => s.id !== id));
+  };
+
+  const handleCreateHunt = () => {
+    if (editingHunt) {
+      huntMutation.mutate(huntForm);
+    } else {
+      createHuntWithSlotsMutation.mutate();
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -286,113 +379,160 @@ export default function AdminBonusHunt() {
           <h2 className="text-2xl font-bold">Bonus Hunt Manager</h2>
           <p className="text-muted-foreground">Create and manage bonus hunts</p>
         </div>
-        <Dialog open={isHuntDialogOpen} onOpenChange={setIsHuntDialogOpen}>
+        <Dialog open={isHuntDialogOpen} onOpenChange={(open) => { setIsHuntDialogOpen(open); if (!open) resetHuntForm(); }}>
           <DialogTrigger asChild>
             <Button className="gap-2" onClick={resetHuntForm}>
               <Plus className="w-4 h-4" />
               New Hunt
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>{editingHunt ? "Edit Hunt" : "Create New Hunt"}</DialogTitle>
+              <DialogTitle>
+                {editingHunt ? "Edit Hunt" : `Create New Hunt - Step ${wizardStep} of 2`}
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Title</Label>
-                  <Input
-                    value={huntForm.title}
-                    onChange={(e) => setHuntForm({ ...huntForm, title: e.target.value })}
-                    placeholder="BONUS HUNT #1234"
-                  />
+
+            {/* Step Indicators */}
+            {!editingHunt && (
+              <div className="flex items-center justify-center gap-4 py-4">
+                <div className={`flex items-center gap-2 ${wizardStep >= 1 ? "text-primary" : "text-muted-foreground"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${wizardStep >= 1 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                    1
+                  </div>
+                  <span className="text-sm font-medium">Hunt Details</span>
                 </div>
-                <div>
-                  <Label>Date</Label>
-                  <Input
-                    type="date"
-                    value={huntForm.date}
-                    onChange={(e) => setHuntForm({ ...huntForm, date: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Status</Label>
-                  <Select
-                    value={huntForm.status}
-                    onValueChange={(value: "ongoing" | "complete" | "to_be_played") => setHuntForm({ ...huntForm, status: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="to_be_played">To Be Played</SelectItem>
-                      <SelectItem value="ongoing">Ongoing</SelectItem>
-                      <SelectItem value="complete">Complete</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Currency</Label>
-                  <Select
-                    value={huntForm.currency}
-                    onValueChange={(value) => setHuntForm({ ...huntForm, currency: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">$ USD</SelectItem>
-                      <SelectItem value="EUR">€ EUR</SelectItem>
-                      <SelectItem value="GBP">£ GBP</SelectItem>
-                      <SelectItem value="SEK">kr SEK</SelectItem>
-                      <SelectItem value="CAD">C$ CAD</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="w-8 h-0.5 bg-muted" />
+                <div className={`flex items-center gap-2 ${wizardStep >= 2 ? "text-primary" : "text-muted-foreground"}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${wizardStep >= 2 ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                    2
+                  </div>
+                  <span className="text-sm font-medium">Add Slots</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Starting Balance</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.starting_balance}
-                    onChange={(e) => setHuntForm({ ...huntForm, starting_balance: e.target.value })}
-                    placeholder="5000"
-                  />
+            )}
+
+            {/* Step 1: Hunt Details */}
+            {wizardStep === 1 && (
+              <div className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Title</Label>
+                    <Input
+                      value={huntForm.title}
+                      onChange={(e) => setHuntForm({ ...huntForm, title: e.target.value })}
+                      placeholder="BONUS HUNT #1234"
+                    />
+                  </div>
+                  <div>
+                    <Label>Date</Label>
+                    <Input
+                      type="date"
+                      value={huntForm.date}
+                      onChange={(e) => setHuntForm({ ...huntForm, date: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Target Balance</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.target_balance}
-                    onChange={(e) => setHuntForm({ ...huntForm, target_balance: e.target.value })}
-                    placeholder="10000"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Status</Label>
+                    <Select
+                      value={huntForm.status}
+                      onValueChange={(value: "ongoing" | "complete" | "to_be_played") => setHuntForm({ ...huntForm, status: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="to_be_played">To Be Played</SelectItem>
+                        <SelectItem value="ongoing">Ongoing</SelectItem>
+                        <SelectItem value="complete">Complete</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Currency</Label>
+                    <Select
+                      value={huntForm.currency}
+                      onValueChange={(value) => setHuntForm({ ...huntForm, currency: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">$ USD</SelectItem>
+                        <SelectItem value="EUR">€ EUR</SelectItem>
+                        <SelectItem value="GBP">£ GBP</SelectItem>
+                        <SelectItem value="SEK">kr SEK</SelectItem>
+                        <SelectItem value="CAD">C$ CAD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Ending Balance</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.ending_balance}
-                    onChange={(e) => setHuntForm({ ...huntForm, ending_balance: e.target.value })}
-                    placeholder="15000"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Starting Balance</Label>
+                    <Input
+                      type="number"
+                      value={huntForm.starting_balance}
+                      onChange={(e) => setHuntForm({ ...huntForm, starting_balance: e.target.value })}
+                      placeholder="5000"
+                    />
+                  </div>
+                  <div>
+                    <Label>Target Balance</Label>
+                    <Input
+                      type="number"
+                      value={huntForm.target_balance}
+                      onChange={(e) => setHuntForm({ ...huntForm, target_balance: e.target.value })}
+                      placeholder="10000"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Average Bet</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.average_bet}
-                    onChange={(e) => setHuntForm({ ...huntForm, average_bet: e.target.value })}
-                    placeholder="5"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+                {editingHunt && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Ending Balance</Label>
+                        <Input
+                          type="number"
+                          value={huntForm.ending_balance}
+                          onChange={(e) => setHuntForm({ ...huntForm, ending_balance: e.target.value })}
+                          placeholder="15000"
+                        />
+                      </div>
+                      <div>
+                        <Label>Average Bet</Label>
+                        <Input
+                          type="number"
+                          value={huntForm.average_bet}
+                          onChange={(e) => setHuntForm({ ...huntForm, average_bet: e.target.value })}
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Highest Win</Label>
+                        <Input
+                          type="number"
+                          value={huntForm.highest_win}
+                          onChange={(e) => setHuntForm({ ...huntForm, highest_win: e.target.value })}
+                          placeholder="5000"
+                        />
+                      </div>
+                      <div>
+                        <Label>Highest Multiplier</Label>
+                        <Input
+                          type="number"
+                          value={huntForm.highest_multiplier}
+                          onChange={(e) => setHuntForm({ ...huntForm, highest_multiplier: e.target.value })}
+                          placeholder="1000"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
                 <div>
                   <Label>Winner Points Award</Label>
                   <Input
@@ -402,41 +542,124 @@ export default function AdminBonusHunt() {
                     placeholder="1000"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Highest Win</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.highest_win}
-                    onChange={(e) => setHuntForm({ ...huntForm, highest_win: e.target.value })}
-                    placeholder="5000"
-                  />
+                <div className="flex gap-3 pt-4">
+                  <Button variant="ghost" onClick={() => setIsHuntDialogOpen(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  {editingHunt ? (
+                    <Button 
+                      onClick={() => huntMutation.mutate(huntForm)} 
+                      disabled={huntMutation.isPending || !huntForm.title}
+                      className="flex-1"
+                    >
+                      {huntMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Update Hunt
+                    </Button>
+                  ) : (
+                    <Button 
+                      onClick={() => setWizardStep(2)} 
+                      disabled={!huntForm.title}
+                      className="flex-1 gap-2"
+                    >
+                      Next: Add Slots
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
-                <div>
-                  <Label>Highest Multiplier</Label>
-                  <Input
-                    type="number"
-                    value={huntForm.highest_multiplier}
-                    onChange={(e) => setHuntForm({ ...huntForm, highest_multiplier: e.target.value })}
-                    placeholder="1000"
-                  />
+              </div>
+            )}
+
+            {/* Step 2: Add Slots */}
+            {wizardStep === 2 && !editingHunt && (
+              <div className="space-y-4 mt-4">
+                {/* Add Slot Form */}
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-4">
+                  <h4 className="font-medium">Add Slot/Bonus</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Slot Name *</Label>
+                      <Input
+                        value={newSlotForm.slot_name}
+                        onChange={(e) => setNewSlotForm({ ...newSlotForm, slot_name: e.target.value })}
+                        placeholder="Gates of Olympus"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Provider</Label>
+                      <Input
+                        value={newSlotForm.provider}
+                        onChange={(e) => setNewSlotForm({ ...newSlotForm, provider: e.target.value })}
+                        placeholder="Pragmatic Play"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Bet Amount</Label>
+                      <Input
+                        type="number"
+                        value={newSlotForm.bet_amount}
+                        onChange={(e) => setNewSlotForm({ ...newSlotForm, bet_amount: e.target.value })}
+                        placeholder="5.00"
+                      />
+                    </div>
+                  </div>
+                  <Button onClick={addTempSlot} variant="outline" className="w-full gap-2">
+                    <Plus className="w-4 h-4" />
+                    Add Slot
+                  </Button>
+                </div>
+
+                {/* Slots List */}
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm text-muted-foreground">
+                    Slots ({tempSlots.length}) {tempSlots.length === 0 && "- Optional"}
+                  </h4>
+                  {tempSlots.length > 0 ? (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {tempSlots.map((slot, index) => (
+                        <div key={slot.id} className="flex items-center gap-3 p-3 bg-secondary/20 rounded-lg">
+                          <span className="text-sm font-medium text-muted-foreground w-6">{index + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{slot.slot_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {slot.provider || "No provider"} • {slot.bet_amount ? `$${slot.bet_amount}` : "No bet"}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            onClick={() => removeTempSlot(slot.id)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground bg-secondary/20 rounded-lg">
+                      <ListPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No slots added yet</p>
+                      <p className="text-xs">You can add slots now or after creating the hunt</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button variant="ghost" onClick={() => setWizardStep(1)} className="flex-1 gap-2">
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleCreateHunt}
+                    disabled={createHuntWithSlotsMutation.isPending || !huntForm.title}
+                    className="flex-1"
+                  >
+                    {createHuntWithSlotsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Create Hunt {tempSlots.length > 0 && `with ${tempSlots.length} Slots`}
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-3 pt-4">
-                <Button variant="ghost" onClick={() => setIsHuntDialogOpen(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={() => huntMutation.mutate(huntForm)} 
-                  disabled={huntMutation.isPending || !huntForm.title}
-                  className="flex-1"
-                >
-                  {huntMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {editingHunt ? "Update" : "Create"}
-                </Button>
-              </div>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>
@@ -494,142 +717,157 @@ export default function AdminBonusHunt() {
         ))}
       </div>
 
-      {/* Slots Management Dialog */}
-      <Dialog open={!!selectedHuntForSlots} onOpenChange={(open) => !open && setSelectedHuntForSlots(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Slots - {selectedHuntForSlots?.title}</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            <Button onClick={() => { resetSlotForm(); setIsSlotDialogOpen(true); }} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Slot
-            </Button>
-
-            <div className="space-y-2">
-              {slots?.map((slot, index) => (
-                <div
-                  key={slot.id}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
-                    slot.is_played ? "bg-green-500/10" : "bg-secondary/30"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground w-6">#{index + 1}</span>
+      {/* Slots Management Panel */}
+      {selectedHuntForSlots && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass rounded-xl p-6 space-y-4"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold">{selectedHuntForSlots.title} - Slots</h3>
+              <p className="text-sm text-muted-foreground">{slots?.length || 0} slots</p>
+            </div>
+            <div className="flex gap-2">
+              <Dialog open={isSlotDialogOpen} onOpenChange={setIsSlotDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2" onClick={resetSlotForm}>
+                    <Plus className="w-4 h-4" />
+                    Add Slot
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{editingSlot ? "Edit Slot" : "Add Slot"}</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
                     <div>
-                      <p className="font-medium">{slot.slot_name}</p>
-                      {slot.provider && <p className="text-xs text-muted-foreground">{slot.provider}</p>}
+                      <Label>Slot Name</Label>
+                      <Input
+                        value={slotForm.slot_name}
+                        onChange={(e) => setSlotForm({ ...slotForm, slot_name: e.target.value })}
+                        placeholder="Gates of Olympus"
+                      />
+                    </div>
+                    <div>
+                      <Label>Provider</Label>
+                      <Input
+                        value={slotForm.provider}
+                        onChange={(e) => setSlotForm({ ...slotForm, provider: e.target.value })}
+                        placeholder="Pragmatic Play"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Bet Amount</Label>
+                        <Input
+                          type="number"
+                          value={slotForm.bet_amount}
+                          onChange={(e) => setSlotForm({ ...slotForm, bet_amount: e.target.value })}
+                          placeholder="5.00"
+                        />
+                      </div>
+                      <div>
+                        <Label>Win Amount</Label>
+                        <Input
+                          type="number"
+                          value={slotForm.win_amount}
+                          onChange={(e) => setSlotForm({ ...slotForm, win_amount: e.target.value })}
+                          placeholder="1000"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Multiplier</Label>
+                        <Input
+                          type="number"
+                          value={slotForm.multiplier}
+                          onChange={(e) => setSlotForm({ ...slotForm, multiplier: e.target.value })}
+                          placeholder="200"
+                        />
+                      </div>
+                      <div>
+                        <Label>Sort Order</Label>
+                        <Input
+                          type="number"
+                          value={slotForm.sort_order}
+                          onChange={(e) => setSlotForm({ ...slotForm, sort_order: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={slotForm.is_played}
+                        onChange={(e) => setSlotForm({ ...slotForm, is_played: e.target.checked })}
+                        className="rounded"
+                      />
+                      <Label>Played</Label>
+                    </div>
+                    <div className="flex gap-3 pt-4">
+                      <Button variant="ghost" onClick={() => setIsSlotDialogOpen(false)} className="flex-1">
+                        Cancel
+                      </Button>
+                      <Button 
+                        onClick={() => slotMutation.mutate(slotForm)} 
+                        disabled={slotMutation.isPending || !slotForm.slot_name}
+                        className="flex-1"
+                      >
+                        {slotMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        {editingSlot ? "Update" : "Add"}
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {slot.bet_amount && <span className="text-sm">${slot.bet_amount}</span>}
-                    {slot.win_amount !== null && (
-                      <span className={`text-sm font-medium ${slot.win_amount > 0 ? "text-green-500" : "text-red-500"}`}>
-                        ${slot.win_amount}
-                      </span>
-                    )}
-                    {slot.is_played && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-                    <Button variant="ghost" size="icon" onClick={() => handleEditSlot(slot)}>
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
-                      onClick={() => {
-                        if (confirm("Delete this slot?")) deleteSlotMutation.mutate(slot.id);
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                </DialogContent>
+              </Dialog>
+              <Button variant="ghost" onClick={() => setSelectedHuntForSlots(null)}>
+                Close
+              </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* Add/Edit Slot Dialog */}
-      <Dialog open={isSlotDialogOpen} onOpenChange={setIsSlotDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingSlot ? "Edit Slot" : "Add Slot"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Slot Name</Label>
-                <Input
-                  value={slotForm.slot_name}
-                  onChange={(e) => setSlotForm({ ...slotForm, slot_name: e.target.value })}
-                  placeholder="Gates of Olympus"
-                />
+          {/* Slots Table */}
+          <div className="space-y-2">
+            {slots?.map((slot) => (
+              <div key={slot.id} className="flex items-center gap-4 p-3 bg-secondary/30 rounded-lg">
+                <span className="text-sm font-medium text-muted-foreground w-8">#{slot.sort_order}</span>
+                <div className={`w-3 h-3 rounded-full ${slot.is_played ? "bg-green-500" : "bg-muted"}`} />
+                <div className="flex-1">
+                  <p className="font-medium">{slot.slot_name}</p>
+                  <p className="text-xs text-muted-foreground">{slot.provider}</p>
+                </div>
+                <div className="text-right">
+                  {slot.bet_amount && <p className="text-sm">Bet: ${slot.bet_amount}</p>}
+                  {slot.win_amount && <p className="text-sm text-green-500">Win: ${slot.win_amount}</p>}
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => handleEditSlot(slot)}>
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    onClick={() => {
+                      if (confirm("Delete this slot?")) deleteSlotMutation.mutate(slot.id);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label>Provider</Label>
-                <Input
-                  value={slotForm.provider}
-                  onChange={(e) => setSlotForm({ ...slotForm, provider: e.target.value })}
-                  placeholder="Pragmatic Play"
-                />
+            ))}
+            {(!slots || slots.length === 0) && (
+              <div className="text-center py-8 text-muted-foreground">
+                <ListPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No slots yet. Click "Add Slot" to add your first slot.</p>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label>Bet Amount</Label>
-                <Input
-                  type="number"
-                  value={slotForm.bet_amount}
-                  onChange={(e) => setSlotForm({ ...slotForm, bet_amount: e.target.value })}
-                  placeholder="5"
-                />
-              </div>
-              <div>
-                <Label>Win Amount</Label>
-                <Input
-                  type="number"
-                  value={slotForm.win_amount}
-                  onChange={(e) => setSlotForm({ ...slotForm, win_amount: e.target.value })}
-                  placeholder="500"
-                />
-              </div>
-              <div>
-                <Label>Multiplier</Label>
-                <Input
-                  type="number"
-                  value={slotForm.multiplier}
-                  onChange={(e) => setSlotForm({ ...slotForm, multiplier: e.target.value })}
-                  placeholder="100"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_played"
-                checked={slotForm.is_played}
-                onChange={(e) => setSlotForm({ ...slotForm, is_played: e.target.checked })}
-              />
-              <Label htmlFor="is_played">Mark as played</Label>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="ghost" onClick={() => setIsSlotDialogOpen(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                onClick={() => slotMutation.mutate(slotForm)}
-                disabled={slotMutation.isPending || !slotForm.slot_name}
-                className="flex-1"
-              >
-                {slotMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {editingSlot ? "Update" : "Add"}
-              </Button>
-            </div>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </motion.div>
+      )}
     </div>
   );
 }
