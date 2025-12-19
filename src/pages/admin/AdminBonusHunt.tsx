@@ -86,6 +86,73 @@ interface TempSlot {
   bet_amount: string;
 }
 
+// Sortable slot row component for drag-drop
+function SortableSlotRow({ slot, onEdit, onDelete }: { 
+  slot: BonusHuntSlot; 
+  onEdit: (slot: BonusHuntSlot) => void;
+  onDelete: (id: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: slot.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-4 p-3 bg-secondary/30 rounded-lg ${
+        isDragging ? "shadow-lg ring-2 ring-primary/50" : ""
+      }`}
+    >
+      <button
+        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+      <span className="text-sm font-medium text-muted-foreground w-8">#{slot.sort_order}</span>
+      <div className={`w-3 h-3 rounded-full ${slot.is_played ? "bg-green-500" : "bg-muted"}`} />
+      <div className="flex-1">
+        <p className="font-medium">{slot.slot_name}</p>
+        <p className="text-xs text-muted-foreground">{slot.provider}</p>
+      </div>
+      <div className="text-right">
+        {slot.bet_amount && <p className="text-sm">Bet: ${slot.bet_amount}</p>}
+        {slot.win_amount !== null && slot.win_amount !== undefined && (
+          <p className="text-sm text-green-500">Win: ${slot.win_amount}</p>
+        )}
+      </div>
+      <div className="flex gap-1">
+        <Button variant="ghost" size="icon" onClick={() => onEdit(slot)}>
+          <Edit2 className="w-4 h-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-destructive"
+          onClick={() => {
+            if (confirm("Delete this slot?")) onDelete(slot.id);
+          }}
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminBonusHunt() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -708,20 +775,12 @@ export default function AdminBonusHunt() {
                 <div className="p-4 bg-secondary/30 rounded-xl space-y-4">
                   <h4 className="font-medium">Add Slot/Bonus</h4>
                   <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label className="text-xs">Slot Name *</Label>
-                      <Input
-                        value={newSlotForm.slot_name}
-                        onChange={(e) => setNewSlotForm({ ...newSlotForm, slot_name: e.target.value })}
-                        placeholder="Gates of Olympus"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Provider</Label>
-                      <Input
-                        value={newSlotForm.provider}
-                        onChange={(e) => setNewSlotForm({ ...newSlotForm, provider: e.target.value })}
-                        placeholder="Pragmatic Play"
+                    <div className="col-span-2">
+                      <SlotPicker
+                        value={{ slot_name: newSlotForm.slot_name, provider: newSlotForm.provider }}
+                        onChange={(data) => setNewSlotForm({ ...newSlotForm, slot_name: data.slot_name, provider: data.provider })}
+                        placeholder="Search for a slot..."
+                        showProviderField={true}
                       />
                     </div>
                     <div>
@@ -731,6 +790,7 @@ export default function AdminBonusHunt() {
                         value={newSlotForm.bet_amount}
                         onChange={(e) => setNewSlotForm({ ...newSlotForm, bet_amount: e.target.value })}
                         placeholder="5.00"
+                        className="h-9"
                       />
                     </div>
                   </div>
@@ -902,22 +962,14 @@ export default function AdminBonusHunt() {
                     <DialogTitle>{editingSlot ? "Edit Slot" : "Add Slot"}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 mt-4">
-                    <div>
-                      <Label>Slot Name</Label>
-                      <Input
-                        value={slotForm.slot_name}
-                        onChange={(e) => handleSlotFormChange("slot_name", e.target.value)}
-                        placeholder="Gates of Olympus"
-                      />
-                    </div>
-                    <div>
-                      <Label>Provider</Label>
-                      <Input
-                        value={slotForm.provider}
-                        onChange={(e) => handleSlotFormChange("provider", e.target.value)}
-                        placeholder="Pragmatic Play"
-                      />
-                    </div>
+                    <SlotPicker
+                      value={{ slot_name: slotForm.slot_name, provider: slotForm.provider }}
+                      onChange={(data) => {
+                        handleSlotFormChange("slot_name", data.slot_name);
+                        handleSlotFormChange("provider", data.provider);
+                      }}
+                      placeholder="Search for a slot..."
+                    />
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Bet Amount</Label>
