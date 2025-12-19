@@ -229,6 +229,25 @@ export default function BonusHunt() {
       
       if (displayHunt?.id) {
         await updateBonusHuntStats(displayHunt.id);
+        
+        // Check if all slots are now played - auto-complete
+        const updatedSlots = slots?.map(s => s.id === slotId ? { ...s, is_played: true } : s);
+        const allPlayed = updatedSlots?.every(s => s.is_played);
+        
+        if (allPlayed && displayHunt.status !== "complete") {
+          const endingBalance = updatedSlots?.reduce((sum, s) => sum + (s.id === slotId ? winAmount : (s.win_amount || 0)), 0) || 0;
+          
+          // Update hunt to complete
+          await supabase
+            .from("bonus_hunts")
+            .update({ status: "complete", ending_balance: endingBalance })
+            .eq("id", displayHunt.id);
+          
+          toast({ 
+            title: "Hunt Completed!", 
+            description: `All ${updatedSlots?.length} slots played. Final balance: ${currencySymbol}${endingBalance.toLocaleString()}` 
+          });
+        }
       }
       
       queryClient.invalidateQueries({ queryKey: ["bonus-hunt-slots"] });
@@ -295,90 +314,115 @@ export default function BonusHunt() {
   const huntNumber = totalHunts > 0 ? totalHunts - currentHuntIndex : 0;
 
   return (
-    <div className="min-h-screen py-6 px-4 md:px-6">
+    <div className="min-h-screen py-6 px-4 md:px-6 bg-gradient-to-b from-background via-background to-primary/5">
       <div className="container mx-auto max-w-7xl">
-        {/* Header */}
+        {/* Header with unique gradient */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-8 relative"
         >
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">BONUS HUNT</h1>
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 blur-3xl -z-10" />
+          <div className="inline-flex items-center gap-3 mb-4">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+              <Target className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text">
+              BONUS HUNT
+            </h1>
+          </div>
           <p className="text-muted-foreground text-sm max-w-2xl mx-auto">
-            FOLLOW EACH BONUS HUNT WITH LIVE GTW (GUESS THE TOTAL WIN) PREDICTIONS, AVG X STATS, STARTING BALANCE, HIGHEST WINS AND COLLECTED BONUSES.
+            Live GTW predictions, multiplier tracking, and real-time bonus collection stats
           </p>
         </motion.div>
 
         {isLoading ? (
           <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="text-muted-foreground mt-4">Loading bonus hunt...</p>
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary/20 border-t-primary mx-auto"></div>
+              <Target className="absolute inset-0 m-auto w-6 h-6 text-primary/50" />
+            </div>
+            <p className="text-muted-foreground mt-6 animate-pulse">Loading bonus hunt...</p>
           </div>
         ) : !displayHunt ? (
-          <div className="bg-card/30 border border-border/50 rounded-xl p-12 text-center">
-            <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <div className="bg-gradient-to-br from-card/50 to-card/30 border border-border/50 rounded-2xl p-12 text-center backdrop-blur-sm">
+            <div className="p-4 rounded-full bg-muted/30 w-fit mx-auto mb-4">
+              <Target className="w-12 h-12 text-muted-foreground" />
+            </div>
             <h2 className="text-2xl font-bold mb-2">No Bonus Hunts Yet</h2>
             <p className="text-muted-foreground">Check back later for bonus hunts!</p>
           </div>
         ) : (
           <>
-            {/* Navigation Bar */}
+            {/* Navigation Bar - Enhanced */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 mb-4"
+              className="flex items-center gap-2 mb-6"
             >
-              <Button
-                variant="secondary"
-                size="icon"
-                onClick={() => navigateHunt("first")}
-                disabled={currentHuntIndex >= totalHunts - 1}
-                className="h-10 w-10"
-              >
-                <ChevronsLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                onClick={() => navigateHunt("prev")}
-                disabled={currentHuntIndex >= totalHunts - 1}
-                className="h-10 w-10"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              
-              <div className="flex-1 bg-primary/20 border border-primary/30 rounded-md py-2 px-4 text-center">
-                <span className="font-bold text-primary">BONUS HUNT #{huntNumber}</span>
-                <span className="text-muted-foreground ml-2">{formatDate(displayHunt.date)}</span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigateHunt("first")}
+                  disabled={currentHuntIndex >= totalHunts - 1}
+                  className="h-11 w-11 rounded-xl border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigateHunt("prev")}
+                  disabled={currentHuntIndex >= totalHunts - 1}
+                  className="h-11 w-11 rounded-xl border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
               </div>
               
-              <Button
-                variant="secondary"
-                size="icon"
-                onClick={() => navigateHunt("next")}
-                disabled={currentHuntIndex <= 0}
-                className="h-10 w-10"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-10 w-10"
-              >
-                <LayoutList className="w-4 h-4" />
-              </Button>
+              <div className="flex-1 bg-gradient-to-r from-primary/10 via-primary/20 to-primary/10 border border-primary/30 rounded-xl py-3 px-5 flex items-center justify-center gap-3 backdrop-blur-sm">
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  displayHunt.status === "ongoing" ? "bg-green-500 animate-pulse" : 
+                  displayHunt.status === "complete" ? "bg-primary" : "bg-yellow-500"
+                }`} />
+                <span className="font-black text-lg tracking-wide">HUNT #{huntNumber}</span>
+                <span className="text-muted-foreground text-sm hidden sm:inline">•</span>
+                <span className="text-muted-foreground text-sm hidden sm:inline">{formatDate(displayHunt.date)}</span>
+                {displayHunt.status === "complete" && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">COMPLETED</span>
+                )}
+              </div>
+              
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => navigateHunt("next")}
+                  disabled={currentHuntIndex <= 0}
+                  className="h-11 w-11 rounded-xl border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-11 w-11 rounded-xl border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
+                >
+                  <LayoutList className="w-4 h-4" />
+                </Button>
+              </div>
             </motion.div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Left Column - Slots Table */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="lg:col-span-2"
               >
-                <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-br from-card/60 to-card/40 border border-border/50 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl shadow-black/5">
                   {/* Search Header */}
                   <div className="p-3 border-b border-border/50">
                     <div className="relative">

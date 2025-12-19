@@ -210,6 +210,9 @@ export default function AdminBonusHunt() {
   // Enable real-time updates
   useBonusHuntRealtime(selectedHuntForSlots?.id);
 
+  // State for quick add dialog - separate from selectedHuntForSlots
+  const [quickAddHuntId, setQuickAddHuntId] = useState<string | null>(null);
+
   const { data: hunts, isLoading } = useQuery({
     queryKey: ["admin-bonus-hunts"],
     queryFn: async () => {
@@ -382,6 +385,125 @@ export default function AdminBonusHunt() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  // Check if hunt should auto-complete (all slots played)
+  const checkAutoComplete = async (huntId: string) => {
+    // Fetch all slots for this hunt
+    const { data: huntSlots, error: slotsError } = await supabase
+      .from("bonus_hunt_slots")
+      .select("*")
+      .eq("hunt_id", huntId);
+    
+    if (slotsError || !huntSlots || huntSlots.length === 0) return;
+    
+    // Check if all slots are played
+    const allPlayed = huntSlots.every(slot => slot.is_played);
+    if (!allPlayed) return;
+    
+    // Fetch the hunt
+    const { data: hunt, error: huntError } = await supabase
+      .from("bonus_hunts")
+      .select("*")
+      .eq("id", huntId)
+      .single();
+    
+    if (huntError || !hunt || hunt.status === "complete") return;
+    
+    // Calculate ending balance from all wins
+    const endingBalance = huntSlots.reduce((sum, slot) => sum + (slot.win_amount || 0), 0);
+    
+    // Update hunt to complete with ending balance (this triggers the winner determination via DB trigger)
+    const { error: updateError } = await supabase
+      .from("bonus_hunts")
+      .update({ 
+        status: "complete",
+        ending_balance: endingBalance
+      })
+      .eq("id", huntId);
+    
+    if (updateError) {
+      console.error("Error auto-completing hunt:", updateError);
+      return;
+    }
+    
+    // Try to determine winner automatically
+    try {
+      const { data: guesses } = await supabase
+        .from("bonus_hunt_guesses")
+        .select("*")
+        .eq("hunt_id", huntId);
+      
+      if (guesses && guesses.length > 0) {
+        // Find closest guess
+        let closestGuess = guesses[0];
+        let closestDiff = Math.abs(guesses[0].guess_amount - endingBalance);
+        
+        for (const guess of guesses) {
+          const diff = Math.abs(guess.guess_amount - endingBalance);
+          if (diff < closestDiff) {
+            closestDiff = diff;
+            closestGuess = guess;
+          }
+        }
+        
+        const pointsToAward = hunt.winner_points || 1000;
+        
+        // Update winning guess
+        await supabase
+          .from("bonus_hunt_guesses")
+          .update({ points_earned: pointsToAward })
+          .eq("id", closestGuess.id);
+        
+        // Update hunt with winner
+        await supabase
+          .from("bonus_hunts")
+          .update({ winner_user_id: closestGuess.user_id })
+          .eq("id", huntId);
+        
+        // Award points to winner
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("points")
+          .eq("user_id", closestGuess.user_id)
+          .single();
+        
+        if (profile) {
+          await supabase
+            .from("profiles")
+            .update({ points: (profile.points || 0) + pointsToAward })
+            .eq("user_id", closestGuess.user_id);
+        }
+        
+        // Notify winner
+        await supabase.from("user_notifications").insert({
+          user_id: closestGuess.user_id,
+          title: "You Won! 🎉",
+          message: `Your guess of $${closestGuess.guess_amount.toLocaleString()} was the closest to $${endingBalance.toLocaleString()}! You earned ${pointsToAward} points!`,
+          type: "achievement",
+          link: "/bonus-hunt",
+        });
+        
+        toast({
+          title: "Hunt Auto-Completed!",
+          description: `All slots played. Winner determined and awarded ${pointsToAward} points!`,
+        });
+      } else {
+        toast({
+          title: "Hunt Auto-Completed!",
+          description: `All slots played. Ending balance: $${endingBalance.toLocaleString()}. No guesses to pick winner from.`,
+        });
+      }
+    } catch (err) {
+      console.error("Error determining winner during auto-complete:", err);
+      toast({
+        title: "Hunt Completed",
+        description: `All slots played. Ending balance: $${endingBalance.toLocaleString()}`,
+      });
+    }
+    
+    queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunt-guesses"] });
+  };
 
   const resetHuntForm = () => {
     setHuntForm({
@@ -596,6 +718,9 @@ export default function AdminBonusHunt() {
       toast({ title: editingSlot ? "Slot updated - Stats recalculated!" : "Slot added - Stats recalculated!" });
       setIsSlotDialogOpen(false);
       resetSlotForm();
+      
+      // Check if all slots are played and auto-complete
+      await checkAutoComplete(huntId);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -633,12 +758,16 @@ export default function AdminBonusHunt() {
 
   // Bulk add slots mutation
   const bulkAddSlotsMutation = useMutation({
-    mutationFn: async (slotsToAdd: { slot_name: string; provider: string; bet_amount: string }[]) => {
-      if (!selectedHuntForSlots) throw new Error("No hunt selected");
+    mutationFn: async ({ huntId, slotsToAdd }: { huntId: string; slotsToAdd: { slot_name: string; provider: string; bet_amount: string }[] }) => {
+      // Fetch current slot count for this specific hunt
+      const { data: existingSlots } = await supabase
+        .from("bonus_hunt_slots")
+        .select("id")
+        .eq("hunt_id", huntId);
       
-      const currentSlotCount = slots?.length || 0;
+      const currentSlotCount = existingSlots?.length || 0;
       const payload = slotsToAdd.map((slot, index) => ({
-        hunt_id: selectedHuntForSlots.id,
+        hunt_id: huntId,
         slot_name: slot.slot_name,
         provider: slot.provider || null,
         bet_amount: slot.bet_amount ? parseFloat(slot.bet_amount) : null,
@@ -648,7 +777,7 @@ export default function AdminBonusHunt() {
       const { error } = await supabase.from("bonus_hunt_slots").insert(payload);
       if (error) throw error;
       
-      return selectedHuntForSlots.id;
+      return huntId;
     },
     onSuccess: async (huntId) => {
       await updateBonusHuntStats(huntId);
@@ -656,6 +785,7 @@ export default function AdminBonusHunt() {
       queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
       toast({ title: `Slots added - Stats recalculated!` });
       setIsQuickAddOpen(false);
+      setQuickAddHuntId(null);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -1193,26 +1323,17 @@ export default function AdminBonusHunt() {
                 <RefreshCw className="w-4 h-4" />
                 Recalculate
               </Button>
-              <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Zap className="w-4 h-4" />
-                    Quick Add
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Quick Add Slots</DialogTitle>
-                  </DialogHeader>
-                  <QuickSlotEntry
-                    onAddSlots={async (slotsToAdd) => {
-                      await bulkAddSlotsMutation.mutateAsync(slotsToAdd);
-                    }}
-                    isLoading={bulkAddSlotsMutation.isPending}
-                    existingSlotCount={slots?.length || 0}
-                  />
-                </DialogContent>
-              </Dialog>
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => {
+                  setQuickAddHuntId(selectedHuntForSlots.id);
+                  setIsQuickAddOpen(true);
+                }}
+              >
+                <Zap className="w-4 h-4" />
+                Quick Add
+              </Button>
               <Dialog open={isSlotDialogOpen} onOpenChange={setIsSlotDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2" onClick={resetSlotForm}>
@@ -1364,6 +1485,30 @@ export default function AdminBonusHunt() {
           )}
         </motion.div>
       )}
+
+      {/* Quick Add Dialog - Outside selectedHuntForSlots block to prevent blank page */}
+      <Dialog 
+        open={isQuickAddOpen && !!quickAddHuntId} 
+        onOpenChange={(open) => {
+          setIsQuickAddOpen(open);
+          if (!open) setQuickAddHuntId(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Quick Add Slots</DialogTitle>
+          </DialogHeader>
+          {quickAddHuntId && (
+            <QuickSlotEntry
+              onAddSlots={async (slotsToAdd) => {
+                await bulkAddSlotsMutation.mutateAsync({ huntId: quickAddHuntId, slotsToAdd });
+              }}
+              isLoading={bulkAddSlotsMutation.isPending}
+              existingSlotCount={slots?.length || 0}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

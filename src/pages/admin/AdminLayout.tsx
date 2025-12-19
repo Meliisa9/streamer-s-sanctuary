@@ -315,7 +315,7 @@ function AdminSidebar({
 }
 
 function AdminLayoutContent() {
-  const { user, isAdmin, isModerator, isWriter, isLoading } = useAuth();
+  const { user, profile, isAdmin, isModerator, isWriter, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -440,7 +440,7 @@ function AdminLayoutContent() {
               </Button>
               <div className="h-6 w-px bg-border" />
               <span className="text-sm text-muted-foreground">
-                Welcome back, <span className="text-foreground font-medium">{user?.email?.split("@")[0]}</span>
+                Welcome back, <span className="text-foreground font-medium">{profile?.display_name || profile?.username || user?.email?.split("@")[0]}</span>
               </span>
             </div>
             <div className="flex items-center gap-3">
