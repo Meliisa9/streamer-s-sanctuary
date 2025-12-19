@@ -136,6 +136,11 @@ export default function UserProfile() {
         .from("user_activities")
         .select("*")
         .eq("user_id", resolvedUserId)
+        .in("action", [
+          "gtw_guess", "gtw_win", "bonus_hunt_guess", "bonus_hunt_win", 
+          "poll_vote", "poll_create", "giveaway_entry", "giveaway_win",
+          "points_earned", "achievement_unlocked"
+        ])
         .order("created_at", { ascending: false })
         .limit(10);
       if (error) throw error;
@@ -324,7 +329,7 @@ export default function UserProfile() {
             <div className="mt-8 md:mt-4 md:ml-36">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <h1 className="text-2xl md:text-3xl font-bold">
-                  {profile.display_name || profile.username || "Anonymous"}
+                  {profile.username || "Anonymous"}
                 </h1>
                 
                 {/* Social Connection Badges */}
@@ -474,19 +479,54 @@ export default function UserProfile() {
                       Recent Activity
                     </h3>
                     <div className="space-y-3">
-                      {recentActivity.slice(0, 5).map((activity) => (
-                        <div key={activity.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Star className="w-4 h-4 text-primary" />
+                      {recentActivity.slice(0, 5).map((activity) => {
+                        // Determine link and icon based on activity type
+                        const getActivityInfo = (action: string) => {
+                          switch (action) {
+                            case "gtw_guess":
+                            case "gtw_win":
+                              return { link: "/bonus-hunt?tab=gtw", icon: Target, color: "text-green-500" };
+                            case "bonus_hunt_guess":
+                            case "bonus_hunt_win":
+                              return { link: "/bonus-hunt", icon: Trophy, color: "text-yellow-500" };
+                            case "poll_vote":
+                            case "poll_create":
+                              return { link: "/polls", icon: Users, color: "text-blue-500" };
+                            case "giveaway_entry":
+                            case "giveaway_win":
+                              return { link: "/giveaways", icon: Gift, color: "text-purple-500" };
+                            case "achievement_unlocked":
+                              return { link: "/achievements", icon: Award, color: "text-amber-500" };
+                            default:
+                              return { link: null, icon: Star, color: "text-primary" };
+                          }
+                        };
+                        
+                        const activityInfo = getActivityInfo(activity.action);
+                        const ActivityIcon = activityInfo.icon;
+                        
+                        const content = (
+                          <div className={`flex items-center justify-between py-2 border-b border-border/50 last:border-0 ${activityInfo.link ? "hover:bg-primary/5 -mx-2 px-2 rounded-lg cursor-pointer transition-colors" : ""}`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center`}>
+                                <ActivityIcon className={`w-4 h-4 ${activityInfo.color}`} />
+                              </div>
+                              <span className="text-sm">{activity.action.replace(/_/g, ' ')}</span>
                             </div>
-                            <span className="text-sm">{activity.action.replace(/_/g, ' ')}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(activity.created_at).toLocaleDateString()}
+                            </span>
                           </div>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(activity.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      ))}
+                        );
+                        
+                        return activityInfo.link ? (
+                          <a key={activity.id} href={activityInfo.link}>
+                            {content}
+                          </a>
+                        ) : (
+                          <div key={activity.id}>{content}</div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

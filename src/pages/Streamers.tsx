@@ -161,7 +161,7 @@ export default function Streamers() {
           <div className="inline-flex p-1 bg-secondary/50 rounded-xl">
             {[
               { value: "all", label: "All Streamers", icon: Users },
-              { value: "featured", label: "Featured", icon: Star },
+              { value: "featured", label: "Streamers", icon: Star },
               { value: "team", label: "Team Members", icon: Sparkles },
             ].map((tab) => (
               <button
@@ -175,6 +175,9 @@ export default function Streamers() {
               >
                 <tab.icon className="w-4 h-4" />
                 {tab.label}
+                <span className="ml-1 px-1.5 py-0.5 text-xs rounded bg-background/20">
+                  {tab.value === "all" ? streamers?.length || 0 : tab.value === "featured" ? mainStreamers.length : otherStreamers.length}
+                </span>
               </button>
             ))}
           </div>
@@ -196,7 +199,13 @@ export default function Streamers() {
               transition={{ duration: 0.3 }}
             >
               {filteredStreamers.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className={`grid gap-6 ${
+                  filteredStreamers.length === 1 
+                    ? "grid-cols-1 max-w-md mx-auto" 
+                    : filteredStreamers.length === 2 
+                    ? "grid-cols-1 sm:grid-cols-2 max-w-2xl mx-auto"
+                    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                }`}>
                   {filteredStreamers.map((streamer, index) => {
                     const platforms = getPlatforms(streamer);
                     return (
@@ -263,26 +272,7 @@ export default function Streamers() {
                               </p>
                             )}
 
-                            {/* Platform Buttons */}
-                            {platforms.length > 0 && (
-                              <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                {platforms.map((platform) => (
-                                  <a
-                                    key={platform.name}
-                                    href={platform.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className={`flex items-center gap-2 px-4 py-2 ${platform.color} ${platform.textColor || "text-white"} rounded-xl text-sm font-medium hover:scale-105 transition-transform shadow-lg`}
-                                  >
-                                    {platform.icon ? <platform.icon className="w-4 h-4" /> : <span className="font-bold">K</span>}
-                                    {platform.name}
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Social Links */}
+                            {/* Social Links - Only small icons */}
                             <SocialLinks streamer={streamer} />
                           </div>
                         </div>
