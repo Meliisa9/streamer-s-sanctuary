@@ -1254,8 +1254,10 @@ export type Database = {
           is_active: boolean | null
           is_main_streamer: boolean | null
           kick_url: string | null
+          linked_user_id: string | null
           name: string
           sort_order: number | null
+          streamer_type: string | null
           twitch_url: string | null
           twitter_url: string | null
           updated_at: string
@@ -1271,8 +1273,10 @@ export type Database = {
           is_active?: boolean | null
           is_main_streamer?: boolean | null
           kick_url?: string | null
+          linked_user_id?: string | null
           name: string
           sort_order?: number | null
+          streamer_type?: string | null
           twitch_url?: string | null
           twitter_url?: string | null
           updated_at?: string
@@ -1288,14 +1292,24 @@ export type Database = {
           is_active?: boolean | null
           is_main_streamer?: boolean | null
           kick_url?: string | null
+          linked_user_id?: string | null
           name?: string
           sort_order?: number | null
+          streamer_type?: string | null
           twitch_url?: string | null
           twitter_url?: string | null
           updated_at?: string
           youtube_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "streamers_linked_user_id_fkey"
+            columns: ["linked_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       user_achievements: {
         Row: {

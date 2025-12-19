@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Twitch, Youtube, Twitter, Instagram, MessageCircle, Users, Star, ExternalLink, Play, Sparkles, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +27,8 @@ interface Streamer {
   discord_url: string | null;
   instagram_url: string | null;
   is_main_streamer: boolean;
+  linked_user_id: string | null;
+  streamer_type: string | null;
 }
 
 export default function Streamers() {
@@ -46,8 +49,13 @@ export default function Streamers() {
     },
   });
 
-  const mainStreamers = streamers?.filter((s) => s.is_main_streamer) || [];
-  const otherStreamers = streamers?.filter((s) => !s.is_main_streamer) || [];
+  // Filter by streamer_type if available, otherwise fallback to is_main_streamer
+  const mainStreamers = streamers?.filter((s) => 
+    s.streamer_type === 'streamer' || (s.streamer_type === null && s.is_main_streamer)
+  ) || [];
+  const otherStreamers = streamers?.filter((s) => 
+    s.streamer_type === 'team_member' || (s.streamer_type === null && !s.is_main_streamer)
+  ) || [];
 
   const filteredStreamers = filter === "featured" 
     ? mainStreamers 
@@ -239,12 +247,23 @@ export default function Streamers() {
                             {/* Avatar */}
                             <div className="flex justify-center mb-6">
                               <div className="relative">
-                                <Avatar className={`${streamer.is_main_streamer ? "w-28 h-28 ring-4 ring-primary/30" : "w-24 h-24 ring-2 ring-border"} ring-offset-4 ring-offset-background shadow-2xl`}>
-                                  <AvatarImage src={streamer.image_url || undefined} alt={streamer.name} className="object-cover" />
-                                  <AvatarFallback className={`${streamer.is_main_streamer ? "bg-gradient-to-br from-primary to-purple-600" : "bg-gradient-to-br from-secondary to-muted"} text-2xl font-bold`}>
-                                    {streamer.name[0]}
-                                  </AvatarFallback>
-                                </Avatar>
+                                {streamer.linked_user_id ? (
+                                  <Link to={`/user/${streamer.linked_user_id}`} onClick={(e) => e.stopPropagation()}>
+                                    <Avatar className={`${streamer.is_main_streamer ? "w-28 h-28 ring-4 ring-primary/30" : "w-24 h-24 ring-2 ring-border"} ring-offset-4 ring-offset-background shadow-2xl hover:ring-primary/60 transition-all cursor-pointer`}>
+                                      <AvatarImage src={streamer.image_url || undefined} alt={streamer.name} className="object-cover" />
+                                      <AvatarFallback className={`${streamer.is_main_streamer ? "bg-gradient-to-br from-primary to-purple-600" : "bg-gradient-to-br from-secondary to-muted"} text-2xl font-bold`}>
+                                        {streamer.name[0]}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </Link>
+                                ) : (
+                                  <Avatar className={`${streamer.is_main_streamer ? "w-28 h-28 ring-4 ring-primary/30" : "w-24 h-24 ring-2 ring-border"} ring-offset-4 ring-offset-background shadow-2xl`}>
+                                    <AvatarImage src={streamer.image_url || undefined} alt={streamer.name} className="object-cover" />
+                                    <AvatarFallback className={`${streamer.is_main_streamer ? "bg-gradient-to-br from-primary to-purple-600" : "bg-gradient-to-br from-secondary to-muted"} text-2xl font-bold`}>
+                                      {streamer.name[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                )}
                                 {/* Live indicator (placeholder) */}
                                 {streamer.is_main_streamer && (
                                   <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-background flex items-center justify-center">

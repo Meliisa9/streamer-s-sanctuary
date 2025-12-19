@@ -195,14 +195,7 @@ export default function Videos() {
     };
 
     return (
-      <div className="relative py-12 px-4 overflow-hidden rounded-3xl" style={{
-        background: 'linear-gradient(135deg, hsl(270, 60%, 15%) 0%, hsl(280, 70%, 8%) 50%, hsl(270, 60%, 15%) 100%)'
-      }}>
-        {/* Purple Glow Effects */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-purple-600/20 rounded-full blur-[120px]" />
-        <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-600/10 rounded-full blur-[100px]" />
-        
+      <div className="relative py-12 px-4">
         {/* 3D Carousel Container */}
         <div 
           className="relative h-[280px] md:h-[380px] lg:h-[450px] flex items-center justify-center"
@@ -215,24 +208,24 @@ export default function Videos() {
               className="absolute cursor-pointer"
               initial={false}
               animate={{
-                x: '-65%',
-                scale: 0.7,
-                rotateY: 35,
-                opacity: 0.6,
+                x: '-55%',
+                scale: 0.75,
+                rotateY: 25,
+                opacity: 0.7,
                 zIndex: 10,
               }}
               transition={{ type: "spring", stiffness: 200, damping: 30 }}
               style={{ transformStyle: 'preserve-3d' }}
               onClick={() => setCurrentIndex(getVideoIndex(-1))}
             >
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-purple-500/30"
-                style={{ width: 'min(400px, 60vw)', aspectRatio: '16/9' }}>
+              <div className="relative rounded-2xl overflow-hidden border-2 border-black"
+                style={{ width: 'min(380px, 55vw)', aspectRatio: '16/9' }}>
                 <img
                   src={getThumbnail(videos[getVideoIndex(-1)])}
                   alt={videos[getVideoIndex(-1)].title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/40" />
+                <div className="absolute inset-0 bg-black/30" />
               </div>
             </motion.div>
           )}
@@ -253,8 +246,8 @@ export default function Videos() {
             onClick={() => handleVideoClick(videos[currentIndex])}
           >
             <div 
-              className="relative rounded-2xl overflow-hidden shadow-[0_0_60px_rgba(168,85,247,0.4)] border-4 border-purple-500/60"
-              style={{ width: 'min(650px, 85vw)', aspectRatio: '16/9' }}
+              className="relative rounded-2xl overflow-hidden border-2 border-black"
+              style={{ width: 'min(620px, 80vw)', aspectRatio: '16/9' }}
             >
               <img
                 src={getThumbnail(videos[currentIndex])}
@@ -263,7 +256,7 @@ export default function Videos() {
               />
               
               {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
               
               {/* Play Button */}
               <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
@@ -311,58 +304,58 @@ export default function Videos() {
               className="absolute cursor-pointer"
               initial={false}
               animate={{
-                x: '65%',
-                scale: 0.7,
-                rotateY: -35,
-                opacity: 0.6,
+                x: '55%',
+                scale: 0.75,
+                rotateY: -25,
+                opacity: 0.7,
                 zIndex: 10,
               }}
               transition={{ type: "spring", stiffness: 200, damping: 30 }}
               style={{ transformStyle: 'preserve-3d' }}
               onClick={() => setCurrentIndex(getVideoIndex(1))}
             >
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl border-2 border-purple-500/30"
-                style={{ width: 'min(400px, 60vw)', aspectRatio: '16/9' }}>
+              <div className="relative rounded-2xl overflow-hidden border-2 border-black"
+                style={{ width: 'min(380px, 55vw)', aspectRatio: '16/9' }}>
                 <img
                   src={getThumbnail(videos[getVideoIndex(1)])}
                   alt={videos[getVideoIndex(1)].title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-black/40" />
+                <div className="absolute inset-0 bg-black/30" />
               </div>
             </motion.div>
           )}
         </div>
 
-        {/* Large Navigation Arrows - Outside cards */}
+        {/* Large Navigation Arrows - Transparent with just arrows */}
         {videos.length > 1 && (
           <>
             <button
               onClick={goToPrevious}
-              className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-40 w-14 h-14 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 hover:border-purple-400/50 transition-all duration-300 group shadow-xl"
+              className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:scale-110 transition-all duration-300 group"
             >
-              <ChevronLeft className="w-8 h-8 text-white group-hover:text-purple-300 transition-colors" />
+              <ChevronLeft className="w-10 h-10 md:w-12 md:h-12 text-white/80 group-hover:text-white transition-colors drop-shadow-lg" strokeWidth={2.5} />
             </button>
             <button
               onClick={goToNext}
-              className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 w-14 h-14 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border-2 border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 hover:border-purple-400/50 transition-all duration-300 group shadow-xl"
+              className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-14 md:h-14 flex items-center justify-center hover:scale-110 transition-all duration-300 group"
             >
-              <ChevronRight className="w-8 h-8 text-white group-hover:text-purple-300 transition-colors" />
+              <ChevronRight className="w-10 h-10 md:w-12 md:h-12 text-white/80 group-hover:text-white transition-colors drop-shadow-lg" strokeWidth={2.5} />
             </button>
           </>
         )}
 
         {/* Carousel Dots */}
         {videos.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-40">
+          <div className="flex justify-center gap-2 mt-4">
             {videos.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`h-2.5 rounded-full transition-all duration-300 ${
+                className={`h-2 rounded-full transition-all duration-300 ${
                   index === currentIndex 
-                    ? "bg-purple-400 w-10 shadow-lg shadow-purple-500/50" 
-                    : "bg-white/30 hover:bg-white/50 w-2.5"
+                    ? "bg-primary w-8" 
+                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2"
                 }`}
               />
             ))}
@@ -488,22 +481,6 @@ export default function Videos() {
           </motion.div>
         )}
 
-        {/* Category Sections */}
-        <div className="space-y-10">
-          <VideoSection 
-            title="Big Wins" 
-            icon={Flame} 
-            videos={bigWinsVideos} 
-            iconColor="text-orange-500" 
-          />
-          <VideoSection 
-            title="Max Wins" 
-            icon={Crown} 
-            videos={maxWinsVideos} 
-            iconColor="text-yellow-500" 
-          />
-        </div>
-
         {/* Search and Filter */}
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full md:w-auto">
@@ -529,6 +506,22 @@ export default function Videos() {
               className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
+        </div>
+
+        {/* Category Sections - Big Wins & Max Wins */}
+        <div className="space-y-10">
+          <VideoSection 
+            title="Big Wins" 
+            icon={Flame} 
+            videos={bigWinsVideos} 
+            iconColor="text-orange-500" 
+          />
+          <VideoSection 
+            title="Max Wins" 
+            icon={Crown} 
+            videos={maxWinsVideos} 
+            iconColor="text-yellow-500" 
+          />
         </div>
 
         {/* All Videos Grid */}
