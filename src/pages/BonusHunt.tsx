@@ -1,25 +1,21 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useBonusHuntRealtime } from "@/hooks/useBonusHuntRealtime";
-import { calculateMultiplier, updateBonusHuntStats } from "@/hooks/useBonusHuntCalculations";
+import { calculateMultiplier, updateBonusHuntStats, calculateBonusHuntStats } from "@/hooks/useBonusHuntCalculations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { BonusHuntProgress } from "@/components/bonus-hunt/BonusHuntProgress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InlineWinEditor } from "@/components/bonus-hunt/InlineWinEditor";
 import { 
   Target, Trophy, TrendingUp, DollarSign, 
-  Clock, CheckCircle2, History, Search,
-  ChevronLeft, ChevronRight, Zap, Star,
-  Play, Pause, Hash, Coins, BarChart3,
-  Calendar, Timer, ArrowUpRight, Radio, Users, Lock, Medal, Sparkles
+  CheckCircle2, Search, ChevronLeft, ChevronRight,
+  ChevronsLeft, ChevronsRight, Zap, Star,
+  Lock, Users, ArrowUpDown, LayoutList
 } from "lucide-react";
-import { UserAvatarLink } from "@/components/UserAvatarLink";
 import { Link } from "react-router-dom";
 
 interface BonusHunt {
@@ -39,20 +35,6 @@ interface BonusHunt {
   created_at: string;
 }
 
-interface BonusHuntWinner {
-  id: string;
-  title: string;
-  ending_balance: number | null;
-  currency: string | null;
-  winner_user_id: string;
-  winner_points: number | null;
-  profile?: {
-    username: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-  };
-}
-
 interface BonusHuntSlot {
   id: string;
   hunt_id: string;
@@ -70,20 +52,30 @@ interface UserGuess {
   hunt_id: string;
   user_id: string;
   guess_amount: number;
+  points_earned: number | null;
+}
+
+interface WinnerInfo {
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  guess_amount: number;
+  points_earned: number | null;
 }
 
 export default function BonusHunt() {
   const { user, isAdmin, isModerator } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedHunt, setSelectedHunt] = useState<BonusHunt | null>(null);
+  const [currentHuntIndex, setCurrentHuntIndex] = useState(0);
   const [slotSearch, setSlotSearch] = useState("");
   const [slotPage, setSlotPage] = useState(0);
   const [guessAmount, setGuessAmount] = useState("");
-  const [showWin, setShowWin] = useState(true);
-  const [showMultiplier, setShowMultiplier] = useState(true);
   const [savingSlotId, setSavingSlotId] = useState<string | null>(null);
-  const SLOTS_PER_PAGE = 15;
+  const [sortField, setSortField] = useState<"sort_order" | "bet_amount" | "multiplier" | "win_amount">("sort_order");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [activeTab, setActiveTab] = useState("stats");
+  const SLOTS_PER_PAGE = 10;
   
   const canEditSlots = isAdmin || isModerator;
 
@@ -100,104 +92,104 @@ export default function BonusHunt() {
     },
   });
 
-  const currentHunt = hunts?.find(h => h.status === "ongoing" || h.status === "to_be_played");
-  const previousHunts = hunts?.filter(h => h.status === "complete") || [];
+  const displayHunt = hunts?.[currentHuntIndex];
+  const totalHunts = hunts?.length || 0;
 
-  // Fetch slots for selected or current hunt
-  const activeHuntId = selectedHunt?.id || currentHunt?.id;
+  // Fetch slots for displayed hunt
   const { data: slots } = useQuery({
-    queryKey: ["bonus-hunt-slots", activeHuntId],
+    queryKey: ["bonus-hunt-slots", displayHunt?.id],
     queryFn: async () => {
-      if (!activeHuntId) return [];
+      if (!displayHunt?.id) return [];
       const { data, error } = await supabase
         .from("bonus_hunt_slots")
         .select("*")
-        .eq("hunt_id", activeHuntId)
+        .eq("hunt_id", displayHunt.id)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return data as BonusHuntSlot[];
     },
-    enabled: !!activeHuntId,
+    enabled: !!displayHunt?.id,
   });
 
   // Enable real-time updates
-  useBonusHuntRealtime(activeHuntId);
+  useBonusHuntRealtime(displayHunt?.id);
 
   // Fetch user's guess for current hunt
   const { data: userGuess } = useQuery({
-    queryKey: ["bonus-hunt-guess", currentHunt?.id, user?.id],
+    queryKey: ["bonus-hunt-guess", displayHunt?.id, user?.id],
     queryFn: async () => {
-      if (!currentHunt?.id || !user?.id) return null;
+      if (!displayHunt?.id || !user?.id) return null;
       const { data, error } = await supabase
         .from("bonus_hunt_guesses")
         .select("*")
-        .eq("hunt_id", currentHunt.id)
+        .eq("hunt_id", displayHunt.id)
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
       return data as UserGuess | null;
     },
-    enabled: !!currentHunt?.id && !!user?.id,
+    enabled: !!displayHunt?.id && !!user?.id,
   });
 
-  // Fetch guess counts
-  const { data: guessCount } = useQuery({
-    queryKey: ["bonus-hunt-guess-count", currentHunt?.id],
+  // Fetch all guesses for current hunt
+  const { data: allGuesses } = useQuery({
+    queryKey: ["bonus-hunt-all-guesses", displayHunt?.id],
     queryFn: async () => {
-      if (!currentHunt?.id) return 0;
-      const { count, error } = await supabase
+      if (!displayHunt?.id) return [];
+      const { data, error } = await supabase
         .from("bonus_hunt_guesses")
-        .select("*", { count: "exact", head: true })
-        .eq("hunt_id", currentHunt.id);
+        .select("*")
+        .eq("hunt_id", displayHunt.id)
+        .order("created_at", { ascending: true });
       if (error) throw error;
-      return count || 0;
+      return data;
     },
-    enabled: !!currentHunt?.id,
+    enabled: !!displayHunt?.id,
   });
 
-  // Fetch recent winners
-  const { data: recentWinners } = useQuery({
-    queryKey: ["bonus-hunt-recent-winners"],
+  // Fetch winner info for completed hunts
+  const { data: winnerInfo } = useQuery({
+    queryKey: ["bonus-hunt-winner", displayHunt?.id],
     queryFn: async () => {
-      // Get completed hunts with winners
-      const { data: hunts, error } = await supabase
-        .from("bonus_hunts")
-        .select("id, title, ending_balance, currency, winner_user_id, winner_points")
-        .not("winner_user_id", "is", null)
-        .eq("status", "complete")
-        .order("created_at", { ascending: false })
-        .limit(5);
+      if (!displayHunt?.winner_user_id) return null;
       
-      if (error) throw error;
-      if (!hunts || hunts.length === 0) return [];
-      
-      // Get profiles for winners
-      const winnerIds = hunts.map(h => h.winner_user_id).filter(Boolean);
-      const { data: profiles } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
-        .select("user_id, username, display_name, avatar_url")
-        .in("user_id", winnerIds);
+        .select("username, display_name, avatar_url")
+        .eq("user_id", displayHunt.winner_user_id)
+        .single();
       
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const { data: guess } = await supabase
+        .from("bonus_hunt_guesses")
+        .select("guess_amount, points_earned")
+        .eq("hunt_id", displayHunt.id)
+        .eq("user_id", displayHunt.winner_user_id)
+        .single();
       
-      return hunts.map(h => ({
-        ...h,
-        profile: profileMap.get(h.winner_user_id) || undefined,
-      })) as BonusHuntWinner[];
+      if (!profile || !guess) return null;
+      
+      return {
+        ...profile,
+        guess_amount: guess.guess_amount,
+        points_earned: guess.points_earned,
+      } as WinnerInfo;
     },
+    enabled: !!displayHunt?.winner_user_id,
   });
+
+  const guessCount = allGuesses?.length || 0;
 
   const submitGuessMutation = useMutation({
     mutationFn: async (amount: number) => {
-      if (!user || !currentHunt) throw new Error("Not authenticated or no active hunt");
+      if (!user || !displayHunt) throw new Error("Not authenticated or no active hunt");
       const { error } = await supabase
         .from("bonus_hunt_guesses")
-        .insert({ hunt_id: currentHunt.id, user_id: user.id, guess_amount: amount });
+        .insert({ hunt_id: displayHunt.id, user_id: user.id, guess_amount: amount });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bonus-hunt-guess"] });
-      queryClient.invalidateQueries({ queryKey: ["bonus-hunt-guess-count"] });
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunt-all-guesses"] });
       toast({ title: "Guess submitted! Good luck!" });
       setGuessAmount("");
     },
@@ -219,7 +211,6 @@ export default function BonusHunt() {
   const handleInlineWinUpdate = async (slotId: string, winAmount: number) => {
     setSavingSlotId(slotId);
     try {
-      // Get the slot to calculate multiplier
       const slot = slots?.find(s => s.id === slotId);
       if (!slot) throw new Error("Slot not found");
       
@@ -236,14 +227,13 @@ export default function BonusHunt() {
       
       if (error) throw error;
       
-      // Update hunt stats
-      if (activeHuntId) {
-        await updateBonusHuntStats(activeHuntId);
+      if (displayHunt?.id) {
+        await updateBonusHuntStats(displayHunt.id);
       }
       
       queryClient.invalidateQueries({ queryKey: ["bonus-hunt-slots"] });
       queryClient.invalidateQueries({ queryKey: ["bonus-hunts"] });
-      toast({ title: "Win updated & stats recalculated!" });
+      toast({ title: "Win updated!" });
     } catch (error: any) {
       toast({ title: "Error updating win", description: error.message, variant: "destructive" });
     } finally {
@@ -251,116 +241,71 @@ export default function BonusHunt() {
     }
   };
 
-  // Filter and paginate slots
-  const filteredSlots = slots?.filter(s => 
-    s.slot_name.toLowerCase().includes(slotSearch.toLowerCase()) ||
-    s.provider?.toLowerCase().includes(slotSearch.toLowerCase())
-  ) || [];
-  const totalPages = Math.ceil(filteredSlots.length / SLOTS_PER_PAGE);
-  const paginatedSlots = filteredSlots.slice(slotPage * SLOTS_PER_PAGE, (slotPage + 1) * SLOTS_PER_PAGE);
+  // Calculate stats
+  const stats = useMemo(() => {
+    return calculateBonusHuntStats(slots || [], displayHunt?.starting_balance || null);
+  }, [slots, displayHunt?.starting_balance]);
 
-  const displayHunt = selectedHunt || currentHunt;
+  // Sort and filter slots
+  const sortedSlots = useMemo(() => {
+    let filtered = slots?.filter(s => 
+      s.slot_name.toLowerCase().includes(slotSearch.toLowerCase()) ||
+      s.provider?.toLowerCase().includes(slotSearch.toLowerCase())
+    ) || [];
+    
+    return [...filtered].sort((a, b) => {
+      const aVal = a[sortField] ?? 0;
+      const bVal = b[sortField] ?? 0;
+      return sortDir === "asc" ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+    });
+  }, [slots, slotSearch, sortField, sortDir]);
 
-  // Calculate stats using proper formulas
-  const totalBonuses = slots?.length || 0;
-  const playedBonuses = slots?.filter(s => s.is_played).length || 0;
-  const remainingBonuses = totalBonuses - playedBonuses;
-  
-  // Sum of all wins from played slots
-  const totalWinnings = slots?.filter(s => s.is_played).reduce((sum, s) => sum + (s.win_amount || 0), 0) || 0;
-  
-  // Sum of all bets
-  const totalBets = slots?.reduce((sum, s) => sum + (s.bet_amount || 0), 0) || 0;
-  
-  // Average bet = total bets / number of slots
-  const averageBet = totalBonuses > 0 ? (totalBets / totalBonuses) : 0;
-  
-  // Average X = sum of multipliers / number of played slots with multipliers
-  const playedSlotsWithMultipliers = slots?.filter(s => s.is_played && s.multiplier !== null) || [];
-  const totalMultiplier = playedSlotsWithMultipliers.reduce((sum, s) => sum + (s.multiplier || 0), 0);
-  const averageX = playedSlotsWithMultipliers.length > 0 
-    ? (totalMultiplier / playedSlotsWithMultipliers.length).toFixed(2) 
-    : "0.00";
-  
-  // Break-even X = (Starting Balance - Current Wins) / (Remaining Slots Total Bets)
-  // What multiplier is needed on remaining slots to match starting balance
-  const remainingBets = slots?.filter(s => !s.is_played).reduce((sum, s) => sum + (s.bet_amount || 0), 0) || 0;
-  let breakEvenX = "0.00";
-  if (displayHunt?.starting_balance && remainingBets > 0) {
-    const neededWins = displayHunt.starting_balance - totalWinnings;
-    breakEvenX = (neededWins / remainingBets).toFixed(2);
-  } else if (displayHunt?.starting_balance && totalBets > 0) {
-    // If all slots played, show what was needed
-    breakEvenX = (displayHunt.starting_balance / totalBets).toFixed(2);
-  }
-  
+  const totalPages = Math.ceil(sortedSlots.length / SLOTS_PER_PAGE);
+  const paginatedSlots = sortedSlots.slice(slotPage * SLOTS_PER_PAGE, (slotPage + 1) * SLOTS_PER_PAGE);
+
   const currencySymbol = displayHunt?.currency === "EUR" ? "€" : displayHunt?.currency === "GBP" ? "£" : displayHunt?.currency === "SEK" ? "kr" : displayHunt?.currency === "CAD" ? "C$" : "$";
 
-  // Find top performers
+  // Top performers
   const topWinSlot = slots?.reduce((max, s) => (s.win_amount || 0) > (max?.win_amount || 0) ? s : max, slots[0]);
   const topMultiplierSlot = slots?.reduce((max, s) => (s.multiplier || 0) > (max?.multiplier || 0) ? s : max, slots[0]);
 
-  const StatusBadge = ({ status }: { status: string }) => {
-    if (status === "ongoing") {
-      return (
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-          </span>
-          <span className="text-green-500 font-semibold">LIVE</span>
-        </div>
-      );
+  const handleSort = (field: typeof sortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("asc");
     }
-    if (status === "to_be_played") {
-      return (
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-yellow-500" />
-          <span className="text-yellow-500 font-semibold">UPCOMING</span>
-        </div>
-      );
-    }
-    return (
-      <div className="flex items-center gap-2">
-        <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
-        <span className="text-muted-foreground font-semibold">ENDED</span>
-      </div>
-    );
+    setSlotPage(0);
   };
 
-  // Stat Box Component
-  const StatBox = ({ icon: Icon, label, value, subValue, highlight, iconColor }: {
-    icon: any;
-    label: string;
-    value: string | number;
-    subValue?: string;
-    highlight?: boolean;
-    iconColor?: string;
-  }) => (
-    <div className={`bg-card/50 border border-border/50 rounded-lg p-4 ${highlight ? 'ring-1 ring-primary/50' : ''}`}>
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 ${iconColor || 'text-muted-foreground'}`} />
-        <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
-      </div>
-      <p className={`text-xl font-bold ${highlight ? 'text-primary' : 'text-foreground'}`}>{value}</p>
-      {subValue && <p className="text-xs text-muted-foreground mt-1">{subValue}</p>}
-    </div>
-  );
+  const navigateHunt = (direction: "prev" | "next" | "first" | "last") => {
+    if (direction === "first") setCurrentHuntIndex(totalHunts - 1);
+    else if (direction === "last") setCurrentHuntIndex(0);
+    else if (direction === "prev") setCurrentHuntIndex(i => Math.min(totalHunts - 1, i + 1));
+    else setCurrentHuntIndex(i => Math.max(0, i - 1));
+    setSlotPage(0);
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short" }).toUpperCase();
+  };
+
+  // Calculate hunt number
+  const huntNumber = totalHunts > 0 ? totalHunts - currentHuntIndex : 0;
 
   return (
-    <div className="min-h-screen py-8 px-4 md:px-6">
+    <div className="min-h-screen py-6 px-4 md:px-6">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="text-center mb-8"
         >
-          <h1 className="text-4xl md:text-5xl font-bold mb-2">
-            <span className="gradient-text-gold">Bonus Hunt</span>
-          </h1>
-          <p className="text-muted-foreground">
-            Track live bonus hunts, view results, and guess the final balance!
+          <h1 className="text-3xl md:text-4xl font-bold mb-3">BONUS HUNT</h1>
+          <p className="text-muted-foreground text-sm max-w-2xl mx-auto">
+            FOLLOW EACH BONUS HUNT WITH LIVE GTW (GUESS THE TOTAL WIN) PREDICTIONS, AVG X STATS, STARTING BALANCE, HIGHEST WINS AND COLLECTED BONUSES.
           </p>
         </motion.div>
 
@@ -370,141 +315,144 @@ export default function BonusHunt() {
             <p className="text-muted-foreground mt-4">Loading bonus hunt...</p>
           </div>
         ) : !displayHunt ? (
-          <div className="bg-card/30 border border-border/50 rounded-2xl p-12 text-center">
+          <div className="bg-card/30 border border-border/50 rounded-xl p-12 text-center">
             <Target className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-            <h2 className="text-2xl font-bold mb-2">No Active Bonus Hunt</h2>
-            <p className="text-muted-foreground">Check back later for the next bonus hunt!</p>
-            
-            {previousHunts.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4">Previous Hunts</h3>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {previousHunts.slice(0, 5).map(hunt => (
-                    <Button 
-                      key={hunt.id} 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSelectedHunt(hunt)}
-                    >
-                      {hunt.title}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <h2 className="text-2xl font-bold mb-2">No Bonus Hunts Yet</h2>
+            <p className="text-muted-foreground">Check back later for bonus hunts!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Content - Slots Table */}
+          <>
+            {/* Navigation Bar */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="lg:col-span-2 space-y-4"
+              className="flex items-center gap-2 mb-4"
             >
-              {/* Hunt Title Bar */}
-              <div className="bg-card/30 border border-border/50 rounded-xl p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold">{displayHunt.title}</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(displayHunt.date).toLocaleDateString("en-US", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric"
-                      })}
-                    </p>
-                  </div>
-                  {selectedHunt && (
-                    <Button variant="outline" size="sm" onClick={() => setSelectedHunt(null)}>
-                      <ArrowUpRight className="w-4 h-4 mr-2" />
-                      Current Hunt
-                    </Button>
-                  )}
-                </div>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => navigateHunt("first")}
+                disabled={currentHuntIndex >= totalHunts - 1}
+                className="h-10 w-10"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => navigateHunt("prev")}
+                disabled={currentHuntIndex >= totalHunts - 1}
+                className="h-10 w-10"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              
+              <div className="flex-1 bg-primary/20 border border-primary/30 rounded-md py-2 px-4 text-center">
+                <span className="font-bold text-primary">BONUS HUNT #{huntNumber}</span>
+                <span className="text-muted-foreground ml-2">{formatDate(displayHunt.date)}</span>
               </div>
+              
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => navigateHunt("next")}
+                disabled={currentHuntIndex <= 0}
+                className="h-10 w-10"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-10 w-10"
+              >
+                <LayoutList className="w-4 h-4" />
+              </Button>
+            </motion.div>
 
-              {/* Slots Table */}
-              <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden">
-                {/* Table Header with Search & Toggles */}
-                <div className="p-4 border-b border-border/50">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        Bonuses ({playedBonuses}/{totalBonuses})
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Show Win</span>
-                        <Switch checked={showWin} onCheckedChange={setShowWin} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Show X</span>
-                        <Switch checked={showMultiplier} onCheckedChange={setShowMultiplier} />
-                      </div>
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Search..."
-                          value={slotSearch}
-                          onChange={(e) => { setSlotSearch(e.target.value); setSlotPage(0); }}
-                          className="pl-9 h-9 w-40 bg-background/50"
-                        />
-                      </div>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Left Column - Slots Table */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="lg:col-span-2"
+              >
+                <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden">
+                  {/* Search Header */}
+                  <div className="p-3 border-b border-border/50">
+                    <div className="relative">
+                      <Input
+                        placeholder="Find Slot or Provider"
+                        value={slotSearch}
+                        onChange={(e) => { setSlotSearch(e.target.value); setSlotPage(0); }}
+                        className="bg-background/50 pr-10"
+                      />
+                      <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     </div>
                   </div>
-                </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border/50 bg-muted/20">
-                        <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-12">#</th>
-                        <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Slot</th>
-                        <th className="text-right p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">Bet</th>
-                        {showMultiplier && (
-                          <th className="text-right p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-20">X</th>
-                        )}
-                        {showWin && (
-                          <th className="text-right p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-28">Win</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedSlots.length > 0 ? (
-                        paginatedSlots.map((slot, index) => {
-                          const rowNum = slotPage * SLOTS_PER_PAGE + index + 1;
-                          const isHighMultiplier = (slot.multiplier || 0) >= 100;
-                          const isBigWin = (slot.win_amount || 0) >= (slot.bet_amount || 1) * 50;
-                          
-                          return (
-                            <tr 
-                              key={slot.id}
-                              className={`border-b border-border/30 transition-colors hover:bg-muted/10 ${
-                                slot.is_played ? '' : 'opacity-60'
-                              } ${isHighMultiplier ? 'bg-yellow-500/5' : ''}`}
-                            >
-                              <td className="p-3 text-sm text-muted-foreground font-mono">{rowNum}</td>
-                              <td className="p-3">
-                                <div>
-                                  <span className="font-medium text-sm">{slot.slot_name}</span>
-                                  {slot.provider && (
-                                    <span className="text-xs text-muted-foreground ml-2">({slot.provider})</span>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="p-3 text-right text-sm font-mono">
-                                {slot.bet_amount ? `${currencySymbol}${slot.bet_amount.toFixed(2)}` : '-'}
-                              </td>
-                              {showMultiplier && (
+                  {/* Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border/50 bg-muted/10">
+                          <th className="text-left p-3 text-xs font-semibold text-muted-foreground w-12">#</th>
+                          <th className="text-left p-3 text-xs font-semibold text-muted-foreground">Slot</th>
+                          <th 
+                            className="text-right p-3 text-xs font-semibold text-muted-foreground cursor-pointer hover:text-foreground"
+                            onClick={() => handleSort("bet_amount")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <ArrowUpDown className="w-3 h-3" />
+                              Bet
+                            </span>
+                          </th>
+                          <th 
+                            className="text-right p-3 text-xs font-semibold text-muted-foreground cursor-pointer hover:text-foreground"
+                            onClick={() => handleSort("multiplier")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <ArrowUpDown className="w-3 h-3" />
+                              X
+                            </span>
+                          </th>
+                          <th 
+                            className="text-right p-3 text-xs font-semibold text-muted-foreground cursor-pointer hover:text-foreground"
+                            onClick={() => handleSort("win_amount")}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              <ArrowUpDown className="w-3 h-3" />
+                              Win
+                            </span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedSlots.length > 0 ? (
+                          paginatedSlots.map((slot, index) => {
+                            const rowNum = slotPage * SLOTS_PER_PAGE + index + 1;
+                            const isHighMultiplier = (slot.multiplier || 0) >= 100;
+                            
+                            return (
+                              <tr 
+                                key={slot.id}
+                                className={`border-b border-border/30 transition-colors hover:bg-muted/10 ${
+                                  !slot.is_played ? 'opacity-60' : ''
+                                } ${isHighMultiplier ? 'bg-yellow-500/5' : ''}`}
+                              >
+                                <td className="p-3 text-sm text-muted-foreground">{rowNum}</td>
+                                <td className="p-3">
+                                  <span className="font-medium text-sm text-primary">{slot.slot_name}</span>
+                                </td>
+                                <td className="p-3 text-right text-sm">
+                                  {slot.bet_amount ? `${currencySymbol}${slot.bet_amount.toLocaleString()}` : '-'}
+                                </td>
                                 <td className="p-3 text-right">
                                   {slot.is_played && slot.multiplier !== null ? (
-                                    <span className={`text-sm font-bold ${
+                                    <span className={`text-sm font-medium ${
                                       isHighMultiplier ? 'text-yellow-500' : 
-                                      (slot.multiplier || 0) >= 20 ? 'text-green-500' : 
-                                      'text-foreground'
+                                      (slot.multiplier || 0) >= 20 ? 'text-green-500' : ''
                                     }`}>
                                       {slot.multiplier.toFixed(2)}x
                                     </span>
@@ -512,8 +460,6 @@ export default function BonusHunt() {
                                     <span className="text-muted-foreground">-</span>
                                   )}
                                 </td>
-                              )}
-                              {showWin && (
                                 <td className="p-3 text-right">
                                   {canEditSlots ? (
                                     <InlineWinEditor
@@ -527,64 +473,47 @@ export default function BonusHunt() {
                                     />
                                   ) : (
                                     slot.is_played && slot.win_amount !== null ? (
-                                      <span className={`text-sm font-bold font-mono ${
-                                        isBigWin ? 'text-yellow-500' :
-                                        slot.win_amount > 0 ? 'text-green-500' : 'text-red-500'
-                                      }`}>
-                                        {currencySymbol}{slot.win_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      <span className="text-sm font-medium">
+                                        {currencySymbol}{slot.win_amount.toLocaleString()}
                                       </span>
                                     ) : (
                                       <span className="text-muted-foreground">-</span>
                                     )
                                   )}
                                 </td>
-                              )}
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                            {slotSearch ? "No slots match your search" : "No slots added yet"}
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                              {slotSearch ? "No slots match your search" : "No slots added yet"}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="p-4 border-t border-border/50 flex items-center justify-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSlotPage(0)}
-                      disabled={slotPage === 0}
-                    >
-                      First
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSlotPage(p => Math.max(0, p - 1))}
-                      disabled={slotPage === 0}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    
-                    <div className="flex items-center gap-1">
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="p-3 border-t border-border/50 flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSlotPage(0)}
+                        disabled={slotPage === 0}
+                        className="h-8 w-8"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum;
-                        if (totalPages <= 5) {
-                          pageNum = i;
-                        } else if (slotPage < 3) {
-                          pageNum = i;
-                        } else if (slotPage > totalPages - 4) {
-                          pageNum = totalPages - 5 + i;
-                        } else {
-                          pageNum = slotPage - 2 + i;
-                        }
+                        if (totalPages <= 5) pageNum = i;
+                        else if (slotPage < 3) pageNum = i;
+                        else if (slotPage > totalPages - 4) pageNum = totalPages - 5 + i;
+                        else pageNum = slotPage - 2 + i;
                         
                         return (
                           <Button
@@ -592,329 +521,286 @@ export default function BonusHunt() {
                             variant={slotPage === pageNum ? "default" : "ghost"}
                             size="sm"
                             onClick={() => setSlotPage(pageNum)}
-                            className="w-8 h-8 p-0"
+                            className="h-8 w-8 p-0"
                           >
                             {pageNum + 1}
                           </Button>
                         );
                       })}
-                    </div>
-                    
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSlotPage(p => Math.min(totalPages - 1, p + 1))}
-                      disabled={slotPage >= totalPages - 1}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSlotPage(totalPages - 1)}
-                      disabled={slotPage >= totalPages - 1}
-                    >
-                      Last
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Sidebar - Summary Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="space-y-4"
-            >
-              {/* Progress Indicator */}
-              {displayHunt.starting_balance && displayHunt.starting_balance > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                    <span>Live Updates Enabled</span>
-                  </div>
-                  <BonusHuntProgress
-                    startingBalance={displayHunt.starting_balance}
-                    currentBalance={totalWinnings}
-                    targetBalance={displayHunt.target_balance || undefined}
-                    currency={displayHunt.currency || "USD"}
-                  />
-                </div>
-              )}
-
-              {/* Summary Box */}
-              <div className="bg-card/30 border border-border/50 rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Summary</h3>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Status */}
-                  <div className="col-span-2 bg-card/50 border border-border/50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      {displayHunt.status === "ongoing" ? (
-                        <Play className="w-4 h-4 text-green-500" />
-                      ) : displayHunt.status === "to_be_played" ? (
-                        <Pause className="w-4 h-4 text-yellow-500" />
-                      ) : (
-                        <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
+                      
+                      {totalPages > 5 && slotPage < totalPages - 3 && (
+                        <>
+                          <span className="px-2 text-muted-foreground">...</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSlotPage(totalPages - 1)}
+                            className="h-8 w-8 p-0"
+                          >
+                            {totalPages}
+                          </Button>
+                        </>
                       )}
-                      <span className="text-xs text-muted-foreground uppercase tracking-wide">Status</span>
-                    </div>
-                    <StatusBadge status={displayHunt.status} />
-                  </div>
-
-                  <StatBox 
-                    icon={Hash} 
-                    label="Bonuses" 
-                    value={totalBonuses}
-                    subValue={`${playedBonuses} opened`}
-                    iconColor="text-blue-500"
-                  />
-                  
-                  <StatBox 
-                    icon={DollarSign} 
-                    label="Start" 
-                    value={`${currencySymbol}${displayHunt.starting_balance?.toLocaleString() || '0'}`}
-                    iconColor="text-emerald-500"
-                  />
-                  
-                  <StatBox 
-                    icon={Target} 
-                    label="Target" 
-                    value={`${currencySymbol}${displayHunt.target_balance?.toLocaleString() || '0'}`}
-                    iconColor="text-blue-500"
-                  />
-                  
-                  <StatBox 
-                    icon={Trophy} 
-                    label={displayHunt.status === "complete" ? "End Balance" : "Current"}
-                    value={`${currencySymbol}${(displayHunt.ending_balance || totalWinnings).toLocaleString()}`}
-                    highlight={displayHunt.status === "complete"}
-                    iconColor="text-yellow-500"
-                  />
-
-                  <StatBox 
-                    icon={Coins} 
-                    label="Avg Bet" 
-                    value={`${currencySymbol}${averageBet.toFixed(2)}`}
-                    iconColor="text-cyan-500"
-                  />
-                  
-                  <StatBox 
-                    icon={TrendingUp} 
-                    label="Break-even" 
-                    value={`${breakEvenX}x`}
-                    subValue={remainingBonuses > 0 ? `${remainingBonuses} slots remaining` : "All played"}
-                    iconColor="text-orange-500"
-                  />
-
-                  <StatBox 
-                    icon={Zap} 
-                    label="Highest Win" 
-                    value={`${currencySymbol}${displayHunt.highest_win?.toLocaleString() || topWinSlot?.win_amount?.toLocaleString() || '0'}`}
-                    subValue={topWinSlot?.slot_name}
-                    iconColor="text-yellow-500"
-                  />
-                  
-                  <StatBox 
-                    icon={Star} 
-                    label="Highest X" 
-                    value={`${displayHunt.highest_multiplier || topMultiplierSlot?.multiplier || 0}x`}
-                    subValue={topMultiplierSlot?.slot_name}
-                    iconColor="text-purple-500"
-                  />
-
-                  <StatBox 
-                    icon={BarChart3} 
-                    label="Avg X" 
-                    value={`${averageX}x`}
-                    iconColor="text-cyan-500"
-                  />
-                  
-                  <StatBox 
-                    icon={Calendar} 
-                    label="Date" 
-                    value={new Date(displayHunt.date).toLocaleDateString()}
-                    iconColor="text-muted-foreground"
-                  />
-                </div>
-              </div>
-
-              {/* Guess Section - For ongoing hunts OR show results for complete hunts */}
-              {displayHunt && (displayHunt.status === "ongoing" || displayHunt.status === "to_be_played") && (
-                <div className="bg-card/30 border border-border/50 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Target className="w-4 h-4 text-primary" />
-                    Guess Final Balance
-                  </h3>
-                  
-                  {/* Participant count */}
-                  <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    <span>{guessCount} {guessCount === 1 ? 'guess' : 'guesses'} so far</span>
-                  </div>
-                  
-                  {userGuess ? (
-                    <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        <span className="font-medium text-green-500">Your Guess is Locked!</span>
-                      </div>
-                      <p className="text-2xl font-bold">{currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Winner will be determined when the hunt ends
-                      </p>
-                    </div>
-                  ) : user ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Predict what the final balance will be at the end of this bonus hunt!
-                      </p>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
-                        <Input
-                          type="number"
-                          placeholder="Enter your guess..."
-                          value={guessAmount}
-                          onChange={(e) => setGuessAmount(e.target.value)}
-                          className="pl-7 bg-background/50"
-                        />
-                      </div>
-                      <Button 
-                        className="w-full gap-2" 
-                        onClick={handleSubmitGuess}
-                        disabled={submitGuessMutation.isPending}
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSlotPage(totalPages - 1)}
+                        disabled={slotPage >= totalPages - 1}
+                        className="h-8 w-8"
                       >
-                        <Lock className="w-4 h-4" />
-                        Lock In Guess
+                        <ChevronRight className="w-4 h-4" />
                       </Button>
-                      <p className="text-xs text-muted-foreground text-center">
-                        +10 XP for participating • Closest guess wins {displayHunt.winner_points || 1000} points!
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-center p-4 bg-muted/20 rounded-lg">
-                      <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess and win points!
-                      </p>
                     </div>
                   )}
                 </div>
-              )}
-              
-              {/* Winner display for completed hunts */}
-              {displayHunt && displayHunt.status === "complete" && userGuess && (
-                <div className="bg-card/30 border border-border/50 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-yellow-500" />
-                    Your Guess Result
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Your guess:</span>
-                      <span className="font-bold">{currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Final balance:</span>
-                      <span className="font-bold text-primary">{currencySymbol}{(displayHunt.ending_balance || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-t border-border/50 pt-2">
-                      <span className="text-muted-foreground">Difference:</span>
-                      <span className="font-bold">
-                        {currencySymbol}{Math.abs(Number(userGuess.guess_amount) - (displayHunt.ending_balance || 0)).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </motion.div>
 
-              {/* Recent Winners */}
-              {recentWinners && recentWinners.length > 0 && (
-                <div className="bg-card/30 border border-border/50 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-yellow-500" />
-                    Recent Winners
-                  </h3>
-                  <div className="space-y-3">
-                    {recentWinners.map((winner, index) => (
-                      <div 
-                        key={winner.id} 
-                        className="flex items-center gap-3 p-2 bg-card/50 rounded-lg"
-                      >
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          index === 0 ? "bg-yellow-500/20 text-yellow-500" :
-                          index === 1 ? "bg-gray-400/20 text-gray-400" :
-                          index === 2 ? "bg-amber-600/20 text-amber-600" :
-                          "bg-muted text-muted-foreground"
-                        }`}>
-                          {index + 1}
-                        </div>
-                        {winner.profile ? (
-                          <UserAvatarLink
-                            userId={winner.winner_user_id}
-                            username={winner.profile.username}
-                            displayName={winner.profile.display_name}
-                            avatarUrl={winner.profile.avatar_url}
-                            size="sm"
-                            showName={true}
-                          />
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Unknown</span>
-                        )}
-                        <div className="ml-auto text-right">
-                          <p className="text-xs text-muted-foreground truncate max-w-[80px]" title={winner.title}>
-                            {winner.title}
-                          </p>
-                          <p className="text-xs text-yellow-500 font-medium">
-                            +{winner.winner_points || 0} pts
-                          </p>
-                        </div>
+              {/* Right Column - Stats Sidebar with Tabs */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className="bg-card/30 border border-border/50 rounded-xl overflow-hidden">
+                  <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="w-full rounded-none bg-muted/20 border-b border-border/50">
+                      <TabsTrigger value="stats" className="flex-1">STATS</TabsTrigger>
+                      <TabsTrigger value="gtw" className="flex-1">GTW</TabsTrigger>
+                      <TabsTrigger value="avgx" className="flex-1">AVG X</TabsTrigger>
+                    </TabsList>
+
+                    {/* STATS Tab */}
+                    <TabsContent value="stats" className="p-4 space-y-3 mt-0">
+                      <div className="border-b border-border/50 pb-3">
+                        <h3 className="font-bold text-lg">BONUS HUNT #{huntNumber}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(displayHunt.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                      
+                      <StatRow 
+                        icon="📊" 
+                        label="STATUS" 
+                        value={displayHunt.status === "ongoing" ? "LIVE" : displayHunt.status === "to_be_played" ? "UPCOMING" : "ENDED"}
+                        valueColor={displayHunt.status === "ongoing" ? "text-green-500" : displayHunt.status === "to_be_played" ? "text-yellow-500" : ""}
+                      />
+                      <StatRow icon="🎁" label="BONUS" value={slots?.length || 0} />
+                      <StatRow icon="🎯" label="TARGET BALANCE" value={`${currencySymbol}${displayHunt.target_balance?.toLocaleString() || '0'}`} />
+                      <StatRow 
+                        icon="💰" 
+                        label="END BALANCE" 
+                        value={`${currencySymbol}${(displayHunt.ending_balance || stats.ending_balance).toLocaleString()}`}
+                        valueColor="text-primary"
+                        highlight
+                      />
+                      <StatRow icon="💵" label="AVG. BET" value={`${currencySymbol}${stats.average_bet.toFixed(0)}`} />
+                      <StatRow icon="📈" label="AVERAGE X (GROUP)" value={`${stats.average_x.toFixed(0)} (${stats.played_count})`} />
+                      <StatRow icon="📉" label="BREAK-EVEN X" value={stats.break_even_x.toFixed(0)} />
+                      <StatRow 
+                        icon="🔥" 
+                        label="HIGHEST WIN" 
+                        value={`${currencySymbol}${(displayHunt.highest_win || stats.highest_win).toLocaleString()}`}
+                        valueColor="text-yellow-500"
+                      />
+                      <StatRow 
+                        icon="⚡" 
+                        label="HIGHEST MULTIPLIER" 
+                        value={`${(displayHunt.highest_multiplier || stats.highest_multiplier).toLocaleString()}X`}
+                        valueColor="text-purple-500"
+                      />
+                      
+                      <Link to="/leaderboard" className="block mt-4">
+                        <Button variant="outline" className="w-full">
+                          READ ABOUT BONUS HUNT
+                        </Button>
+                      </Link>
+                    </TabsContent>
 
-              {/* Previous Hunts */}
-              {previousHunts.length > 0 && (
-                <div className="bg-card/30 border border-border/50 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <History className="w-4 h-4" />
-                    Previous Hunts
-                  </h3>
-                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {previousHunts.map(hunt => (
-                      <button
-                        key={hunt.id}
-                        onClick={() => setSelectedHunt(hunt)}
-                        className={`w-full p-3 rounded-lg text-left transition-all ${
-                          selectedHunt?.id === hunt.id
-                            ? "bg-primary/20 border border-primary/30"
-                            : "bg-card/50 border border-border/50 hover:bg-muted/30"
-                        }`}
-                      >
-                        <p className="font-medium text-sm truncate">{hunt.title}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(hunt.date).toLocaleDateString()}
-                          </span>
-                          {hunt.ending_balance && (
-                            <span className="text-xs text-green-500 font-medium">
-                              ${hunt.ending_balance.toLocaleString()}
-                            </span>
-                          )}
+                    {/* GTW Tab */}
+                    <TabsContent value="gtw" className="p-4 space-y-4 mt-0">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground border-b border-border/50 pb-3">
+                        <Users className="w-4 h-4" />
+                        <span>{guessCount} {guessCount === 1 ? 'guess' : 'guesses'} submitted</span>
+                      </div>
+
+                      {displayHunt.status === "complete" && winnerInfo && (
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Trophy className="w-5 h-5 text-yellow-500" />
+                            <span className="font-bold text-yellow-500">Winner</span>
+                          </div>
+                          <p className="font-medium">{winnerInfo.display_name || winnerInfo.username}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Guessed: {currencySymbol}{winnerInfo.guess_amount.toLocaleString()}
+                          </p>
+                          <p className="text-sm text-green-500">+{winnerInfo.points_earned?.toLocaleString()} points</p>
                         </div>
-                      </button>
-                    ))}
-                  </div>
+                      )}
+
+                      {displayHunt.status === "complete" && userGuess && (
+                        <div className="bg-muted/20 border border-border/50 rounded-lg p-4">
+                          <h4 className="font-medium mb-2">Your Result</h4>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <p className="text-muted-foreground">Your Guess</p>
+                              <p className="font-bold">{currencySymbol}{userGuess.guess_amount.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Final Balance</p>
+                              <p className="font-bold">{currencySymbol}{displayHunt.ending_balance?.toLocaleString()}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="text-muted-foreground">Difference</p>
+                              <p className={`font-bold ${Math.abs(userGuess.guess_amount - (displayHunt.ending_balance || 0)) < 1000 ? 'text-green-500' : ''}`}>
+                                {currencySymbol}{Math.abs(userGuess.guess_amount - (displayHunt.ending_balance || 0)).toLocaleString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(displayHunt.status === "ongoing" || displayHunt.status === "to_be_played") && (
+                        <>
+                          {userGuess ? (
+                            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                              <div className="flex items-center gap-2 mb-2">
+                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                <span className="font-medium text-green-500">Your Guess is Locked!</span>
+                              </div>
+                              <p className="text-2xl font-bold">{currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Winner determined when hunt ends
+                              </p>
+                            </div>
+                          ) : user ? (
+                            <div className="space-y-3">
+                              <p className="text-sm text-muted-foreground">
+                                Predict the final balance of this bonus hunt!
+                              </p>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
+                                <Input
+                                  type="number"
+                                  placeholder="Enter your guess..."
+                                  value={guessAmount}
+                                  onChange={(e) => setGuessAmount(e.target.value)}
+                                  className="pl-7 bg-background/50"
+                                />
+                              </div>
+                              <Button 
+                                className="w-full gap-2" 
+                                onClick={handleSubmitGuess}
+                                disabled={submitGuessMutation.isPending}
+                              >
+                                <Lock className="w-4 h-4" />
+                                Lock In Guess
+                              </Button>
+                              <p className="text-xs text-muted-foreground text-center">
+                                Closest guess wins {displayHunt.winner_points || 1000} points!
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="text-center p-4 bg-muted/20 rounded-lg">
+                              <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">
+                                <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess!
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </TabsContent>
+
+                    {/* AVG X Tab */}
+                    <TabsContent value="avgx" className="p-4 space-y-4 mt-0">
+                      <div className="space-y-3">
+                        <div className="bg-muted/20 rounded-lg p-4 text-center">
+                          <p className="text-xs text-muted-foreground mb-1">CURRENT AVG X</p>
+                          <p className="text-4xl font-bold text-primary">{stats.average_x.toFixed(2)}x</p>
+                          <p className="text-xs text-muted-foreground mt-1">from {stats.played_count} bonuses</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-muted/10 rounded-lg p-3 text-center">
+                            <p className="text-xs text-muted-foreground mb-1">Break-Even X</p>
+                            <p className="text-xl font-bold">{stats.break_even_x.toFixed(2)}x</p>
+                          </div>
+                          <div className="bg-muted/10 rounded-lg p-3 text-center">
+                            <p className="text-xs text-muted-foreground mb-1">Remaining</p>
+                            <p className="text-xl font-bold">{stats.remaining_count}</p>
+                          </div>
+                        </div>
+                        
+                        {topMultiplierSlot && topMultiplierSlot.multiplier && (
+                          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                            <p className="text-xs text-muted-foreground mb-1">TOP MULTIPLIER</p>
+                            <p className="font-bold text-purple-500">{topMultiplierSlot.multiplier.toFixed(2)}x</p>
+                            <p className="text-xs text-muted-foreground">{topMultiplierSlot.slot_name}</p>
+                          </div>
+                        )}
+                        
+                        {topWinSlot && topWinSlot.win_amount && (
+                          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                            <p className="text-xs text-muted-foreground mb-1">TOP WIN</p>
+                            <p className="font-bold text-yellow-500">{currencySymbol}{topWinSlot.win_amount.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">{topWinSlot.slot_name}</p>
+                          </div>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </div>
-              )}
+              </motion.div>
+            </div>
+
+            {/* Bottom Stats Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-4 bg-card/30 border border-border/50 rounded-xl p-4"
+            >
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-center">
+                <BottomStat label="START BALANCE" value={`${currencySymbol}${displayHunt.starting_balance?.toLocaleString() || '0'}`} />
+                <BottomStat label="TARGET" value={`${currencySymbol}${displayHunt.target_balance?.toLocaleString() || '0'}`} />
+                <BottomStat label="TOTAL BETS" value={`${currencySymbol}${stats.total_bets.toLocaleString()}`} />
+                <BottomStat label="BONUSES" value={`${stats.played_count}/${slots?.length || 0}`} />
+                <BottomStat label="AVG X" value={`${stats.average_x.toFixed(2)}x`} />
+                <BottomStat label="BREAK-EVEN X" value={`${stats.break_even_x.toFixed(2)}x`} />
+              </div>
             </motion.div>
-          </div>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+// Helper Components
+function StatRow({ icon, label, value, valueColor, highlight }: { 
+  icon: string; 
+  label: string; 
+  value: string | number; 
+  valueColor?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between py-2 ${highlight ? 'bg-primary/5 -mx-4 px-4 rounded' : ''}`}>
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>{icon}</span>
+        <span>{label}</span>
+      </div>
+      <span className={`font-bold ${valueColor || ''}`}>{value}</span>
+    </div>
+  );
+}
+
+function BottomStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground mb-1">{label}</p>
+      <p className="font-bold text-sm">{value}</p>
     </div>
   );
 }

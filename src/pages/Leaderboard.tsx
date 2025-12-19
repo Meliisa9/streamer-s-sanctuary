@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown } from "lucide-react";
+import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown, Zap } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserImageLink } from "@/components/UserAvatarLink";
 import type { Tables } from "@/integrations/supabase/types";
@@ -10,21 +10,23 @@ import type { Tables } from "@/integrations/supabase/types";
 type Profile = Tables<"profiles">;
 
 export default function Leaderboard() {
-  const [period, setPeriod] = useState<"all" | "weekly" | "monthly">("all");
+  const [category, setCategory] = useState<"overall" | "bonushunt" | "giveaways">("overall");
 
+  // Fetch profiles
   const { data: profiles, isLoading } = useQuery({
-    queryKey: ["leaderboard-profiles", period],
+    queryKey: ["leaderboard-profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
         .order("points", { ascending: false })
-        .limit(50);
+        .limit(100);
       if (error) throw error;
       return data as Profile[];
     },
   });
 
+  // Fetch giveaway entries
   const { data: giveawayStats } = useQuery({
     queryKey: ["leaderboard-giveaway-stats"],
     queryFn: async () => {
@@ -40,144 +42,169 @@ export default function Leaderboard() {
     },
   });
 
-  const { data: gtwStats } = useQuery({
-    queryKey: ["leaderboard-gtw-stats"],
+  // Fetch bonus hunt guess stats (combined GTW + Bonus Hunt guesses)
+  const { data: bonusHuntStats } = useQuery({
+    queryKey: ["leaderboard-bonushunt-stats"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("gtw_guesses")
+        .from("bonus_hunt_guesses")
         .select("user_id, points_earned");
       if (error) throw error;
-      const counts: Record<string, { guesses: number; wins: number }> = {};
+      const stats: Record<string, { guesses: number; wins: number; totalPoints: number }> = {};
       data.forEach((g) => {
-        if (!counts[g.user_id]) counts[g.user_id] = { guesses: 0, wins: 0 };
-        counts[g.user_id].guesses += 1;
-        if (g.points_earned && g.points_earned > 0) counts[g.user_id].wins += 1;
+        if (!stats[g.user_id]) stats[g.user_id] = { guesses: 0, wins: 0, totalPoints: 0 };
+        stats[g.user_id].guesses += 1;
+        if (g.points_earned && g.points_earned > 0) {
+          stats[g.user_id].wins += 1;
+          stats[g.user_id].totalPoints += g.points_earned;
+        }
       });
-      return counts;
+      return stats;
     },
   });
 
-  const leaderboardData = profiles?.map((profile, index) => ({
-    rank: index + 1,
-    username: profile.display_name || profile.username || "Anonymous",
-    points: profile.points || 0,
-    avatar: profile.avatar_url,
+  // Build leaderboard based on category
+  const leaderboardData = profiles?.map((profile) => ({
     userId: profile.user_id,
+    username: profile.display_name || profile.username || "Anonymous",
     profileUsername: profile.username,
+    avatar: profile.avatar_url,
+    points: profile.points || 0,
     giveawayEntries: giveawayStats?.[profile.user_id] || 0,
-    gtwGuesses: gtwStats?.[profile.user_id]?.guesses || 0,
-    gtwWins: gtwStats?.[profile.user_id]?.wins || 0,
+    bonusHuntGuesses: bonusHuntStats?.[profile.user_id]?.guesses || 0,
+    bonusHuntWins: bonusHuntStats?.[profile.user_id]?.wins || 0,
+    bonusHuntPoints: bonusHuntStats?.[profile.user_id]?.totalPoints || 0,
   }));
 
-  const totalPoints = leaderboardData?.reduce((a, b) => a + b.points, 0) || 0;
-  const totalGiveawayEntries = leaderboardData?.reduce((a, b) => a + b.giveawayEntries, 0) || 0;
-  const totalGTWWins = leaderboardData?.reduce((a, b) => a + b.gtwWins, 0) || 0;
+  // Sort based on category
+  const sortedData = [...(leaderboardData || [])].sort((a, b) => {
+    if (category === "bonushunt") {
+      return b.bonusHuntPoints - a.bonusHuntPoints || b.bonusHuntWins - a.bonusHuntWins;
+    }
+    if (category === "giveaways") {
+      return b.giveawayEntries - a.giveawayEntries;
+    }
+    return b.points - a.points;
+  }).map((player, index) => ({ ...player, rank: index + 1 }));
 
-  const getAvatar = (rank: number) => {
-    if (rank === 1) return "🏆";
-    if (rank === 2) return "🥈";
-    if (rank === 3) return "🥉";
-    return "⭐";
+  const top3 = sortedData.slice(0, 3);
+  const restOfList = sortedData.slice(3);
+
+  const totalPlayers = sortedData.length;
+  const totalPoints = sortedData.reduce((a, b) => a + b.points, 0);
+  const totalBonusHuntWins = sortedData.reduce((a, b) => a + b.bonusHuntWins, 0);
+  const totalGiveawayEntries = sortedData.reduce((a, b) => a + b.giveawayEntries, 0);
+
+  const getValue = (player: typeof sortedData[0]) => {
+    if (category === "bonushunt") return `${player.bonusHuntPoints.toLocaleString()} pts`;
+    if (category === "giveaways") return `${player.giveawayEntries} entries`;
+    return `${player.points.toLocaleString()} pts`;
   };
 
   return (
-    <div className="min-h-screen py-8 px-6">
-      <div className="container mx-auto">
+    <div className="min-h-screen py-8 px-4 md:px-6">
+      <div className="container mx-auto max-w-5xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
+          className="text-center mb-8"
         >
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             <span className="gradient-text-gold">Leaderboard</span>
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-muted-foreground">
             Top community members ranked by points and achievements
           </p>
         </motion.div>
 
-        {/* Period Tabs */}
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as any)} className="mb-8">
-          <TabsList>
-            <TabsTrigger value="all">All Time</TabsTrigger>
-            <TabsTrigger value="weekly">Weekly</TabsTrigger>
-            <TabsTrigger value="monthly">Monthly</TabsTrigger>
+        {/* Category Tabs */}
+        <Tabs value={category} onValueChange={(v) => setCategory(v as any)} className="mb-8">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-3">
+            <TabsTrigger value="overall" className="gap-2">
+              <Trophy className="w-4 h-4" />
+              <span className="hidden sm:inline">Overall</span>
+            </TabsTrigger>
+            <TabsTrigger value="bonushunt" className="gap-2">
+              <Target className="w-4 h-4" />
+              <span className="hidden sm:inline">Bonus Hunt</span>
+            </TabsTrigger>
+            <TabsTrigger value="giveaways" className="gap-2">
+              <Gift className="w-4 h-4" />
+              <span className="hidden sm:inline">Giveaways</span>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
         {isLoading ? (
-          <div className="text-center py-20">Loading leaderboard...</div>
-        ) : leaderboardData && leaderboardData.length > 0 ? (
+          <div className="text-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-muted-foreground mt-4">Loading leaderboard...</p>
+          </div>
+        ) : sortedData.length > 0 ? (
           <>
             {/* Top 3 Podium */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-4 mb-12 max-w-3xl mx-auto"
+              className="grid grid-cols-3 gap-2 md:gap-4 mb-10 max-w-2xl mx-auto"
             >
               {/* 2nd Place */}
-              {leaderboardData[1] && (
+              {top3[1] && (
                 <UserImageLink 
-                  userId={leaderboardData[1].userId} 
-                  username={leaderboardData[1].profileUsername}
+                  userId={top3[1].userId} 
+                  username={top3[1].profileUsername}
                   className="order-1 flex flex-col items-center pt-8 hover:scale-105 transition-transform"
                 >
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center text-4xl mb-4 shadow-xl overflow-hidden">
-                    {leaderboardData[1].avatar ? (
-                      <img src={leaderboardData[1].avatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      getAvatar(2)
-                    )}
+                  <div className="w-16 md:w-20 h-16 md:h-20 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center text-3xl md:text-4xl mb-3 shadow-xl overflow-hidden">
+                    {top3[1].avatar ? (
+                      <img src={top3[1].avatar} alt="" className="w-full h-full object-cover" />
+                    ) : "🥈"}
                   </div>
-                  <h3 className="font-bold text-center text-sm truncate max-w-full">{leaderboardData[1].username}</h3>
-                  <p className="text-2xl font-bold text-gray-400 mb-1">2nd</p>
-                  <p className="text-sm text-muted-foreground">{leaderboardData[1].points.toLocaleString()} pts</p>
-                  <div className="mt-4 w-full h-24 bg-gradient-to-t from-gray-500/30 to-transparent rounded-t-xl" />
+                  <h3 className="font-bold text-center text-xs md:text-sm truncate max-w-full px-1">{top3[1].username}</h3>
+                  <p className="text-xl md:text-2xl font-bold text-gray-400">2nd</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{getValue(top3[1])}</p>
+                  <div className="mt-3 w-full h-20 bg-gradient-to-t from-gray-500/30 to-transparent rounded-t-xl" />
                 </UserImageLink>
               )}
 
               {/* 1st Place */}
-              {leaderboardData[0] && (
+              {top3[0] && (
                 <UserImageLink 
-                  userId={leaderboardData[0].userId} 
-                  username={leaderboardData[0].profileUsername}
+                  userId={top3[0].userId} 
+                  username={top3[0].profileUsername}
                   className="order-2 flex flex-col items-center hover:scale-105 transition-transform"
                 >
-                  <Crown className="w-8 h-8 text-yellow-500 mb-2 animate-pulse" />
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-5xl mb-4 shadow-xl glow-gold overflow-hidden">
-                    {leaderboardData[0].avatar ? (
-                      <img src={leaderboardData[0].avatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      getAvatar(1)
-                    )}
+                  <Crown className="w-6 md:w-8 h-6 md:h-8 text-yellow-500 mb-2 animate-pulse" />
+                  <div className="w-20 md:w-24 h-20 md:h-24 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 flex items-center justify-center text-4xl md:text-5xl mb-3 shadow-xl overflow-hidden glow-gold">
+                    {top3[0].avatar ? (
+                      <img src={top3[0].avatar} alt="" className="w-full h-full object-cover" />
+                    ) : "🏆"}
                   </div>
-                  <h3 className="font-bold text-lg text-center truncate max-w-full">{leaderboardData[0].username}</h3>
-                  <p className="text-3xl font-bold gradient-text-gold mb-1">1st</p>
-                  <p className="text-sm text-muted-foreground">{leaderboardData[0].points.toLocaleString()} pts</p>
-                  <div className="mt-4 w-full h-32 bg-gradient-to-t from-yellow-500/30 to-transparent rounded-t-xl" />
+                  <h3 className="font-bold text-center text-sm md:text-lg truncate max-w-full px-1">{top3[0].username}</h3>
+                  <p className="text-2xl md:text-3xl font-bold gradient-text-gold">1st</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{getValue(top3[0])}</p>
+                  <div className="mt-3 w-full h-28 bg-gradient-to-t from-yellow-500/30 to-transparent rounded-t-xl" />
                 </UserImageLink>
               )}
 
               {/* 3rd Place */}
-              {leaderboardData[2] && (
+              {top3[2] && (
                 <UserImageLink 
-                  userId={leaderboardData[2].userId} 
-                  username={leaderboardData[2].profileUsername}
+                  userId={top3[2].userId} 
+                  username={top3[2].profileUsername}
                   className="order-3 flex flex-col items-center pt-12 hover:scale-105 transition-transform"
                 >
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-3xl mb-4 shadow-xl overflow-hidden">
-                    {leaderboardData[2].avatar ? (
-                      <img src={leaderboardData[2].avatar} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      getAvatar(3)
-                    )}
+                  <div className="w-14 md:w-16 h-14 md:h-16 rounded-full bg-gradient-to-br from-amber-600 to-amber-800 flex items-center justify-center text-2xl md:text-3xl mb-3 shadow-xl overflow-hidden">
+                    {top3[2].avatar ? (
+                      <img src={top3[2].avatar} alt="" className="w-full h-full object-cover" />
+                    ) : "🥉"}
                   </div>
-                  <h3 className="font-bold text-center text-sm truncate max-w-full">{leaderboardData[2].username}</h3>
-                  <p className="text-xl font-bold text-amber-600 mb-1">3rd</p>
-                  <p className="text-sm text-muted-foreground">{leaderboardData[2].points.toLocaleString()} pts</p>
-                  <div className="mt-4 w-full h-16 bg-gradient-to-t from-amber-600/30 to-transparent rounded-t-xl" />
+                  <h3 className="font-bold text-center text-xs md:text-sm truncate max-w-full px-1">{top3[2].username}</h3>
+                  <p className="text-lg md:text-xl font-bold text-amber-600">3rd</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">{getValue(top3[2])}</p>
+                  <div className="mt-3 w-full h-14 bg-gradient-to-t from-amber-600/30 to-transparent rounded-t-xl" />
                 </UserImageLink>
               )}
             </motion.div>
@@ -187,71 +214,60 @@ export default function Leaderboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"
+              className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8"
             >
-              <div className="glass rounded-2xl p-4 text-center">
-                <Trophy className="w-8 h-8 mx-auto mb-2 text-accent" />
-                <p className="text-2xl font-bold">{leaderboardData.length}</p>
-                <p className="text-sm text-muted-foreground">Total Players</p>
+              <div className="bg-card/30 border border-border/50 rounded-xl p-4 text-center">
+                <Trophy className="w-6 h-6 mx-auto mb-2 text-accent" />
+                <p className="text-xl font-bold">{totalPlayers}</p>
+                <p className="text-xs text-muted-foreground">Players</p>
               </div>
-              <div className="glass rounded-2xl p-4 text-center">
-                <Gift className="w-8 h-8 mx-auto mb-2 text-primary" />
-                <p className="text-2xl font-bold">{totalGiveawayEntries}</p>
-                <p className="text-sm text-muted-foreground">Giveaway Entries</p>
+              <div className="bg-card/30 border border-border/50 rounded-xl p-4 text-center">
+                <Star className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
+                <p className="text-xl font-bold">{totalPoints.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Total Points</p>
               </div>
-              <div className="glass rounded-2xl p-4 text-center">
-                <Target className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                <p className="text-2xl font-bold">{totalGTWWins}</p>
-                <p className="text-sm text-muted-foreground">GTW Victories</p>
+              <div className="bg-card/30 border border-border/50 rounded-xl p-4 text-center">
+                <Target className="w-6 h-6 mx-auto mb-2 text-green-500" />
+                <p className="text-xl font-bold">{totalBonusHuntWins}</p>
+                <p className="text-xs text-muted-foreground">GTW Wins</p>
               </div>
-              <div className="glass rounded-2xl p-4 text-center">
-                <Star className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-                <p className="text-2xl font-bold">{totalPoints.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Total Points</p>
+              <div className="bg-card/30 border border-border/50 rounded-xl p-4 text-center">
+                <Gift className="w-6 h-6 mx-auto mb-2 text-primary" />
+                <p className="text-xl font-bold">{totalGiveawayEntries}</p>
+                <p className="text-xs text-muted-foreground">Giveaway Entries</p>
               </div>
             </motion.div>
 
-            {/* Full Leaderboard Table */}
+            {/* Leaderboard Table */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="glass rounded-2xl overflow-hidden"
+              className="bg-card/30 border border-border/50 rounded-xl overflow-hidden"
             >
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border bg-secondary/30">
-                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Rank</th>
-                      <th className="text-left p-4 text-sm font-semibold text-muted-foreground">Player</th>
-                      <th className="text-center p-4 text-sm font-semibold text-muted-foreground">Points</th>
-                      <th className="text-center p-4 text-sm font-semibold text-muted-foreground hidden md:table-cell">Giveaways</th>
-                      <th className="text-center p-4 text-sm font-semibold text-muted-foreground hidden lg:table-cell">GTW Guesses</th>
+                    <tr className="border-b border-border/50 bg-muted/10">
+                      <th className="text-left p-4 text-xs font-semibold text-muted-foreground">Rank</th>
+                      <th className="text-left p-4 text-xs font-semibold text-muted-foreground">Player</th>
+                      <th className="text-center p-4 text-xs font-semibold text-muted-foreground">Points</th>
+                      <th className="text-center p-4 text-xs font-semibold text-muted-foreground hidden md:table-cell">
+                        {category === "bonushunt" ? "GTW Wins" : category === "giveaways" ? "Entries" : "GTW Wins"}
+                      </th>
+                      <th className="text-center p-4 text-xs font-semibold text-muted-foreground hidden lg:table-cell">
+                        Giveaways
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboardData.map((player, index) => (
-                      <motion.tr
+                    {restOfList.map((player) => (
+                      <tr
                         key={player.userId}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.05 * index }}
-                        className={`border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors ${
-                          player.rank <= 3 ? "bg-accent/5" : ""
-                        }`}
+                        className="border-b border-border/30 hover:bg-muted/10 transition-colors"
                       >
                         <td className="p-4">
-                          <span className={`text-lg font-bold ${
-                            player.rank === 1
-                              ? "text-yellow-500"
-                              : player.rank === 2
-                              ? "text-gray-400"
-                              : player.rank === 3
-                              ? "text-amber-600"
-                              : "text-muted-foreground"
-                          }`}>
-                            #{player.rank}
-                          </span>
+                          <span className="text-lg font-bold text-muted-foreground">#{player.rank}</span>
                         </td>
                         <td className="p-4">
                           <UserImageLink 
@@ -263,7 +279,7 @@ export default function Leaderboard() {
                               {player.avatar ? (
                                 <img src={player.avatar} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-lg">{getAvatar(player.rank)}</span>
+                                <span className="text-sm">⭐</span>
                               )}
                             </div>
                             <span className="font-medium">{player.username}</span>
@@ -273,12 +289,14 @@ export default function Leaderboard() {
                           <span className="font-bold text-primary">{player.points.toLocaleString()}</span>
                         </td>
                         <td className="p-4 text-center hidden md:table-cell">
-                          <span className="text-muted-foreground">{player.giveawayEntries}</span>
+                          <span className="text-muted-foreground">
+                            {category === "giveaways" ? player.giveawayEntries : player.bonusHuntWins}
+                          </span>
                         </td>
                         <td className="p-4 text-center hidden lg:table-cell">
-                          <span className="text-muted-foreground">{player.gtwGuesses}</span>
+                          <span className="text-muted-foreground">{player.giveawayEntries}</span>
                         </td>
-                      </motion.tr>
+                      </tr>
                     ))}
                   </tbody>
                 </table>
@@ -290,23 +308,23 @@ export default function Leaderboard() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mt-10 glass rounded-2xl p-6"
+              className="mt-8 bg-card/30 border border-border/50 rounded-xl p-6"
             >
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 How to Earn Points
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-secondary/30 rounded-xl">
+                <div className="p-4 bg-muted/20 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <Target className="w-5 h-5 text-green-500" />
-                    <span className="font-semibold">Guess The Win</span>
+                    <span className="font-semibold">Bonus Hunt GTW</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Earn up to 1,000 points per session. Closer guesses = more points!
+                    Win up to 1,000 points by guessing the closest to the final bonus hunt balance!
                   </p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl">
+                <div className="p-4 bg-muted/20 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <Gift className="w-5 h-5 text-primary" />
                     <span className="font-semibold">Giveaway Entries</span>
@@ -315,13 +333,13 @@ export default function Leaderboard() {
                     100 points per giveaway entry. Winners get 5,000 bonus points!
                   </p>
                 </div>
-                <div className="p-4 bg-secondary/30 rounded-xl">
+                <div className="p-4 bg-muted/20 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
-                    <Star className="w-5 h-5 text-accent" />
-                    <span className="font-semibold">Activity Bonus</span>
+                    <Zap className="w-5 h-5 text-yellow-500" />
+                    <span className="font-semibold">Daily Activity</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Daily login: 50 pts. Watch streams: 10 pts/hour. Comments: 25 pts.
+                    Daily login: 50 pts. Stream watching: 10 pts/hour. Comments: 25 pts.
                   </p>
                 </div>
               </div>
