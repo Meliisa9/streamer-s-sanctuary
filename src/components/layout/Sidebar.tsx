@@ -215,7 +215,7 @@ export function Sidebar() {
             >
               {!collapsed ? (
                 <>
-                  <div className="flex items-center gap-3 p-2 bg-secondary/50 rounded-xl">
+                  <NavLink to="/profile" className="flex items-center gap-3 p-2 bg-secondary/50 rounded-xl hover:bg-secondary/80 transition-colors">
                     {profile?.avatar_url ? (
                       <img
                         src={profile.avatar_url}
@@ -235,7 +235,7 @@ export function Sidebar() {
                         {isAdmin ? "Admin" : isModerator ? "Moderator" : "Member"}
                       </p>
                     </div>
-                  </div>
+                  </NavLink>
                   <div className="flex gap-2">
                     <Button
                       variant="ghost"
@@ -257,17 +257,19 @@ export function Sidebar() {
                 </>
               ) : (
                 <div className="flex flex-col items-center gap-2">
-                  {profile?.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt="Avatar"
-                      className="w-10 h-10 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary" />
-                    </div>
-                  )}
+                  <NavLink to="/profile">
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Avatar"
+                        className="w-10 h-10 rounded-lg object-cover hover:ring-2 hover:ring-primary transition-all cursor-pointer"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors cursor-pointer">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                    )}
+                  </NavLink>
                   <Button variant="ghost" size="icon" onClick={handleSignOut}>
                     <LogOut className="w-4 h-4" />
                   </Button>

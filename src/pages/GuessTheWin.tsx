@@ -399,15 +399,19 @@ function GuessTheWin() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {recentWinners.map((session: any) => (
                     <div key={session.id} className="glass rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden">
-                        {session.profiles?.avatar_url ? (
-                          <img src={session.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Trophy className="w-5 h-5 text-accent" />
-                        )}
-                      </div>
+                      <Link to={`/user/${session.profiles?.username}`} className="flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                          {session.profiles?.avatar_url ? (
+                            <img src={session.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <Trophy className="w-5 h-5 text-accent" />
+                          )}
+                        </div>
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{session.profiles?.display_name || session.profiles?.username || "Winner"}</p>
+                        <Link to={`/user/${session.profiles?.username}`} className="font-medium text-sm truncate hover:text-primary transition-colors block">
+                          {session.profiles?.display_name || session.profiles?.username || "Winner"}
+                        </Link>
                         <p className="text-xs text-muted-foreground truncate">{session.title}</p>
                       </div>
                       <span className="text-accent font-bold text-sm">
@@ -448,17 +452,21 @@ function GuessTheWin() {
                       }`}>
                         {index + 1}
                       </span>
-                      <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                        {player.avatar_url ? (
-                          <img src={player.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xs font-bold">
-                            {(player.display_name || player.username || "?")[0].toUpperCase()}
-                          </span>
-                        )}
-                      </div>
+                      <Link to={`/user/${player.username}`} className="flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                          {player.avatar_url ? (
+                            <img src={player.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs font-bold">
+                              {(player.display_name || player.username || "?")[0].toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{player.display_name || player.username}</p>
+                        <Link to={`/user/${player.username}`} className="font-medium text-sm truncate hover:text-primary transition-colors block">
+                          {player.display_name || player.username}
+                        </Link>
                       </div>
                       <span className="font-bold text-primary text-sm">{player.points?.toLocaleString()}</span>
                     </div>
