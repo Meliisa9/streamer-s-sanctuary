@@ -17,8 +17,9 @@ import {
   Clock, CheckCircle2, History, Search,
   ChevronLeft, ChevronRight, Zap, Star,
   Play, Pause, Hash, Coins, BarChart3,
-  Calendar, Timer, ArrowUpRight, Radio, Users, Lock
+  Calendar, Timer, ArrowUpRight, Radio, Users, Lock, Medal, Sparkles
 } from "lucide-react";
+import { UserAvatarLink } from "@/components/UserAvatarLink";
 import { Link } from "react-router-dom";
 
 interface BonusHunt {
@@ -34,7 +35,22 @@ interface BonusHunt {
   highest_multiplier: number | null;
   currency: string | null;
   winner_points: number | null;
+  winner_user_id: string | null;
   created_at: string;
+}
+
+interface BonusHuntWinner {
+  id: string;
+  title: string;
+  ending_balance: number | null;
+  currency: string | null;
+  winner_user_id: string;
+  winner_points: number | null;
+  profile?: {
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
 }
 
 interface BonusHuntSlot {
@@ -137,6 +153,38 @@ export default function BonusHunt() {
       return count || 0;
     },
     enabled: !!currentHunt?.id,
+  });
+
+  // Fetch recent winners
+  const { data: recentWinners } = useQuery({
+    queryKey: ["bonus-hunt-recent-winners"],
+    queryFn: async () => {
+      // Get completed hunts with winners
+      const { data: hunts, error } = await supabase
+        .from("bonus_hunts")
+        .select("id, title, ending_balance, currency, winner_user_id, winner_points")
+        .not("winner_user_id", "is", null)
+        .eq("status", "complete")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      
+      if (error) throw error;
+      if (!hunts || hunts.length === 0) return [];
+      
+      // Get profiles for winners
+      const winnerIds = hunts.map(h => h.winner_user_id).filter(Boolean);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", winnerIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      
+      return hunts.map(h => ({
+        ...h,
+        profile: profileMap.get(h.winner_user_id) || undefined,
+      })) as BonusHuntWinner[];
+    },
   });
 
   const submitGuessMutation = useMutation({
@@ -778,6 +826,53 @@ export default function BonusHunt() {
                         {currencySymbol}{Math.abs(Number(userGuess.guess_amount) - (displayHunt.ending_balance || 0)).toLocaleString()}
                       </span>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent Winners */}
+              {recentWinners && recentWinners.length > 0 && (
+                <div className="bg-card/30 border border-border/50 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-yellow-500" />
+                    Recent Winners
+                  </h3>
+                  <div className="space-y-3">
+                    {recentWinners.map((winner, index) => (
+                      <div 
+                        key={winner.id} 
+                        className="flex items-center gap-3 p-2 bg-card/50 rounded-lg"
+                      >
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          index === 0 ? "bg-yellow-500/20 text-yellow-500" :
+                          index === 1 ? "bg-gray-400/20 text-gray-400" :
+                          index === 2 ? "bg-amber-600/20 text-amber-600" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {index + 1}
+                        </div>
+                        {winner.profile ? (
+                          <UserAvatarLink
+                            userId={winner.winner_user_id}
+                            username={winner.profile.username}
+                            displayName={winner.profile.display_name}
+                            avatarUrl={winner.profile.avatar_url}
+                            size="sm"
+                            showName={true}
+                          />
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Unknown</span>
+                        )}
+                        <div className="ml-auto text-right">
+                          <p className="text-xs text-muted-foreground truncate max-w-[80px]" title={winner.title}>
+                            {winner.title}
+                          </p>
+                          <p className="text-xs text-yellow-500 font-medium">
+                            +{winner.winner_points || 0} pts
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

@@ -24,7 +24,7 @@ import {
 import { 
   Plus, Edit2, Trash2, Trophy, Target, Loader2, 
   ListPlus, Eye, CheckCircle2, ArrowRight, ArrowLeft, X,
-  Calculator, RefreshCw, Zap, Radio, GripVertical
+  Calculator, RefreshCw, Zap, Radio, GripVertical, Award, Users
 } from "lucide-react";
 import { 
   calculateBonusHuntStats, 
@@ -65,6 +65,21 @@ interface BonusHunt {
   starting_balance?: number | null;
   currency?: string;
   winner_points?: number;
+  winner_user_id?: string | null;
+}
+
+interface BonusHuntGuess {
+  id: string;
+  hunt_id: string;
+  user_id: string;
+  guess_amount: number;
+  points_earned: number | null;
+  created_at: string;
+  profiles?: {
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
 }
 
 interface BonusHuntSlot {
@@ -226,6 +241,147 @@ export default function AdminBonusHunt() {
   const liveStats = slots && selectedHuntForSlots 
     ? calculateBonusHuntStats(slots, selectedHuntForSlots.starting_balance || null)
     : null;
+
+  // State for viewing guesses
+  const [viewingGuessesHuntId, setViewingGuessesHuntId] = useState<string | null>(null);
+  
+  // Fetch guesses for a hunt with profile data
+  const { data: huntGuesses } = useQuery({
+    queryKey: ["admin-bonus-hunt-guesses", viewingGuessesHuntId],
+    queryFn: async () => {
+      if (!viewingGuessesHuntId) return [];
+      
+      // First get guesses
+      const { data: guesses, error } = await supabase
+        .from("bonus_hunt_guesses")
+        .select("*")
+        .eq("hunt_id", viewingGuessesHuntId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      
+      // Then get profiles for those user_ids
+      const userIds = guesses.map(g => g.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", userIds);
+      
+      // Merge them
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      return guesses.map(g => ({
+        ...g,
+        profiles: profileMap.get(g.user_id) || null,
+      })) as BonusHuntGuess[];
+    },
+    enabled: !!viewingGuessesHuntId,
+  });
+
+  // Get guess count per hunt
+  const { data: guessCounts } = useQuery({
+    queryKey: ["admin-bonus-hunt-guess-counts"],
+    queryFn: async () => {
+      if (!hunts) return {};
+      const counts: Record<string, number> = {};
+      for (const hunt of hunts) {
+        const { count, error } = await supabase
+          .from("bonus_hunt_guesses")
+          .select("*", { count: "exact", head: true })
+          .eq("hunt_id", hunt.id);
+        if (!error) counts[hunt.id] = count || 0;
+      }
+      return counts;
+    },
+    enabled: !!hunts && hunts.length > 0,
+  });
+
+  // Determine winner mutation
+  const determineWinnerMutation = useMutation({
+    mutationFn: async (huntId: string) => {
+      // Fetch the hunt
+      const { data: hunt, error: huntError } = await supabase
+        .from("bonus_hunts")
+        .select("*")
+        .eq("id", huntId)
+        .single();
+      
+      if (huntError) throw huntError;
+      if (!hunt.ending_balance) throw new Error("Hunt must have an ending balance to determine winner");
+      
+      // Fetch all guesses for this hunt
+      const { data: guesses, error: guessError } = await supabase
+        .from("bonus_hunt_guesses")
+        .select("*")
+        .eq("hunt_id", huntId);
+      
+      if (guessError) throw guessError;
+      if (!guesses || guesses.length === 0) throw new Error("No guesses to evaluate");
+      
+      // Find closest guess
+      let closestGuess = guesses[0];
+      let closestDiff = Math.abs(guesses[0].guess_amount - hunt.ending_balance);
+      
+      for (const guess of guesses) {
+        const diff = Math.abs(guess.guess_amount - hunt.ending_balance);
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestGuess = guess;
+        }
+      }
+      
+      const pointsToAward = hunt.winner_points || 1000;
+      
+      // Update the winning guess with points earned
+      await supabase
+        .from("bonus_hunt_guesses")
+        .update({ points_earned: pointsToAward })
+        .eq("id", closestGuess.id);
+      
+      // Update the hunt with winner info
+      await supabase
+        .from("bonus_hunts")
+        .update({ 
+          winner_user_id: closestGuess.user_id,
+          status: "complete"
+        })
+        .eq("id", huntId);
+      
+      // Award points to the winner's profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("points")
+        .eq("user_id", closestGuess.user_id)
+        .single();
+      
+      if (profile) {
+        await supabase
+          .from("profiles")
+          .update({ points: (profile.points || 0) + pointsToAward })
+          .eq("user_id", closestGuess.user_id);
+      }
+      
+      // Create notification for winner
+      await supabase.from("user_notifications").insert({
+        user_id: closestGuess.user_id,
+        title: "You Won! 🎉",
+        message: `Congratulations! Your guess of ${hunt.currency === "EUR" ? "€" : "$"}${closestGuess.guess_amount.toLocaleString()} was the closest to the final balance of ${hunt.currency === "EUR" ? "€" : "$"}${hunt.ending_balance.toLocaleString()}! You earned ${pointsToAward} points!`,
+        type: "achievement",
+        link: "/bonus-hunt",
+      });
+      
+      return { winner: closestGuess, hunt, pointsToAward };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunt-guesses"] });
+      toast({ 
+        title: "Winner Determined!", 
+        description: `Winner awarded ${data.pointsToAward} points!`
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const resetHuntForm = () => {
     setHuntForm({
@@ -858,56 +1014,163 @@ export default function AdminBonusHunt() {
 
       {/* Hunts List */}
       <div className="space-y-4">
-        {hunts?.map((hunt) => (
-          <motion.div
-            key={hunt.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-xl p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`w-3 h-3 rounded-full ${
-                  hunt.status === "ongoing" ? "bg-green-500 animate-pulse" : 
-                  hunt.status === "to_be_played" ? "bg-amber-500" : "bg-muted"
-                }`} />
-                <div>
-                  <h3 className="font-semibold">{hunt.title}</h3>
-                  <p className="text-sm text-muted-foreground">{new Date(hunt.date).toLocaleDateString()}</p>
+        {hunts?.map((hunt) => {
+          const guessCount = guessCounts?.[hunt.id] || 0;
+          const hasWinner = !!hunt.winner_user_id;
+          const canDetermineWinner = hunt.ending_balance && guessCount > 0 && !hasWinner;
+          
+          return (
+            <motion.div
+              key={hunt.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-xl p-4"
+            >
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={`w-3 h-3 rounded-full ${
+                    hunt.status === "ongoing" ? "bg-green-500 animate-pulse" : 
+                    hunt.status === "to_be_played" ? "bg-amber-500" : "bg-muted"
+                  }`} />
+                  <div>
+                    <h3 className="font-semibold">{hunt.title}</h3>
+                    <p className="text-sm text-muted-foreground">{new Date(hunt.date).toLocaleDateString()}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                {hunt.ending_balance && (
-                  <span className="text-green-500 font-bold">${hunt.ending_balance.toLocaleString()}</span>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedHuntForSlots(hunt)}
-                  >
-                    <ListPlus className="w-4 h-4 mr-1" />
-                    Slots
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleEditHunt(hunt)}>
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Guess Count Badge */}
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => {
-                      if (confirm("Delete this hunt?")) deleteHuntMutation.mutate(hunt.id);
-                    }}
+                    size="sm"
+                    className="gap-1 text-muted-foreground"
+                    onClick={() => setViewingGuessesHuntId(hunt.id)}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Users className="w-4 h-4" />
+                    {guessCount} {guessCount === 1 ? "guess" : "guesses"}
                   </Button>
+                  
+                  {hunt.ending_balance && (
+                    <span className="text-green-500 font-bold">${hunt.ending_balance.toLocaleString()}</span>
+                  )}
+                  
+                  {/* Winner Badge */}
+                  {hasWinner && (
+                    <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded-full flex items-center gap-1">
+                      <Trophy className="w-3 h-3" />
+                      Winner Picked
+                    </span>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    {/* Determine Winner Button */}
+                    {canDetermineWinner && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-1 bg-yellow-500 hover:bg-yellow-600 text-black"
+                        onClick={() => {
+                          if (confirm(`Determine winner from ${guessCount} guesses? This will award ${hunt.winner_points || 1000} points to the closest guess.`)) {
+                            determineWinnerMutation.mutate(hunt.id);
+                          }
+                        }}
+                        disabled={determineWinnerMutation.isPending}
+                      >
+                        {determineWinnerMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Award className="w-4 h-4" />
+                        )}
+                        Pick Winner
+                      </Button>
+                    )}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedHuntForSlots(hunt)}
+                    >
+                      <ListPlus className="w-4 h-4 mr-1" />
+                      Slots
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleEditHunt(hunt)}>
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive"
+                      onClick={() => {
+                        if (confirm("Delete this hunt?")) deleteHuntMutation.mutate(hunt.id);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </div>
+
+      {/* Guesses Modal */}
+      <Dialog open={!!viewingGuessesHuntId} onOpenChange={(open) => !open && setViewingGuessesHuntId(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Guesses ({huntGuesses?.length || 0})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mt-4">
+            {huntGuesses?.map((guess, index) => {
+              const viewingHunt = hunts?.find(h => h.id === viewingGuessesHuntId);
+              const diff = viewingHunt?.ending_balance 
+                ? Math.abs(guess.guess_amount - viewingHunt.ending_balance)
+                : null;
+              
+              return (
+                <div 
+                  key={guess.id} 
+                  className={`p-3 bg-secondary/30 rounded-lg flex items-center justify-between ${
+                    guess.points_earned ? "ring-2 ring-yellow-500/50" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-muted-foreground w-6">{index + 1}.</span>
+                    <div>
+                      <p className="font-medium">
+                        {guess.profiles?.display_name || guess.profiles?.username || "Unknown User"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(guess.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">${guess.guess_amount.toLocaleString()}</p>
+                    {diff !== null && (
+                      <p className="text-xs text-muted-foreground">Diff: ${diff.toLocaleString()}</p>
+                    )}
+                    {guess.points_earned && (
+                      <span className="text-xs text-yellow-500 flex items-center gap-1 justify-end">
+                        <Trophy className="w-3 h-3" />
+                        +{guess.points_earned} pts
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {(!huntGuesses || huntGuesses.length === 0) && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No guesses yet</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Slots Management Panel */}
       {selectedHuntForSlots && (
