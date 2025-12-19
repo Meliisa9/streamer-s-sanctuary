@@ -24,7 +24,7 @@ import {
 import { 
   Plus, Edit2, Trash2, Trophy, Target, Loader2, 
   ListPlus, Eye, CheckCircle2, ArrowRight, ArrowLeft, X,
-  Calculator, RefreshCw, Zap, Radio
+  Calculator, RefreshCw, Zap, Radio, GripVertical
 } from "lucide-react";
 import { 
   calculateBonusHuntStats, 
@@ -33,6 +33,24 @@ import {
 } from "@/hooks/useBonusHuntCalculations";
 import { QuickSlotEntry } from "@/components/bonus-hunt/QuickSlotEntry";
 import { BonusHuntProgress } from "@/components/bonus-hunt/BonusHuntProgress";
+import { SlotPicker } from "@/components/bonus-hunt/SlotPicker";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface BonusHunt {
   id: string;
@@ -983,44 +1001,52 @@ export default function AdminBonusHunt() {
             </div>
           </div>
 
-          {/* Slots Table */}
-          <div className="space-y-2">
-            {slots?.map((slot) => (
-              <div key={slot.id} className="flex items-center gap-4 p-3 bg-secondary/30 rounded-lg">
-                <span className="text-sm font-medium text-muted-foreground w-8">#{slot.sort_order}</span>
-                <div className={`w-3 h-3 rounded-full ${slot.is_played ? "bg-green-500" : "bg-muted"}`} />
-                <div className="flex-1">
-                  <p className="font-medium">{slot.slot_name}</p>
-                  <p className="text-xs text-muted-foreground">{slot.provider}</p>
-                </div>
-                <div className="text-right">
-                  {slot.bet_amount && <p className="text-sm">Bet: ${slot.bet_amount}</p>}
-                  {slot.win_amount && <p className="text-sm text-green-500">Win: ${slot.win_amount}</p>}
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditSlot(slot)}>
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => {
-                      if (confirm("Delete this slot?")) deleteSlotMutation.mutate(slot.id);
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {(!slots || slots.length === 0) && (
-              <div className="text-center py-8 text-muted-foreground">
-                <ListPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No slots yet. Click "Add Slot" to add your first slot.</p>
-              </div>
+          {/* Slots Table with Drag-Drop */}
+          <DndContext
+            sensors={useSensors(
+              useSensor(PointerSensor),
+              useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
             )}
-          </div>
+            collisionDetection={closestCenter}
+            onDragEnd={async (event: DragEndEvent) => {
+              const { active, over } = event;
+              if (over && active.id !== over.id && slots) {
+                const oldIndex = slots.findIndex((s) => s.id === active.id);
+                const newIndex = slots.findIndex((s) => s.id === over.id);
+                const newOrder = arrayMove(slots, oldIndex, newIndex);
+                
+                // Update sort_order for all affected slots
+                for (let i = 0; i < newOrder.length; i++) {
+                  if (newOrder[i].sort_order !== i + 1) {
+                    await supabase
+                      .from("bonus_hunt_slots")
+                      .update({ sort_order: i + 1 })
+                      .eq("id", newOrder[i].id);
+                  }
+                }
+                queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunt-slots"] });
+              }
+            }}
+          >
+            <SortableContext items={slots?.map(s => s.id) || []} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {slots?.map((slot) => (
+                  <SortableSlotRow
+                    key={slot.id}
+                    slot={slot}
+                    onEdit={handleEditSlot}
+                    onDelete={(id) => deleteSlotMutation.mutate(id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+          {(!slots || slots.length === 0) && (
+            <div className="text-center py-8 text-muted-foreground">
+              <ListPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p>No slots yet. Click "Add Slot" to add your first slot.</p>
+            </div>
+          )}
         </motion.div>
       )}
     </div>
