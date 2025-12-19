@@ -59,6 +59,7 @@ import AdminBulkActions from "./pages/admin/AdminBulkActions";
 import BonusHunt from "./pages/BonusHunt";
 import UserProfile from "./pages/UserProfile";
 import AdminBonusHunt from "./pages/admin/AdminBonusHunt";
+import AdminAuthHealth from "./pages/admin/AdminAuthHealth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -85,6 +86,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
 
+              {/* Public routes with MainLayout */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/videos" element={<Videos />} />
@@ -107,37 +109,39 @@ const App = () => (
                 <Route path="/achievements" element={<Achievements />} />
                 <Route path="/bonus-hunt" element={<BonusHunt />} />
                 <Route path="/user/:usernameOrId" element={<UserProfile />} />
-                
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="videos" element={<AdminVideos />} />
-                  <Route path="analytics" element={<AdminAnalytics />} />
-                  <Route path="bonuses" element={<AdminBonuses />} />
-                  <Route path="giveaways" element={<AdminGiveaways />} />
-                  <Route path="news" element={<AdminNews />} />
-                  <Route path="events" element={<AdminEvents />} />
-                  <Route path="gtw" element={<AdminGTW />} />
-                  <Route path="polls" element={<AdminPolls />} />
-                  <Route path="streamers" element={<AdminStreamers />} />
-                  <Route path="stream" element={<AdminStream />} />
-                  <Route path="legal" element={<AdminLegal />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="profile-sync" element={<AdminProfileSync />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="settings/branding" element={<AdminBranding />} />
-                  <Route path="settings/navigation" element={<AdminNavigation />} />
-                  <Route path="settings/statistics" element={<AdminStatistics />} />
-                  <Route path="settings/permissions" element={<AdminPermissions />} />
-                  <Route path="settings/about" element={<AdminAbout />} />
-                  <Route path="settings/notifications" element={<AdminSendNotifications />} />
-                  <Route path="settings/bans" element={<AdminUserBans />} />
-                  <Route path="settings/scheduled" element={<AdminScheduledPosts />} />
-                  <Route path="settings/moderation" element={<AdminModerationQueue />} />
-                  <Route path="settings/bulk-actions" element={<AdminBulkActions />} />
-                  <Route path="bonus-hunt" element={<AdminBonusHunt />} />
-                  <Route path="audit" element={<AdminAuditLog />} />
-                  <Route path="activity" element={<AdminActivityLog />} />
-                </Route>
+              </Route>
+
+              {/* Admin routes - completely separate from MainLayout */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="videos" element={<AdminVideos />} />
+                <Route path="analytics" element={<AdminAnalytics />} />
+                <Route path="bonuses" element={<AdminBonuses />} />
+                <Route path="giveaways" element={<AdminGiveaways />} />
+                <Route path="news" element={<AdminNews />} />
+                <Route path="events" element={<AdminEvents />} />
+                <Route path="gtw" element={<AdminGTW />} />
+                <Route path="polls" element={<AdminPolls />} />
+                <Route path="streamers" element={<AdminStreamers />} />
+                <Route path="stream" element={<AdminStream />} />
+                <Route path="legal" element={<AdminLegal />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="profile-sync" element={<AdminProfileSync />} />
+                <Route path="settings" element={<AdminSettings />} />
+                <Route path="settings/branding" element={<AdminBranding />} />
+                <Route path="settings/navigation" element={<AdminNavigation />} />
+                <Route path="settings/statistics" element={<AdminStatistics />} />
+                <Route path="settings/permissions" element={<AdminPermissions />} />
+                <Route path="settings/about" element={<AdminAbout />} />
+                <Route path="settings/notifications" element={<AdminSendNotifications />} />
+                <Route path="settings/bans" element={<AdminUserBans />} />
+                <Route path="settings/scheduled" element={<AdminScheduledPosts />} />
+                <Route path="settings/moderation" element={<AdminModerationQueue />} />
+                <Route path="settings/bulk-actions" element={<AdminBulkActions />} />
+                <Route path="settings/auth-health" element={<AdminAuthHealth />} />
+                <Route path="bonus-hunt" element={<AdminBonusHunt />} />
+                <Route path="audit" element={<AdminAuditLog />} />
+                <Route path="activity" element={<AdminActivityLog />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
