@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { notifyComment } from "@/hooks/useSocialNotifications";
 import { ReportDialog } from "@/components/ReportDialog";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { Link } from "react-router-dom";
 
 interface ProfileCommentsProps {
   profileUserId: string;
@@ -269,17 +270,22 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                 transition={{ delay: index * 0.05 }}
                 className="flex gap-3 p-3 bg-secondary/30 rounded-xl"
               >
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={author?.avatar_url} />
-                  <AvatarFallback>
-                    <User className="w-4 h-4" />
-                  </AvatarFallback>
-                </Avatar>
+                <Link to={author?.username ? `/user/${author.username}` : "#"} className="flex-shrink-0">
+                  <Avatar className="w-8 h-8 hover:ring-2 hover:ring-primary transition-all cursor-pointer">
+                    <AvatarImage src={author?.avatar_url} />
+                    <AvatarFallback>
+                      <User className="w-4 h-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="font-medium text-sm truncate">
+                    <Link 
+                      to={author?.username ? `/user/${author.username}` : "#"} 
+                      className="font-medium text-sm truncate hover:text-primary transition-colors"
+                    >
                       {author?.display_name || author?.username || "Anonymous"}
-                    </span>
+                    </Link>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
                       {format(new Date(comment.created_at), "MMM d")}
                     </span>

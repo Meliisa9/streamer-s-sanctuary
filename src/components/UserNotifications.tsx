@@ -192,7 +192,9 @@ export function UserNotifications() {
       if (notification.link.startsWith('http://') || notification.link.startsWith('https://')) {
         window.open(notification.link, '_blank', 'noopener,noreferrer');
       } else {
-        navigate(notification.link);
+        // For profile comment notifications, ensure we go to own profile
+        const link = notification.link.startsWith('/profile') ? notification.link : notification.link;
+        navigate(link);
       }
       setIsOpen(false);
     }

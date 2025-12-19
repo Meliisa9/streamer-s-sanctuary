@@ -126,12 +126,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               
               const action = isNewUser ? "signup" : "login";
               
+              // Fetch username for display
+              const { data: userProfile } = await supabase
+                .from("profiles")
+                .select("username, display_name")
+                .eq("user_id", session.user.id)
+                .maybeSingle();
+              
+              const displayName = userProfile?.display_name || userProfile?.username || session.user.email || session.user.id;
+              
               await supabase.from("user_activities").insert({
                 user_id: session.user.id,
                 action,
                 details: {
                   provider,
                   email: session.user.email,
+                  username: userProfile?.username,
                 },
               });
 
@@ -144,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               await supabase.from("admin_notifications").insert({
                 type: action,
                 title: notificationTitles[action],
-                message: `User ${session.user.email || session.user.id} ${action === "signup" ? "signed up" : "logged in"} via ${provider}`,
+                message: `User ${displayName} ${action === "signup" ? "signed up" : "logged in"} via ${provider}`,
               });
             } catch (error) {
               console.error("Error tracking auth activity:", error);

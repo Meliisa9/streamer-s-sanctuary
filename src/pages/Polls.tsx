@@ -50,6 +50,8 @@ export default function Polls() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedPreviousPoll, setSelectedPreviousPoll] = useState<Poll | null>(null);
+  const [previousPollModalOpen, setPreviousPollModalOpen] = useState(false);
   const [newPollData, setNewPollData] = useState({
     title: "",
     description: "",
@@ -393,9 +395,6 @@ export default function Polls() {
     );
   }
 
-  // State for previous poll modal
-  const [selectedPreviousPoll, setSelectedPreviousPoll] = useState<Poll | null>(null);
-  const [previousPollModalOpen, setPreviousPollModalOpen] = useState(false);
 
 
   // Previous Poll Card Component - now opens modal on click
