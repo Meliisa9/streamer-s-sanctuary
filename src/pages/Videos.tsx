@@ -164,7 +164,7 @@ export default function Videos() {
 
   const isVideoLiked = (videoId: string) => userLikes?.includes(videoId) || false;
 
-  // Featured Carousel Component - Screenshot style
+  // Featured Carousel Component - 3D Perspective Style matching screenshot
   const FeaturedCarousel = ({ videos }: { videos: Video[] }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     
@@ -178,116 +178,203 @@ export default function Videos() {
 
     if (videos.length === 0) return null;
 
-    const currentVideo = videos[currentIndex];
+    const getVideoIndex = (offset: number) => {
+      let index = currentIndex + offset;
+      if (index < 0) index = videos.length + index;
+      if (index >= videos.length) index = index - videos.length;
+      return index;
+    };
+
+    const getCardStyle = (position: number): React.CSSProperties => {
+      const baseTransform = {
+        center: {
+          transform: 'translateX(-50%) scale(1) rotateY(0deg)',
+          zIndex: 30,
+          opacity: 1,
+          left: '50%',
+        },
+        left: {
+          transform: 'translateX(-85%) scale(0.75) rotateY(25deg)',
+          zIndex: 20,
+          opacity: 0.7,
+          left: '30%',
+        },
+        right: {
+          transform: 'translateX(35%) scale(0.75) rotateY(-25deg)',
+          zIndex: 20,
+          opacity: 0.7,
+          left: '70%',
+        },
+        farLeft: {
+          transform: 'translateX(-120%) scale(0.55) rotateY(35deg)',
+          zIndex: 10,
+          opacity: 0.4,
+          left: '15%',
+        },
+        farRight: {
+          transform: 'translateX(70%) scale(0.55) rotateY(-35deg)',
+          zIndex: 10,
+          opacity: 0.4,
+          left: '85%',
+        },
+      };
+
+      switch (position) {
+        case 0: return baseTransform.center;
+        case -1: return baseTransform.left;
+        case 1: return baseTransform.right;
+        case -2: return baseTransform.farLeft;
+        case 2: return baseTransform.farRight;
+        default: return { opacity: 0, zIndex: 0 };
+      }
+    };
 
     return (
-      <div className="relative group">
-        {/* Main Featured Video - Full Width */}
+      <div className="relative py-8 overflow-hidden">
+        {/* Purple/Blue Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-950/50 via-purple-900/30 to-violet-950/50 rounded-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-purple-500/5 to-transparent" />
+        
+        {/* 3D Carousel Container */}
         <div 
-          className="relative aspect-[21/9] rounded-2xl overflow-hidden cursor-pointer"
-          onClick={() => handleVideoClick(currentVideo)}
+          className="relative h-[320px] md:h-[420px] lg:h-[480px]"
+          style={{ perspective: '1500px', perspectiveOrigin: 'center center' }}
         >
-          <img
-            src={getThumbnail(currentVideo)}
-            alt={currentVideo.title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-          
-          {/* Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
-          
-          {/* Content Overlay */}
-          <div className="absolute inset-0 flex items-center p-8 md:p-12">
-            <div className="max-w-2xl">
-              {/* Badges */}
-              <div className="flex items-center gap-3 mb-4">
-                {currentVideo.is_featured && (
-                  <span className="px-3 py-1 bg-accent text-accent-foreground text-xs font-bold rounded-full flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" />
-                    FEATURED
-                  </span>
-                )}
-                {currentVideo.multiplier && (
-                  <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full">
-                    {currentVideo.multiplier}
-                  </span>
-                )}
-                {currentVideo.duration && (
-                  <span className="px-3 py-1 bg-background/80 backdrop-blur-sm text-xs rounded-full flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {currentVideo.duration}
-                  </span>
-                )}
-              </div>
-              
-              {/* Title */}
-              <h2 className="text-3xl md:text-5xl font-bold mb-4 leading-tight line-clamp-2">
-                {currentVideo.title}
-              </h2>
-              
-              {/* Description if available */}
-              {currentVideo.description && (
-                <p className="text-muted-foreground text-sm md:text-base mb-6 line-clamp-2">
-                  {currentVideo.description}
-                </p>
-              )}
-              
-              {/* Stats & CTA */}
-              <div className="flex items-center gap-4">
-                <Button variant="glow" size="lg" className="gap-2">
-                  <Play className="w-5 h-5 fill-current" />
-                  Watch Now
-                </Button>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Eye className="w-4 h-4" />
-                    {currentVideo.views?.toLocaleString() || 0}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Heart className={`w-4 h-4 ${isVideoLiked(currentVideo.id) ? "fill-destructive text-destructive" : ""}`} />
-                    {currentVideo.likes_count?.toLocaleString() || 0}
-                  </span>
+          {/* Carousel Cards */}
+          {[-2, -1, 0, 1, 2].map((offset) => {
+            if (videos.length <= Math.abs(offset)) return null;
+            const videoIndex = getVideoIndex(offset);
+            const video = videos[videoIndex];
+            const style = getCardStyle(offset);
+            
+            return (
+              <motion.div
+                key={`${video.id}-${offset}`}
+                className="absolute top-1/2 cursor-pointer"
+                initial={false}
+                animate={{
+                  opacity: style.opacity,
+                  scale: offset === 0 ? 1 : offset === -1 || offset === 1 ? 0.75 : 0.55,
+                  x: offset === 0 ? '-50%' : offset === -1 ? '-85%' : offset === 1 ? '35%' : offset === -2 ? '-120%' : '70%',
+                  rotateY: offset === 0 ? 0 : offset < 0 ? 25 + Math.abs(offset) * 10 : -25 - Math.abs(offset) * 10,
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                }}
+                style={{
+                  left: style.left as string,
+                  zIndex: style.zIndex,
+                  transformStyle: 'preserve-3d',
+                  translateY: '-50%',
+                }}
+                onClick={() => offset === 0 ? handleVideoClick(video) : setCurrentIndex(videoIndex)}
+              >
+                {/* Card with Purple Glow Border */}
+                <div 
+                  className={`relative rounded-2xl overflow-hidden shadow-2xl ${
+                    offset === 0 ? 'ring-4 ring-purple-500/60 shadow-purple-500/30' : ''
+                  }`}
+                  style={{
+                    width: offset === 0 ? 'min(700px, 85vw)' : 'min(500px, 70vw)',
+                    aspectRatio: '16/9',
+                  }}
+                >
+                  {/* Video Thumbnail */}
+                  <img
+                    src={getThumbnail(video)}
+                    alt={video.title}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
+                  
+                  {/* Play Button on Center Card */}
+                  {offset === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary/90 backdrop-blur-sm flex items-center justify-center shadow-2xl shadow-primary/40">
+                        <Play className="w-7 h-7 md:w-9 md:h-9 text-primary-foreground ml-1" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Video Info Overlay - Only on center */}
+                  {offset === 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        {video.multiplier && (
+                          <span className="px-2 py-1 bg-accent text-accent-foreground text-xs font-bold rounded">
+                            {video.multiplier}
+                          </span>
+                        )}
+                        {video.duration && (
+                          <span className="px-2 py-1 bg-black/60 backdrop-blur-sm text-xs rounded flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {video.duration}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg md:text-xl font-bold text-white line-clamp-1 drop-shadow-lg">
+                        {video.title}
+                      </h3>
+                      <div className="flex items-center gap-4 mt-2 text-white/80 text-sm">
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-4 h-4" />
+                          {video.views?.toLocaleString() || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Heart className={`w-4 h-4 ${isVideoLiked(video.id) ? "fill-red-500 text-red-500" : ""}`} />
+                          {video.likes_count?.toLocaleString() || 0}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Side card title */}
+                  {offset !== 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent">
+                      <h4 className="text-sm font-medium text-white/90 line-clamp-1">
+                        {video.title}
+                      </h4>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Play Button Overlay */}
-          <div className="absolute right-8 md:right-16 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center shadow-2xl shadow-primary/30">
-              <Play className="w-8 h-8 text-primary-foreground ml-1" />
-            </div>
-          </div>
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* Navigation Arrows */}
+        {/* Large Navigation Arrows */}
         {videos.length > 1 && (
           <>
             <button
               onClick={goToPrevious}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-background/80 backdrop-blur-sm border border-border rounded-full flex items-center justify-center hover:bg-primary hover:border-primary transition-all duration-300 opacity-0 group-hover:opacity-100"
+              className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 transition-all duration-300 group"
             >
-              <ChevronLeft className="w-6 h-6" />
+              <ChevronLeft className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:text-primary transition-colors" />
             </button>
             <button
               onClick={goToNext}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-background/80 backdrop-blur-sm border border-border rounded-full flex items-center justify-center hover:bg-primary hover:border-primary transition-all duration-300 opacity-0 group-hover:opacity-100"
+              className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 md:w-16 md:h-16 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center hover:bg-white/20 hover:scale-110 transition-all duration-300 group"
             >
-              <ChevronRight className="w-6 h-6" />
+              <ChevronRight className="w-6 h-6 md:w-8 md:h-8 text-white group-hover:text-primary transition-colors" />
             </button>
           </>
         )}
 
-        {/* Carousel Indicators */}
+        {/* Carousel Dots */}
         {videos.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 z-40">
             {videos.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={`h-1.5 rounded-full transition-all ${
-                  index === currentIndex ? "bg-primary w-8" : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-1.5"
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  index === currentIndex 
+                    ? "bg-primary w-8 shadow-lg shadow-primary/50" 
+                    : "bg-white/30 hover:bg-white/50 w-2"
                 }`}
               />
             ))}
