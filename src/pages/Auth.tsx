@@ -71,6 +71,23 @@ function Auth() {
     
     setIsLoading(true);
 
+    // Detect backend misconfiguration early (prevents opaque "Failed to fetch")
+    const backendUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    const backendKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+    if (!backendUrl || !backendKey) {
+      console.error("Auth misconfig: missing backend env", {
+        hasUrl: Boolean(backendUrl),
+        hasKey: Boolean(backendKey),
+      });
+      toast({
+        title: "Backend not configured",
+        description: "Authentication can't reach the backend in this environment. Open Backend settings and verify Site/Redirect URLs.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -135,9 +152,18 @@ function Auth() {
         }
       }
     } catch (error: any) {
+      const message = String(error?.message || "");
+
+      // Supabase SDK sometimes surfaces network-level failures as "Failed to fetch" (TypeError)
+      const isNetworkFail = /failed to fetch/i.test(message) || error?.name === "TypeError";
+
+      console.error("Auth error", { mode, message, error });
+
       toast({
         title: "Error",
-        description: error.message || "An error occurred. Please try again.",
+        description: isNetworkFail
+          ? "Network error while contacting authentication service. Disable adblock/VPN and ensure Backend Site/Redirect URLs are correct."
+          : message || "An error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -147,6 +173,24 @@ function Auth() {
 
   const handleOAuthLogin = async (provider: "twitch" | "discord") => {
     setIsLoading(true);
+
+    const backendUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+    const backendKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+    if (!backendUrl || !backendKey) {
+      console.error("Auth misconfig: missing backend env (oauth)", {
+        provider,
+        hasUrl: Boolean(backendUrl),
+        hasKey: Boolean(backendKey),
+      });
+      toast({
+        title: "Backend not configured",
+        description: "OAuth can't reach the backend in this environment. Open Backend settings and verify Site/Redirect URLs.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -243,15 +287,6 @@ function Auth() {
             </>
           )}
 
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
-            </div>
-          </div>
 
           {/* Email Form */}
           <form onSubmit={handleEmailAuth} className="space-y-4">
