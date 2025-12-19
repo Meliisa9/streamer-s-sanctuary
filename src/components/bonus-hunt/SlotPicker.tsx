@@ -13,6 +13,7 @@ interface SlotPickerProps {
   onChange: (data: { slot_name: string; provider: string }) => void;
   placeholder?: string;
   showProviderField?: boolean;
+  excludeSlots?: string[]; // Slot names to exclude from selection (already picked)
 }
 
 // Comprehensive slot database with providers - includes popular Stake.com slots
@@ -530,17 +531,20 @@ const SLOT_DATABASE: SlotData[] = [
   { name: "Return of the Dead", provider: "Pragmatic Play" },
 ];
 
-export function SlotPicker({ value, onChange, placeholder = "Search slots...", showProviderField = true }: SlotPickerProps) {
+export function SlotPicker({ value, onChange, placeholder = "Search slots...", showProviderField = true, excludeSlots = [] }: SlotPickerProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchQuery, setSearchQuery] = useState(value.slot_name || "");
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filter suggestions based on input - search both name and provider
+  // Filter suggestions based on input - search both name and provider, exclude already picked slots
   const filteredSlots = SLOT_DATABASE.filter(slot => {
     const query = searchQuery.toLowerCase();
-    return slot.name.toLowerCase().includes(query) || 
+    const matchesQuery = slot.name.toLowerCase().includes(query) || 
            slot.provider.toLowerCase().includes(query);
+    // Exclude already picked slots (case-insensitive)
+    const isExcluded = excludeSlots.some(ex => ex.toLowerCase() === slot.name.toLowerCase());
+    return matchesQuery && !isExcluded;
   }).slice(0, 10);
 
   const handleSelectSlot = (slot: SlotData) => {

@@ -210,6 +210,55 @@ function Auth() {
     }
   };
 
+  const handleKickLogin = async () => {
+    setIsLoading(true);
+
+    try {
+      const frontendUrl = window.location.origin;
+      const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const callbackBase = (localStorage.getItem("kick_callback_base") || "").trim();
+
+      if (isLocalhost && !callbackBase) {
+        throw new Error(
+          'For localhost, set localStorage key "kick_callback_base" to your ngrok/HTTPS tunnel base URL (e.g. https://xxxx.ngrok-free.app).'
+        );
+      }
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}${callbackBase ? `&callback_base=${encodeURIComponent(callbackBase)}` : ""}`;
+
+      const response = await fetch(url, {
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {
+        data = null;
+      }
+
+      if (!response.ok) {
+        const detail = data?.error || raw || `HTTP ${response.status}`;
+        throw new Error(`Kick authorize failed: ${detail}`);
+      }
+
+      const authorizeUrl: string | undefined = data?.authorize_url;
+      if (!authorizeUrl) {
+        throw new Error(`Kick authorize response missing authorize_url. Received: ${raw || "<empty>"}`);
+      }
+
+      window.location.assign(authorizeUrl);
+    } catch (error: any) {
+      toast({
+        title: "Failed to connect Kick",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       {/* Background Effects */}
@@ -252,7 +301,7 @@ function Auth() {
           {/* OAuth Buttons - Hide for forgot password */}
           {mode !== "forgot" && (
             <>
-              <div className="space-y-3 mb-6">
+            <div className="space-y-3 mb-6">
                 <Button
                   type="button"
                   variant="glow"
@@ -272,6 +321,16 @@ function Auth() {
                 >
                   <MessageCircle className="w-5 h-5" />
                   Continue with Discord
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-3 border-[#53FC18]/30 hover:bg-[#53FC18]/10 hover:border-[#53FC18]/50"
+                  onClick={() => handleKickLogin()}
+                  disabled={isLoading}
+                >
+                  <span className="w-5 h-5 flex items-center justify-center font-bold text-[#53FC18]">K</span>
+                  Continue with Kick
                 </Button>
               </div>
 

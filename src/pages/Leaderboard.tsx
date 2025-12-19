@@ -2,15 +2,30 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown, Zap } from "lucide-react";
+import { Trophy, Medal, TrendingUp, Target, Gift, Star, Crown, Zap, Info } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserImageLink } from "@/components/UserAvatarLink";
+import { SocialBadges } from "@/components/SocialBadges";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Profile = Tables<"profiles">;
 
 export default function Leaderboard() {
   const [category, setCategory] = useState<"overall" | "bonushunt" | "giveaways">("overall");
+
+  // Fetch leaderboard how to earn text from settings
+  const { data: howToEarnText } = useQuery({
+    queryKey: ["leaderboard-how-to-earn"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "leaderboard_how_to_earn")
+        .maybeSingle();
+      if (error) throw error;
+      return typeof data?.value === 'string' ? data.value : null;
+    },
+  });
 
   // Fetch profiles
   const { data: profiles, isLoading } = useQuery({
@@ -65,6 +80,7 @@ export default function Leaderboard() {
 
   // Build leaderboard based on category
   const leaderboardData = profiles?.map((profile) => ({
+    ...profile,
     userId: profile.user_id,
     username: profile.display_name || profile.username || "Anonymous",
     profileUsername: profile.username,
@@ -163,6 +179,13 @@ export default function Leaderboard() {
                     ) : "🥈"}
                   </div>
                   <h3 className="font-bold text-center text-xs md:text-sm truncate max-w-full px-1">{top3[1].username}</h3>
+                  <SocialBadges 
+                    kickUsername={top3[1].kick_username}
+                    twitchUsername={top3[1].twitch_username}
+                    discordTag={top3[1].discord_tag}
+                    size="sm"
+                    className="my-1"
+                  />
                   <p className="text-xl md:text-2xl font-bold text-gray-400">2nd</p>
                   <p className="text-xs md:text-sm text-muted-foreground">{getValue(top3[1])}</p>
                   <div className="mt-3 w-full h-20 bg-gradient-to-t from-gray-500/30 to-transparent rounded-t-xl" />
@@ -183,6 +206,13 @@ export default function Leaderboard() {
                     ) : "🏆"}
                   </div>
                   <h3 className="font-bold text-center text-sm md:text-lg truncate max-w-full px-1">{top3[0].username}</h3>
+                  <SocialBadges 
+                    kickUsername={top3[0].kick_username}
+                    twitchUsername={top3[0].twitch_username}
+                    discordTag={top3[0].discord_tag}
+                    size="sm"
+                    className="my-1"
+                  />
                   <p className="text-2xl md:text-3xl font-bold gradient-text-gold">1st</p>
                   <p className="text-xs md:text-sm text-muted-foreground">{getValue(top3[0])}</p>
                   <div className="mt-3 w-full h-28 bg-gradient-to-t from-yellow-500/30 to-transparent rounded-t-xl" />
@@ -202,6 +232,13 @@ export default function Leaderboard() {
                     ) : "🥉"}
                   </div>
                   <h3 className="font-bold text-center text-xs md:text-sm truncate max-w-full px-1">{top3[2].username}</h3>
+                  <SocialBadges 
+                    kickUsername={top3[2].kick_username}
+                    twitchUsername={top3[2].twitch_username}
+                    discordTag={top3[2].discord_tag}
+                    size="sm"
+                    className="my-1"
+                  />
                   <p className="text-lg md:text-xl font-bold text-amber-600">3rd</p>
                   <p className="text-xs md:text-sm text-muted-foreground">{getValue(top3[2])}</p>
                   <div className="mt-3 w-full h-14 bg-gradient-to-t from-amber-600/30 to-transparent rounded-t-xl" />
@@ -282,7 +319,15 @@ export default function Leaderboard() {
                                 <span className="text-sm">⭐</span>
                               )}
                             </div>
-                            <span className="font-medium">{player.username}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{player.username}</span>
+                              <SocialBadges 
+                                kickUsername={player.kick_username}
+                                twitchUsername={player.twitch_username}
+                                discordTag={player.discord_tag}
+                                size="sm"
+                              />
+                            </div>
                           </UserImageLink>
                         </td>
                         <td className="p-4 text-center">
@@ -303,7 +348,7 @@ export default function Leaderboard() {
               </div>
             </motion.div>
 
-            {/* How Points Work */}
+            {/* How Points Work - Configurable */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -314,35 +359,41 @@ export default function Leaderboard() {
                 <TrendingUp className="w-5 h-5 text-primary" />
                 How to Earn Points
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {howToEarnText ? (
                 <div className="p-4 bg-muted/20 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Target className="w-5 h-5 text-green-500" />
-                    <span className="font-semibold">Bonus Hunt GTW</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Win up to 1,000 points by guessing the closest to the final bonus hunt balance!
-                  </p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{howToEarnText}</p>
                 </div>
-                <div className="p-4 bg-muted/20 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Gift className="w-5 h-5 text-primary" />
-                    <span className="font-semibold">Giveaway Entries</span>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-muted/20 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target className="w-5 h-5 text-green-500" />
+                      <span className="font-semibold">Bonus Hunt GTW</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Win up to 300 points by guessing the closest to the final bonus hunt balance!
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    100 points per giveaway entry. Winners get 5,000 bonus points!
-                  </p>
-                </div>
-                <div className="p-4 bg-muted/20 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap className="w-5 h-5 text-yellow-500" />
-                    <span className="font-semibold">Daily Activity</span>
+                  <div className="p-4 bg-muted/20 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Gift className="w-5 h-5 text-primary" />
+                      <span className="font-semibold">Giveaway Entries</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      100 points per giveaway entry. Winners get 5,000 bonus points!
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Daily login: 50 pts. Stream watching: 10 pts/hour. Comments: 25 pts.
-                  </p>
+                  <div className="p-4 bg-muted/20 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Zap className="w-5 h-5 text-yellow-500" />
+                      <span className="font-semibold">Daily Activity</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Daily login: 50 pts. Stream watching: 10 pts/hour. Comments: 25 pts.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           </>
         ) : (
