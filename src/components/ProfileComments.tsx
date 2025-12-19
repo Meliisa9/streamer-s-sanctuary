@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { notifyComment } from "@/hooks/useSocialNotifications";
 import { ReportDialog } from "@/components/ReportDialog";
 import { EmojiPicker } from "@/components/EmojiPicker";
-import { Link } from "react-router-dom";
+import { UserAvatarLink } from "@/components/UserAvatarLink";
 
 interface ProfileCommentsProps {
   profileUserId: string;
@@ -271,22 +271,24 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                 transition={{ delay: index * 0.05 }}
                 className="flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20"
               >
-                <Link to={author?.username ? `/user/${author.username}` : "#"} className="flex-shrink-0">
-                  <Avatar className="w-8 h-8 hover:ring-2 hover:ring-primary transition-all cursor-pointer">
-                    <AvatarImage src={author?.avatar_url} />
-                    <AvatarFallback>
-                      <User className="w-4 h-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                </Link>
+                <UserAvatarLink
+                  userId={comment.author_id}
+                  username={author?.username}
+                  avatarUrl={author?.avatar_url}
+                  size="md"
+                  className="flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <Link 
-                      to={author?.username ? `/user/${author.username}` : "#"} 
+                    <UserAvatarLink
+                      userId={comment.author_id}
+                      username={author?.username}
+                      avatarUrl={author?.avatar_url}
+                      displayName={author?.display_name}
                       className="font-medium text-sm truncate hover:text-primary transition-colors"
                     >
                       {author?.display_name || author?.username || "Anonymous"}
-                    </Link>
+                    </UserAvatarLink>
                     <span className="text-xs text-muted-foreground flex-shrink-0">
                       {format(new Date(comment.created_at), "MMM d")}
                     </span>

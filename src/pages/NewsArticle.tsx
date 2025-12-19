@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { processAndSanitizeContent } from "@/lib/sanitize";
+import { UserImageLink } from "@/components/UserAvatarLink";
 import type { Tables } from "@/integrations/supabase/types";
 
 type NewsArticle = Tables<"news_articles">;
@@ -531,20 +532,23 @@ export default function NewsArticlePage() {
             {comments.map((comment) => (
               <div key={comment.id} className="p-4 bg-secondary/20 rounded-xl border border-border/50 hover:border-border transition-colors">
                 <div className="flex items-start gap-3">
-                  <Link to={`/user/${comment.profile?.username}`} className="flex-shrink-0">
-                    {comment.profile?.avatar_url ? (
-                      <img src={comment.profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-1 ring-border hover:ring-primary transition-colors cursor-pointer" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-primary/20 transition-colors cursor-pointer">
-                        <User className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                    )}
-                  </Link>
+                  <UserImageLink 
+                    userId={comment.user_id}
+                    username={comment.profile?.username}
+                    avatarUrl={comment.profile?.avatar_url}
+                    className="flex-shrink-0"
+                    imgClassName="w-10 h-10 rounded-full object-cover ring-1 ring-border hover:ring-primary transition-colors cursor-pointer"
+                    fallbackClassName="w-10 h-10 rounded-full bg-secondary flex items-center justify-center hover:bg-primary/20 transition-colors cursor-pointer"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <Link to={`/user/${comment.profile?.username}`} className="font-semibold hover:text-primary transition-colors">
+                      <UserImageLink 
+                        userId={comment.user_id}
+                        username={comment.profile?.username}
+                        className="font-semibold hover:text-primary transition-colors"
+                      >
                         {comment.profile?.display_name || comment.profile?.username || "Anonymous"}
-                      </Link>
+                      </UserImageLink>
                       {getRoleBadge(comment.roles)}
                       <span className="text-xs text-muted-foreground">
                         {new Date(comment.created_at).toLocaleDateString()}
