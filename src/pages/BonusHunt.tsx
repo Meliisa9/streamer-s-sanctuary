@@ -270,15 +270,15 @@ export default function BonusHunt() {
                   <p className="text-lg font-bold">{currencySymbol}{displayHunt.target_balance?.toLocaleString() || "TBD"}</p>
                   <p className="text-xs text-muted-foreground">Target Balance</p>
                 </div>
-                <div className="p-3 bg-secondary/30 rounded-xl text-center">
-                  <Trophy className="w-4 h-4 mx-auto mb-1 text-accent" />
-                  <p className="text-lg font-bold">
-                    {currencySymbol}{displayHunt.ending_balance?.toLocaleString() || totalWinnings.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {displayHunt.status === "complete" ? "Final Balance" : "Current Balance"}
-                  </p>
-                </div>
+                {displayHunt.status === "complete" && (
+                  <div className="p-3 bg-secondary/30 rounded-xl text-center">
+                    <Trophy className="w-4 h-4 mx-auto mb-1 text-accent" />
+                    <p className="text-lg font-bold">
+                      {currencySymbol}{displayHunt.ending_balance?.toLocaleString() || totalWinnings.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Final Balance</p>
+                  </div>
+                )}
                 <div className="p-3 bg-secondary/30 rounded-xl text-center">
                   <DollarSign className="w-4 h-4 mx-auto mb-1 text-blue-500" />
                   <p className="text-lg font-bold">{currencySymbol}{displayHunt.average_bet?.toLocaleString() || averageBet}</p>
