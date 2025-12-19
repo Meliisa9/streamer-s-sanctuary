@@ -5,17 +5,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useBonusHuntRealtime } from "@/hooks/useBonusHuntRealtime";
+import { calculateMultiplier, updateBonusHuntStats } from "@/hooks/useBonusHuntCalculations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { BonusHuntProgress } from "@/components/bonus-hunt/BonusHuntProgress";
+import { InlineWinEditor } from "@/components/bonus-hunt/InlineWinEditor";
 import { 
   Target, Trophy, TrendingUp, DollarSign, 
   Clock, CheckCircle2, History, Search,
   ChevronLeft, ChevronRight, Zap, Star,
   Play, Pause, Hash, Coins, BarChart3,
-  Calendar, Timer, ArrowUpRight, Radio
+  Calendar, Timer, ArrowUpRight, Radio, Users, Lock
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -55,7 +57,7 @@ interface UserGuess {
 }
 
 export default function BonusHunt() {
-  const { user } = useAuth();
+  const { user, isAdmin, isModerator } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedHunt, setSelectedHunt] = useState<BonusHunt | null>(null);
@@ -64,7 +66,10 @@ export default function BonusHunt() {
   const [guessAmount, setGuessAmount] = useState("");
   const [showWin, setShowWin] = useState(true);
   const [showMultiplier, setShowMultiplier] = useState(true);
+  const [savingSlotId, setSavingSlotId] = useState<string | null>(null);
   const SLOTS_PER_PAGE = 15;
+  
+  const canEditSlots = isAdmin || isModerator;
 
   // Fetch all bonus hunts
   const { data: hunts, isLoading } = useQuery({
@@ -160,6 +165,42 @@ export default function BonusHunt() {
       return;
     }
     submitGuessMutation.mutate(amount);
+  };
+
+  // Inline win update function for admins/mods
+  const handleInlineWinUpdate = async (slotId: string, winAmount: number) => {
+    setSavingSlotId(slotId);
+    try {
+      // Get the slot to calculate multiplier
+      const slot = slots?.find(s => s.id === slotId);
+      if (!slot) throw new Error("Slot not found");
+      
+      const multiplier = calculateMultiplier(slot.bet_amount, winAmount);
+      
+      const { error } = await supabase
+        .from("bonus_hunt_slots")
+        .update({ 
+          win_amount: winAmount, 
+          multiplier: multiplier,
+          is_played: true 
+        })
+        .eq("id", slotId);
+      
+      if (error) throw error;
+      
+      // Update hunt stats
+      if (activeHuntId) {
+        await updateBonusHuntStats(activeHuntId);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunt-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["bonus-hunts"] });
+      toast({ title: "Win updated & stats recalculated!" });
+    } catch (error: any) {
+      toast({ title: "Error updating win", description: error.message, variant: "destructive" });
+    } finally {
+      setSavingSlotId(null);
+    }
   };
 
   // Filter and paginate slots
@@ -426,15 +467,27 @@ export default function BonusHunt() {
                               )}
                               {showWin && (
                                 <td className="p-3 text-right">
-                                  {slot.is_played && slot.win_amount !== null ? (
-                                    <span className={`text-sm font-bold font-mono ${
-                                      isBigWin ? 'text-yellow-500' :
-                                      slot.win_amount > 0 ? 'text-green-500' : 'text-red-500'
-                                    }`}>
-                                      {currencySymbol}{slot.win_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
+                                  {canEditSlots ? (
+                                    <InlineWinEditor
+                                      slotId={slot.id}
+                                      currentWin={slot.win_amount}
+                                      betAmount={slot.bet_amount}
+                                      currencySymbol={currencySymbol}
+                                      isPlayed={slot.is_played}
+                                      onSave={handleInlineWinUpdate}
+                                      isSaving={savingSlotId === slot.id}
+                                    />
                                   ) : (
-                                    <span className="text-muted-foreground">-</span>
+                                    slot.is_played && slot.win_amount !== null ? (
+                                      <span className={`text-sm font-bold font-mono ${
+                                        isBigWin ? 'text-yellow-500' :
+                                        slot.win_amount > 0 ? 'text-green-500' : 'text-red-500'
+                                      }`}>
+                                        {currencySymbol}{slot.win_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">-</span>
+                                    )
                                   )}
                                 </td>
                               )}
@@ -640,21 +693,36 @@ export default function BonusHunt() {
                 </div>
               </div>
 
-              {/* Guess Section - Only for ongoing hunts */}
-              {currentHunt && displayHunt.id === currentHunt.id && displayHunt.status === "ongoing" && (
+              {/* Guess Section - For ongoing hunts OR show results for complete hunts */}
+              {displayHunt && (displayHunt.status === "ongoing" || displayHunt.status === "to_be_played") && (
                 <div className="bg-card/30 border border-border/50 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Guess Final Balance</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Target className="w-4 h-4 text-primary" />
+                    Guess Final Balance
+                  </h3>
+                  
+                  {/* Participant count */}
+                  <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>{guessCount} {guessCount === 1 ? 'guess' : 'guesses'} so far</span>
+                  </div>
                   
                   {userGuess ? (
                     <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        <span className="font-medium text-green-500">Guess Submitted!</span>
+                        <span className="font-medium text-green-500">Your Guess is Locked!</span>
                       </div>
                       <p className="text-2xl font-bold">{currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Winner will be determined when the hunt ends
+                      </p>
                     </div>
                   ) : user ? (
                     <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Predict what the final balance will be at the end of this bonus hunt!
+                      </p>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{currencySymbol}</span>
                         <Input
@@ -666,21 +734,51 @@ export default function BonusHunt() {
                         />
                       </div>
                       <Button 
-                        className="w-full" 
+                        className="w-full gap-2" 
                         onClick={handleSubmitGuess}
                         disabled={submitGuessMutation.isPending}
                       >
-                        Submit Guess
+                        <Lock className="w-4 h-4" />
+                        Lock In Guess
                       </Button>
                       <p className="text-xs text-muted-foreground text-center">
-                        {guessCount} guesses so far
+                        +10 XP for participating • Closest guess wins {displayHunt.winner_points || 1000} points!
                       </p>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
-                      <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess
-                    </p>
+                    <div className="text-center p-4 bg-muted/20 rounded-lg">
+                      <Lock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        <Link to="/auth" className="text-primary hover:underline">Login</Link> to submit your guess and win points!
+                      </p>
+                    </div>
                   )}
+                </div>
+              )}
+              
+              {/* Winner display for completed hunts */}
+              {displayHunt && displayHunt.status === "complete" && userGuess && (
+                <div className="bg-card/30 border border-border/50 rounded-xl p-5">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                    Your Guess Result
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Your guess:</span>
+                      <span className="font-bold">{currencySymbol}{Number(userGuess.guess_amount).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Final balance:</span>
+                      <span className="font-bold text-primary">{currencySymbol}{(displayHunt.ending_balance || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-border/50 pt-2">
+                      <span className="text-muted-foreground">Difference:</span>
+                      <span className="font-bold">
+                        {currencySymbol}{Math.abs(Number(userGuess.guess_amount) - (displayHunt.ending_balance || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
 
