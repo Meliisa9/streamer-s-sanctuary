@@ -1,11 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Use Web Crypto API for hashing (Deno-native, no external dependencies)
+async function hashCode(code: string, salt: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(salt + code);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateSalt(): string {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -52,9 +66,9 @@ serve(async (req) => {
         .from('admin_access_codes')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error checking access code:', error);
         throw error;
       }
@@ -74,9 +88,10 @@ serve(async (req) => {
         );
       }
 
-      // Hash the code with bcrypt
-      const salt = await bcrypt.genSalt(10);
-      const hashedCode = await bcrypt.hash(code, salt);
+      // Generate salt and hash the code
+      const salt = generateSalt();
+      const hashedCode = await hashCode(code, salt);
+      const storedValue = `${salt}:${hashedCode}`;
       console.log('Generated hash for new access code');
 
       // Upsert the hashed code
@@ -84,7 +99,7 @@ serve(async (req) => {
         .from('admin_access_codes')
         .upsert({
           user_id: user.id,
-          access_code: hashedCode,
+          access_code: storedValue,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' });
 
@@ -113,18 +128,41 @@ serve(async (req) => {
         .from('admin_access_codes')
         .select('access_code')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching access code:', error);
+        return new Response(
+          JSON.stringify({ verified: false, error: 'Database error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!data) {
         return new Response(
           JSON.stringify({ verified: false, error: 'No access code found' }),
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // Compare with bcrypt
-      const isValid = await bcrypt.compare(code, data.access_code);
+      // Parse stored value (salt:hash format)
+      const storedValue = data.access_code;
+      let isValid = false;
+
+      if (storedValue.includes(':')) {
+        // New format: salt:hash
+        const [salt, storedHash] = storedValue.split(':');
+        const inputHash = await hashCode(code, salt);
+        isValid = inputHash === storedHash;
+      } else {
+        // Legacy bcrypt format - we can't verify these, user needs to reset
+        console.log('Legacy bcrypt hash detected, cannot verify');
+        return new Response(
+          JSON.stringify({ verified: false, error: 'Please reset your access code' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       console.log(`Verification result: ${isValid}`);
 
       return new Response(
