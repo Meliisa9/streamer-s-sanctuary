@@ -167,16 +167,39 @@ export default function BonusHunt() {
 
   const displayHunt = selectedHunt || currentHunt;
 
-  // Calculate stats
+  // Calculate stats using proper formulas
   const totalBonuses = slots?.length || 0;
   const playedBonuses = slots?.filter(s => s.is_played).length || 0;
-  const totalWinnings = slots?.reduce((sum, s) => sum + (s.win_amount || 0), 0) || 0;
+  const remainingBonuses = totalBonuses - playedBonuses;
+  
+  // Sum of all wins from played slots
+  const totalWinnings = slots?.filter(s => s.is_played).reduce((sum, s) => sum + (s.win_amount || 0), 0) || 0;
+  
+  // Sum of all bets
   const totalBets = slots?.reduce((sum, s) => sum + (s.bet_amount || 0), 0) || 0;
-  const averageX = totalBets > 0 ? (totalWinnings / totalBets).toFixed(2) : "0.00";
-  const averageBet = totalBonuses > 0 ? (totalBets / totalBonuses).toFixed(2) : "0";
-  const breakEvenX = displayHunt?.starting_balance && totalBets > 0 
-    ? ((displayHunt.starting_balance) / totalBets).toFixed(2) 
+  
+  // Average bet = total bets / number of slots
+  const averageBet = totalBonuses > 0 ? (totalBets / totalBonuses) : 0;
+  
+  // Average X = sum of multipliers / number of played slots with multipliers
+  const playedSlotsWithMultipliers = slots?.filter(s => s.is_played && s.multiplier !== null) || [];
+  const totalMultiplier = playedSlotsWithMultipliers.reduce((sum, s) => sum + (s.multiplier || 0), 0);
+  const averageX = playedSlotsWithMultipliers.length > 0 
+    ? (totalMultiplier / playedSlotsWithMultipliers.length).toFixed(2) 
     : "0.00";
+  
+  // Break-even X = (Starting Balance - Current Wins) / (Remaining Slots Total Bets)
+  // What multiplier is needed on remaining slots to match starting balance
+  const remainingBets = slots?.filter(s => !s.is_played).reduce((sum, s) => sum + (s.bet_amount || 0), 0) || 0;
+  let breakEvenX = "0.00";
+  if (displayHunt?.starting_balance && remainingBets > 0) {
+    const neededWins = displayHunt.starting_balance - totalWinnings;
+    breakEvenX = (neededWins / remainingBets).toFixed(2);
+  } else if (displayHunt?.starting_balance && totalBets > 0) {
+    // If all slots played, show what was needed
+    breakEvenX = (displayHunt.starting_balance / totalBets).toFixed(2);
+  }
+  
   const currencySymbol = displayHunt?.currency === "EUR" ? "€" : displayHunt?.currency === "GBP" ? "£" : displayHunt?.currency === "SEK" ? "kr" : displayHunt?.currency === "CAD" ? "C$" : "$";
 
   // Find top performers
@@ -552,7 +575,7 @@ export default function BonusHunt() {
                   <StatBox 
                     icon={Coins} 
                     label="Avg Bet" 
-                    value={`${currencySymbol}${displayHunt.average_bet?.toFixed(2) || averageBet}`}
+                    value={`${currencySymbol}${averageBet.toFixed(2)}`}
                     iconColor="text-cyan-500"
                   />
                   
@@ -560,6 +583,7 @@ export default function BonusHunt() {
                     icon={TrendingUp} 
                     label="Break-even" 
                     value={`${breakEvenX}x`}
+                    subValue={remainingBonuses > 0 ? `${remainingBonuses} slots remaining` : "All played"}
                     iconColor="text-orange-500"
                   />
 

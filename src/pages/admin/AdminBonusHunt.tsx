@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,8 +22,14 @@ import {
 } from "@/components/ui/select";
 import { 
   Plus, Edit2, Trash2, Trophy, Target, Loader2, 
-  ListPlus, Eye, CheckCircle2, ArrowRight, ArrowLeft, X
+  ListPlus, Eye, CheckCircle2, ArrowRight, ArrowLeft, X,
+  Calculator, RefreshCw
 } from "lucide-react";
+import { 
+  calculateBonusHuntStats, 
+  calculateMultiplier, 
+  updateBonusHuntStats 
+} from "@/hooks/useBonusHuntCalculations";
 
 interface BonusHunt {
   id: string;
@@ -259,17 +265,60 @@ export default function AdminBonusHunt() {
     },
   });
 
+  // Auto-calculate multiplier when bet and win amounts change
+  const autoCalculateMultiplier = useCallback((betAmount: string, winAmount: string) => {
+    const bet = parseFloat(betAmount);
+    const win = parseFloat(winAmount);
+    const multiplier = calculateMultiplier(bet, win);
+    if (multiplier !== null) {
+      return multiplier.toFixed(2);
+    }
+    return "";
+  }, []);
+
+  // Handle slot form changes with auto-calculation
+  const handleSlotFormChange = (field: string, value: string | boolean) => {
+    const newForm = { ...slotForm, [field]: value };
+    
+    // Auto-calculate multiplier when bet or win changes
+    if ((field === "bet_amount" || field === "win_amount") && newForm.is_played) {
+      const calculatedMultiplier = autoCalculateMultiplier(
+        field === "bet_amount" ? value as string : newForm.bet_amount,
+        field === "win_amount" ? value as string : newForm.win_amount
+      );
+      if (calculatedMultiplier) {
+        newForm.multiplier = calculatedMultiplier;
+      }
+    }
+    
+    // Auto-mark as played when win_amount is entered
+    if (field === "win_amount" && value && parseFloat(value as string) >= 0) {
+      newForm.is_played = true;
+    }
+    
+    setSlotForm(newForm);
+  };
+
   const slotMutation = useMutation({
     mutationFn: async (data: typeof slotForm) => {
       if (!selectedHuntForSlots) throw new Error("No hunt selected");
+      
+      const betAmount = data.bet_amount ? parseFloat(data.bet_amount) : null;
+      const winAmount = data.win_amount ? parseFloat(data.win_amount) : null;
+      
+      // Auto-calculate multiplier if not provided but bet and win exist
+      let multiplier = data.multiplier ? parseFloat(data.multiplier) : null;
+      if (!multiplier && betAmount && winAmount !== null) {
+        multiplier = calculateMultiplier(betAmount, winAmount);
+      }
       
       const payload = {
         hunt_id: selectedHuntForSlots.id,
         slot_name: data.slot_name,
         provider: data.provider || null,
-        bet_amount: data.bet_amount ? parseFloat(data.bet_amount) : null,
-        win_amount: data.win_amount ? parseFloat(data.win_amount) : null,
-        multiplier: data.multiplier ? parseFloat(data.multiplier) : null,
+        bet_amount: betAmount,
+        win_amount: winAmount,
+        multiplier: multiplier,
         is_played: data.is_played,
         sort_order: data.sort_order,
       };
@@ -281,10 +330,17 @@ export default function AdminBonusHunt() {
         const { error } = await supabase.from("bonus_hunt_slots").insert(payload);
         if (error) throw error;
       }
+      
+      // Return hunt ID for stats update
+      return selectedHuntForSlots.id;
     },
-    onSuccess: () => {
+    onSuccess: async (huntId) => {
+      // Auto-update hunt stats after slot change
+      await updateBonusHuntStats(huntId);
+      
       queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunt-slots"] });
-      toast({ title: editingSlot ? "Slot updated" : "Slot added" });
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+      toast({ title: editingSlot ? "Slot updated - Stats recalculated!" : "Slot added - Stats recalculated!" });
       setIsSlotDialogOpen(false);
       resetSlotForm();
     },
@@ -297,15 +353,30 @@ export default function AdminBonusHunt() {
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("bonus_hunt_slots").delete().eq("id", id);
       if (error) throw error;
+      return selectedHuntForSlots?.id;
     },
-    onSuccess: () => {
+    onSuccess: async (huntId) => {
+      // Auto-update hunt stats after slot deletion
+      if (huntId) {
+        await updateBonusHuntStats(huntId);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunt-slots"] });
-      toast({ title: "Slot deleted" });
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+      toast({ title: "Slot deleted - Stats recalculated!" });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  // Manual recalculate stats function
+  const recalculateStats = async () => {
+    if (!selectedHuntForSlots) return;
+    await updateBonusHuntStats(selectedHuntForSlots.id);
+    queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+    toast({ title: "Stats recalculated successfully!" });
+  };
 
   const handleEditHunt = (hunt: BonusHunt) => {
     setEditingHunt(hunt);
@@ -730,6 +801,14 @@ export default function AdminBonusHunt() {
               <p className="text-sm text-muted-foreground">{slots?.length || 0} slots</p>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2" 
+                onClick={recalculateStats}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Recalculate Stats
+              </Button>
               <Dialog open={isSlotDialogOpen} onOpenChange={setIsSlotDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2" onClick={resetSlotForm}>
@@ -746,7 +825,7 @@ export default function AdminBonusHunt() {
                       <Label>Slot Name</Label>
                       <Input
                         value={slotForm.slot_name}
-                        onChange={(e) => setSlotForm({ ...slotForm, slot_name: e.target.value })}
+                        onChange={(e) => handleSlotFormChange("slot_name", e.target.value)}
                         placeholder="Gates of Olympus"
                       />
                     </div>
@@ -754,7 +833,7 @@ export default function AdminBonusHunt() {
                       <Label>Provider</Label>
                       <Input
                         value={slotForm.provider}
-                        onChange={(e) => setSlotForm({ ...slotForm, provider: e.target.value })}
+                        onChange={(e) => handleSlotFormChange("provider", e.target.value)}
                         placeholder="Pragmatic Play"
                       />
                     </div>
@@ -764,7 +843,7 @@ export default function AdminBonusHunt() {
                         <Input
                           type="number"
                           value={slotForm.bet_amount}
-                          onChange={(e) => setSlotForm({ ...slotForm, bet_amount: e.target.value })}
+                          onChange={(e) => handleSlotFormChange("bet_amount", e.target.value)}
                           placeholder="5.00"
                         />
                       </div>
@@ -773,19 +852,25 @@ export default function AdminBonusHunt() {
                         <Input
                           type="number"
                           value={slotForm.win_amount}
-                          onChange={(e) => setSlotForm({ ...slotForm, win_amount: e.target.value })}
+                          onChange={(e) => handleSlotFormChange("win_amount", e.target.value)}
                           placeholder="1000"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label>Multiplier</Label>
+                        <Label className="flex items-center gap-2">
+                          Multiplier
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calculator className="w-3 h-3" />
+                            Auto-calculated
+                          </span>
+                        </Label>
                         <Input
                           type="number"
                           value={slotForm.multiplier}
-                          onChange={(e) => setSlotForm({ ...slotForm, multiplier: e.target.value })}
-                          placeholder="200"
+                          onChange={(e) => handleSlotFormChange("multiplier", e.target.value)}
+                          placeholder="Auto or manual"
                         />
                       </div>
                       <div>
@@ -793,7 +878,7 @@ export default function AdminBonusHunt() {
                         <Input
                           type="number"
                           value={slotForm.sort_order}
-                          onChange={(e) => setSlotForm({ ...slotForm, sort_order: parseInt(e.target.value) || 0 })}
+                          onChange={(e) => handleSlotFormChange("sort_order", e.target.value)}
                         />
                       </div>
                     </div>
@@ -801,10 +886,17 @@ export default function AdminBonusHunt() {
                       <input
                         type="checkbox"
                         checked={slotForm.is_played}
-                        onChange={(e) => setSlotForm({ ...slotForm, is_played: e.target.checked })}
+                        onChange={(e) => handleSlotFormChange("is_played", e.target.checked)}
                         className="rounded"
                       />
-                      <Label>Played</Label>
+                      <Label>Played (auto-checked when win is entered)</Label>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground">
+                      <p className="font-medium mb-1">Auto-calculation:</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>Multiplier = Win Amount / Bet Amount</li>
+                        <li>Hunt stats update automatically when slots change</li>
+                      </ul>
                     </div>
                     <div className="flex gap-3 pt-4">
                       <Button variant="ghost" onClick={() => setIsSlotDialogOpen(false)} className="flex-1">
