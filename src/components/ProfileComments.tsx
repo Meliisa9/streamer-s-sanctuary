@@ -6,10 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, Send, Trash2, Flag, Loader2, User } from "lucide-react";
+import { MessageSquare, Send, Trash2, Flag, Loader2, User, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { notifyComment } from "@/hooks/useSocialNotifications";
+import { ReportDialog } from "@/components/ReportDialog";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 interface ProfileCommentsProps {
   profileUserId: string;
@@ -20,6 +22,8 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState("");
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
 
   const { data: comments, isLoading } = useQuery({
     queryKey: ["profile-comments", profileUserId],
@@ -49,6 +53,40 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
         acc[profile.user_id] = profile;
         return acc;
       }, {} as Record<string, any>);
+    },
+    enabled: !!comments && comments.length > 0,
+  });
+
+  // Fetch user's likes
+  const { data: userLikes = [] } = useQuery({
+    queryKey: ["profile-comment-likes", user?.id, comments?.map(c => c.id)],
+    queryFn: async () => {
+      if (!user || !comments || comments.length === 0) return [];
+      const { data, error } = await supabase
+        .from("profile_comment_likes")
+        .select("comment_id")
+        .eq("user_id", user.id)
+        .in("comment_id", comments.map(c => c.id));
+      if (error) throw error;
+      return data.map(l => l.comment_id);
+    },
+    enabled: !!user && !!comments && comments.length > 0,
+  });
+
+  // Fetch like counts
+  const { data: likeCounts = {} } = useQuery({
+    queryKey: ["profile-comment-like-counts", comments?.map(c => c.id)],
+    queryFn: async () => {
+      if (!comments || comments.length === 0) return {};
+      const counts: Record<string, number> = {};
+      for (const comment of comments) {
+        const { count, error } = await supabase
+          .from("profile_comment_likes")
+          .select("*", { count: "exact", head: true })
+          .eq("comment_id", comment.id);
+        if (!error) counts[comment.id] = count || 0;
+      }
+      return counts;
     },
     enabled: !!comments && comments.length > 0,
   });
@@ -108,22 +146,32 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
     },
   });
 
-  const flagCommentMutation = useMutation({
-    mutationFn: async ({ commentId, reason }: { commentId: string; reason: string }) => {
+  const likeCommentMutation = useMutation({
+    mutationFn: async ({ commentId, isLiked }: { commentId: string; isLiked: boolean }) => {
       if (!user) throw new Error("Must be logged in");
-      const { error } = await supabase.from("content_flags").insert({
-        content_type: "profile_comment",
-        content_id: commentId,
-        flagged_by: user.id,
-        reason,
-      });
-      if (error) throw error;
+      
+      if (isLiked) {
+        // Unlike
+        const { error } = await supabase
+          .from("profile_comment_likes")
+          .delete()
+          .eq("comment_id", commentId)
+          .eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        // Like
+        const { error } = await supabase
+          .from("profile_comment_likes")
+          .insert({ comment_id: commentId, user_id: user.id });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      toast({ title: "Comment reported to moderators" });
+      queryClient.invalidateQueries({ queryKey: ["profile-comment-likes"] });
+      queryClient.invalidateQueries({ queryKey: ["profile-comment-like-counts"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Error reporting comment", description: error.message, variant: "destructive" });
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -137,9 +185,21 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
     addCommentMutation.mutate(newComment.trim());
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setNewComment(prev => prev + emoji);
+  };
+
+  const handleReportClick = (commentId: string) => {
+    setReportingCommentId(commentId);
+    setReportDialogOpen(true);
+  };
+
   const canDelete = (comment: any) => {
     return user && (user.id === comment.author_id || user.id === profileUserId);
   };
+
+  const isLiked = (commentId: string) => userLikes.includes(commentId);
+  const getLikeCount = (commentId: string) => likeCounts[commentId] || 0;
 
   return (
     <div className="space-y-4">
@@ -162,7 +222,10 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
             maxLength={500}
           />
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
+            <div className="flex items-center gap-2">
+              <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+              <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
+            </div>
             <Button
               type="submit"
               size="sm"
@@ -195,6 +258,9 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
           {comments.map((comment, index) => {
             const author = commentAuthors?.[comment.author_id];
+            const liked = isLiked(comment.id);
+            const likeCount = getLikeCount(comment.id);
+            
             return (
               <motion.div
                 key={comment.id}
@@ -220,6 +286,25 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                   </div>
                   <p className="text-sm text-muted-foreground break-words">{comment.content}</p>
                   <div className="flex gap-2 mt-2">
+                    {/* Like Button */}
+                    {user && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => likeCommentMutation.mutate({ commentId: comment.id, isLiked: liked })}
+                        disabled={likeCommentMutation.isPending}
+                        className={`h-6 px-2 text-xs gap-1 ${liked ? "text-red-500" : "text-muted-foreground"}`}
+                      >
+                        <Heart className={`w-3 h-3 ${liked ? "fill-red-500" : ""}`} />
+                        {likeCount > 0 && likeCount}
+                      </Button>
+                    )}
+                    {!user && likeCount > 0 && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Heart className="w-3 h-3" />
+                        {likeCount}
+                      </span>
+                    )}
                     {canDelete(comment) && (
                       <Button
                         variant="ghost"
@@ -236,13 +321,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() =>
-                          flagCommentMutation.mutate({
-                            commentId: comment.id,
-                            reason: "Inappropriate content",
-                          })
-                        }
-                        disabled={flagCommentMutation.isPending}
+                        onClick={() => handleReportClick(comment.id)}
                         className="h-6 px-2 text-xs text-muted-foreground"
                       >
                         <Flag className="w-3 h-3 mr-1" />
@@ -259,6 +338,19 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
         <p className="text-sm text-muted-foreground text-center py-4">
           No comments yet. Be the first!
         </p>
+      )}
+
+      {/* Report Dialog */}
+      {reportingCommentId && (
+        <ReportDialog
+          open={reportDialogOpen}
+          onOpenChange={(open) => {
+            setReportDialogOpen(open);
+            if (!open) setReportingCommentId(null);
+          }}
+          contentType="profile_comment"
+          contentId={reportingCommentId}
+        />
       )}
     </div>
   );

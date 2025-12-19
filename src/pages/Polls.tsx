@@ -23,6 +23,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { PreviousPollModal } from "@/components/PreviousPollModal";
 
 interface Poll {
   id: string;
@@ -392,74 +393,43 @@ export default function Polls() {
     );
   }
 
-  // Previous Poll Card Component with expandable details
+  // State for previous poll modal
+  const [selectedPreviousPoll, setSelectedPreviousPoll] = useState<Poll | null>(null);
+  const [previousPollModalOpen, setPreviousPollModalOpen] = useState(false);
+
+
+  // Previous Poll Card Component - now opens modal on click
   const PreviousPollCard = ({ 
     poll, 
     winner, 
-    expired,
-    voteCountsData 
+    expired 
   }: { 
     poll: Poll; 
     winner: { option: string; votes: number; index: number };
     expired: boolean;
-    voteCountsData: Record<string, Record<number, number>>;
   }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    
-    const getVotePercentageForPoll = (optionIndex: number) => {
-      const pollVotes = voteCountsData[poll.id] || {};
-      const totalPollVotes = Object.values(pollVotes).reduce((a, b) => a + b, 0);
-      if (totalPollVotes === 0) return 0;
-      return Math.round(((pollVotes[optionIndex] || 0) / totalPollVotes) * 100);
-    };
-
-    const getVoteCountForPoll = (optionIndex: number) => {
-      return voteCountsData[poll.id]?.[optionIndex] || 0;
-    };
-
     return (
-      <div className="bg-secondary/30 rounded-lg overflow-hidden">
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full p-3 text-left hover:bg-secondary/50 transition-colors"
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <p className="font-medium text-sm flex-1">{poll.title}</p>
-            {expired && poll.is_active && (
-              <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded">Expired</span>
-            )}
-          </div>
-          {winner.votes > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <Trophy className="w-3 h-3 text-yellow-500" />
-              <span className="text-primary text-xs">{winner.option}</span>
-              <span className="text-muted-foreground text-xs">({winner.votes} votes)</span>
-            </div>
+      <button 
+        onClick={() => {
+          setSelectedPreviousPoll(poll);
+          setPreviousPollModalOpen(true);
+        }}
+        className="w-full bg-secondary/30 rounded-lg p-3 text-left hover:bg-secondary/50 transition-colors"
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <p className="font-medium text-sm flex-1">{poll.title}</p>
+          {expired && poll.is_active && (
+            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-500 rounded">Expired</span>
           )}
-        </button>
-        {isExpanded && (
-          <div className="px-3 pb-3 space-y-2 border-t border-border/50 pt-2">
-            {poll.options.map((option, optionIndex) => {
-              const percentage = getVotePercentageForPoll(optionIndex);
-              const voteCount = getVoteCountForPoll(optionIndex);
-              const isWinner = optionIndex === winner.index && winner.votes > 0;
-              
-              return (
-                <div key={optionIndex} className={`p-2 rounded ${isWinner ? "bg-primary/10 border border-primary/30" : "bg-secondary/30"}`}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="flex items-center gap-1">
-                      {isWinner && <Trophy className="w-3 h-3 text-yellow-500" />}
-                      {option}
-                    </span>
-                    <span className="text-muted-foreground">{percentage}% ({voteCount})</span>
-                  </div>
-                  <Progress value={percentage} className="h-1" />
-                </div>
-              );
-            })}
+        </div>
+        {winner.votes > 0 && (
+          <div className="flex items-center gap-2 text-sm">
+            <Trophy className="w-3 h-3 text-yellow-500" />
+            <span className="text-primary text-xs">{winner.option}</span>
+            <span className="text-muted-foreground text-xs">({winner.votes} votes)</span>
           </div>
         )}
-      </div>
+      </button>
     );
   };
 
@@ -588,7 +558,6 @@ export default function Polls() {
                             poll={poll} 
                             winner={winner} 
                             expired={expired}
-                            voteCountsData={voteCountsData}
                           />
                         );
                       })}
@@ -723,6 +692,14 @@ export default function Polls() {
             </div>
           </TabsContent>
         </Tabs>
+
+        {/* Previous Poll Modal */}
+        <PreviousPollModal
+          poll={selectedPreviousPoll}
+          open={previousPollModalOpen}
+          onOpenChange={setPreviousPollModalOpen}
+          voteCountsData={voteCountsData}
+        />
       </div>
     </div>
   );

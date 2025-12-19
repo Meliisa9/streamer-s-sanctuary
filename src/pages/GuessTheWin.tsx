@@ -229,7 +229,7 @@ function GuessTheWin() {
           </motion.div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           {/* Active Sessions - Compact Cards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -966,6 +966,35 @@ export type Database = {
         }
         Relationships: []
       }
+      profile_comment_likes: {
+        Row: {
+          comment_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_comment_likes_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "profile_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_comments: {
         Row: {
           author_id: string
@@ -973,6 +1002,7 @@ export type Database = {
           created_at: string
           id: string
           is_approved: boolean | null
+          likes_count: number | null
           profile_user_id: string
           updated_at: string
         }
@@ -982,6 +1012,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean | null
+          likes_count?: number | null
           profile_user_id: string
           updated_at?: string
         }
@@ -991,6 +1022,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean | null
+          likes_count?: number | null
           profile_user_id?: string
           updated_at?: string
         }
