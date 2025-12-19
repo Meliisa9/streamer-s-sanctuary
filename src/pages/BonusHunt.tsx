@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,10 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { InlineWinEditor } from "@/components/bonus-hunt/InlineWinEditor";
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
   Target, Trophy, TrendingUp, DollarSign, 
   CheckCircle2, Search, ChevronLeft, ChevronRight,
   ChevronsLeft, ChevronsRight, Zap, Star,
-  Lock, Users, ArrowUpDown, LayoutList
+  Lock, Users, ArrowUpDown, LayoutList, Calendar, History
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -75,6 +82,7 @@ export default function BonusHunt() {
   const [sortField, setSortField] = useState<"sort_order" | "bet_amount" | "multiplier" | "win_amount">("sort_order");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [activeTab, setActiveTab] = useState("stats");
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const SLOTS_PER_PAGE = 10;
   
   const canEditSlots = isAdmin || isModerator;
@@ -381,7 +389,10 @@ export default function BonusHunt() {
                 </Button>
               </div>
               
-              <div className="flex-1 bg-gradient-to-r from-primary/10 via-primary/20 to-primary/10 border border-primary/30 rounded-xl py-3 px-5 flex items-center justify-center gap-3 backdrop-blur-sm">
+              <button 
+                onClick={() => setIsHistoryOpen(true)}
+                className="flex-1 bg-gradient-to-r from-primary/10 via-primary/20 to-primary/10 border border-primary/30 rounded-xl py-3 px-5 flex items-center justify-center gap-3 backdrop-blur-sm hover:from-primary/15 hover:via-primary/25 hover:to-primary/15 transition-all cursor-pointer"
+              >
                 <div className={`w-2.5 h-2.5 rounded-full ${
                   displayHunt.status === "ongoing" ? "bg-green-500 animate-pulse" : 
                   displayHunt.status === "complete" ? "bg-primary" : "bg-yellow-500"
@@ -392,7 +403,8 @@ export default function BonusHunt() {
                 {displayHunt.status === "complete" && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">COMPLETED</span>
                 )}
-              </div>
+                <History className="w-4 h-4 text-muted-foreground ml-2" />
+              </button>
               
               <div className="flex gap-1">
                 <Button
@@ -407,12 +419,78 @@ export default function BonusHunt() {
                 <Button
                   variant="outline"
                   size="icon"
+                  onClick={() => setIsHistoryOpen(true)}
                   className="h-11 w-11 rounded-xl border-border/50 hover:bg-primary/10 hover:border-primary/30 transition-all"
                 >
                   <LayoutList className="w-4 h-4" />
                 </Button>
               </div>
             </motion.div>
+
+            {/* Hunt History Picker Dialog */}
+            <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
+              <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <History className="w-5 h-5" />
+                    Hunt History
+                  </DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-1 -mx-6 px-6">
+                  <div className="space-y-2 py-4">
+                    {hunts?.map((hunt, index) => {
+                      const huntNum = totalHunts - index;
+                      const isSelected = index === currentHuntIndex;
+                      
+                      return (
+                        <button
+                          key={hunt.id}
+                          onClick={() => {
+                            setCurrentHuntIndex(index);
+                            setSlotPage(0);
+                            setIsHistoryOpen(false);
+                          }}
+                          className={`w-full p-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
+                            isSelected 
+                              ? 'bg-primary/20 border-primary/50' 
+                              : 'bg-muted/20 border-border/50 hover:bg-muted/30 hover:border-border'
+                          }`}
+                        >
+                          <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                            hunt.status === "ongoing" ? "bg-green-500" : 
+                            hunt.status === "complete" ? "bg-primary" : "bg-yellow-500"
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">Hunt #{huntNum}</span>
+                              {hunt.status === "ongoing" && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-green-500/20 text-green-500">LIVE</span>
+                              )}
+                              {hunt.status === "complete" && hunt.winner_user_id && (
+                                <Trophy className="w-3.5 h-3.5 text-yellow-500" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3" />
+                              <span>{new Date(hunt.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                              {hunt.ending_balance && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-green-500">
+                                    {hunt.currency === "EUR" ? "€" : "$"}{hunt.ending_balance.toLocaleString()}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {isSelected && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

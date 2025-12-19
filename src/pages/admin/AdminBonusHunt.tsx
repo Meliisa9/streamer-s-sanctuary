@@ -1192,8 +1192,8 @@ export default function AdminBonusHunt() {
                   )}
                   
                   <div className="flex gap-2">
-                    {/* Determine Winner Button */}
-                    {canDetermineWinner && (
+                    {/* Determine Winner Button - only show if no winner picked yet */}
+                    {canDetermineWinner && !hasWinner && (
                       <Button
                         variant="default"
                         size="sm"
@@ -1499,16 +1499,47 @@ export default function AdminBonusHunt() {
             <DialogTitle>Quick Add Slots</DialogTitle>
           </DialogHeader>
           {quickAddHuntId && (
-            <QuickSlotEntry
+            <QuickAddSlotsContent
+              huntId={quickAddHuntId}
               onAddSlots={async (slotsToAdd) => {
                 await bulkAddSlotsMutation.mutateAsync({ huntId: quickAddHuntId, slotsToAdd });
               }}
               isLoading={bulkAddSlotsMutation.isPending}
-              existingSlotCount={slots?.length || 0}
             />
           )}
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// Separate component that fetches its own slot count
+function QuickAddSlotsContent({ 
+  huntId, 
+  onAddSlots, 
+  isLoading 
+}: { 
+  huntId: string; 
+  onAddSlots: (slots: { slot_name: string; provider: string; bet_amount: string }[]) => Promise<void>;
+  isLoading: boolean;
+}) {
+  const { data: slotCount } = useQuery({
+    queryKey: ["quick-add-slot-count", huntId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("bonus_hunt_slots")
+        .select("*", { count: "exact", head: true })
+        .eq("hunt_id", huntId);
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
+  return (
+    <QuickSlotEntry
+      onAddSlots={onAddSlots}
+      isLoading={isLoading}
+      existingSlotCount={slotCount || 0}
+    />
   );
 }
