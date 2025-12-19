@@ -9,6 +9,7 @@ import { Plus, Pencil, Trash2, Search, Users, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Streamer {
   id: string;
@@ -24,6 +25,15 @@ interface Streamer {
   is_main_streamer: boolean;
   is_active: boolean;
   sort_order: number;
+  linked_user_id: string | null;
+  streamer_type: string;
+}
+
+interface UserProfile {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 export default function AdminStreamers() {
@@ -46,6 +56,8 @@ export default function AdminStreamers() {
     is_main_streamer: false,
     is_active: true,
     sort_order: 0,
+    linked_user_id: "",
+    streamer_type: "streamer",
   });
 
   const { data: streamers, isLoading } = useQuery({
@@ -54,6 +66,15 @@ export default function AdminStreamers() {
       const { data, error } = await supabase.from("streamers").select("*").order("sort_order", { ascending: true });
       if (error) throw error;
       return data as Streamer[];
+    },
+  });
+
+  const { data: users } = useQuery({
+    queryKey: ["admin-users-for-linking"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("user_id, username, display_name, avatar_url").order("username");
+      if (error) throw error;
+      return data as UserProfile[];
     },
   });
 
@@ -110,6 +131,8 @@ export default function AdminStreamers() {
       is_main_streamer: false,
       is_active: true,
       sort_order: 0,
+      linked_user_id: "",
+      streamer_type: "streamer",
     });
     setEditingStreamer(null);
     setImageFile(null);
@@ -130,10 +153,13 @@ export default function AdminStreamers() {
       is_main_streamer: streamer.is_main_streamer,
       is_active: streamer.is_active,
       sort_order: streamer.sort_order,
+      linked_user_id: streamer.linked_user_id || "",
+      streamer_type: streamer.streamer_type || "streamer",
     });
     setImagePreview(streamer.image_url);
     setIsDialogOpen(true);
   };
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,7 +187,11 @@ export default function AdminStreamers() {
       imageUrl = publicUrl;
     }
 
-    const dataToSave = { ...formData, image_url: imageUrl };
+    const dataToSave = { 
+      ...formData, 
+      image_url: imageUrl,
+      linked_user_id: formData.linked_user_id || null,
+    };
 
     if (editingStreamer) {
       updateMutation.mutate({ id: editingStreamer.id, data: dataToSave });
@@ -246,6 +276,41 @@ export default function AdminStreamers() {
                 <Label>Sort Order</Label>
                 <Input type="number" value={formData.sort_order} onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })} />
               </div>
+              
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select value={formData.streamer_type} onValueChange={(v) => setFormData({ ...formData, streamer_type: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="streamer">Streamer</SelectItem>
+                    <SelectItem value="team_member">Team Member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Link to User Profile</Label>
+                <Select 
+                  value={formData.linked_user_id} 
+                  onValueChange={(v) => setFormData({ ...formData, linked_user_id: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No linked user</SelectItem>
+                    {users?.map((user) => (
+                      <SelectItem key={user.user_id} value={user.user_id}>
+                        {user.username || user.display_name || user.user_id.slice(0, 8)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">When linked, clicking the avatar will redirect to the user profile.</p>
+              </div>
+
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <Switch checked={formData.is_main_streamer} onCheckedChange={(checked) => setFormData({ ...formData, is_main_streamer: checked })} />
