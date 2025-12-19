@@ -63,6 +63,7 @@ interface BonusHunt {
   highest_win: number | null;
   highest_multiplier: number | null;
   starting_balance?: number | null;
+  start_time?: string | null;
   currency?: string;
   winner_points?: number;
   winner_user_id?: string | null;
@@ -183,9 +184,16 @@ export default function AdminBonusHunt() {
   const [tempSlots, setTempSlots] = useState<TempSlot[]>([]);
   const [newSlotForm, setNewSlotForm] = useState({ slot_name: "", provider: "", bet_amount: "" });
 
+  // DnD sensors must be created unconditionally (prevents blank page / hooks mismatch)
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   const [huntForm, setHuntForm] = useState({
     title: "",
     date: new Date().toISOString().split("T")[0],
+    start_time: "",
     status: "to_be_played" as "ongoing" | "complete" | "to_be_played",
     starting_balance: "",
     target_balance: "",
@@ -509,6 +517,7 @@ export default function AdminBonusHunt() {
     setHuntForm({
       title: "",
       date: new Date().toISOString().split("T")[0],
+      start_time: "",
       status: "to_be_played",
       starting_balance: "",
       target_balance: "",
@@ -544,6 +553,7 @@ export default function AdminBonusHunt() {
       const huntPayload = {
         title: huntForm.title,
         date: huntForm.date,
+        start_time: huntForm.start_time ? new Date(huntForm.start_time).toISOString() : null,
         status: huntForm.status,
         starting_balance: huntForm.starting_balance ? parseFloat(huntForm.starting_balance) : null,
         target_balance: huntForm.target_balance ? parseFloat(huntForm.target_balance) : null,
@@ -599,6 +609,7 @@ export default function AdminBonusHunt() {
       const payload = {
         title: data.title,
         date: data.date,
+        start_time: data.start_time ? new Date(data.start_time).toISOString() : null,
         status: data.status,
         starting_balance: data.starting_balance ? parseFloat(data.starting_balance) : null,
         target_balance: data.target_balance ? parseFloat(data.target_balance) : null,
@@ -797,6 +808,7 @@ export default function AdminBonusHunt() {
     setHuntForm({
       title: hunt.title,
       date: hunt.date,
+      start_time: hunt.start_time ? hunt.start_time.slice(0, 16) : "",
       status: hunt.status,
       starting_balance: hunt.starting_balance?.toString() || "",
       target_balance: hunt.target_balance?.toString() || "",
@@ -918,7 +930,18 @@ export default function AdminBonusHunt() {
                     />
                   </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Start Time</Label>
+                    <Input
+                      type="datetime-local"
+                      value={huntForm.start_time}
+                      onChange={(e) => setHuntForm({ ...huntForm, start_time: e.target.value })}
+                      placeholder="YYYY-MM-DDTHH:mm"
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">Guesses lock automatically at this time.</p>
+                  </div>
                   <div>
                     <Label>Status</Label>
                     <Select
@@ -935,6 +958,9 @@ export default function AdminBonusHunt() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Currency</Label>
                     <Select
@@ -953,10 +979,29 @@ export default function AdminBonusHunt() {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div />
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Starting Balance</Label>
+                    <Input
+                      type="number"
+                      value={huntForm.starting_balance}
+                      onChange={(e) => setHuntForm({ ...huntForm, starting_balance: e.target.value })}
+                      placeholder="5000"
+                    />
+                  </div>
+                  <div>
+                    <Label>Target Balance</Label>
+                    <Input
+                      type="number"
+                      value={huntForm.target_balance}
+                      onChange={(e) => setHuntForm({ ...huntForm, target_balance: e.target.value })}
+                      placeholder="10000"
+                    />
+                  </div>
+                </div>
                     <Input
                       type="number"
                       value={huntForm.starting_balance}
@@ -1439,10 +1484,7 @@ export default function AdminBonusHunt() {
 
           {/* Slots Table with Drag-Drop */}
           <DndContext
-            sensors={useSensors(
-              useSensor(PointerSensor),
-              useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-            )}
+            sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={async (event: DragEndEvent) => {
               const { active, over } = event;

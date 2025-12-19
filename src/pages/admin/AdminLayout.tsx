@@ -80,7 +80,6 @@ const navSections: NavSection[] = [
     title: "Gaming",
     roles: ["admin", "moderator"],
     items: [
-      { icon: Target, label: "GTW Sessions", path: "/admin/gtw", roles: ["admin", "moderator"] },
       { icon: Crosshair, label: "Bonus Hunt", path: "/admin/bonus-hunt", roles: ["admin", "moderator"] },
       { icon: BarChart3, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
     ],

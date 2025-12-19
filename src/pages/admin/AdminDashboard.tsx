@@ -369,7 +369,6 @@ export default function AdminDashboard() {
             <AdminQuickAction icon={Newspaper} label="Write Article" href="/admin/news" description="Create news post" color="bg-green-500/10 text-green-500" />
             <AdminQuickAction icon={Gift} label="Create Giveaway" href="/admin/giveaways" description="Start new giveaway" color="bg-purple-500/10 text-purple-500" />
             <AdminQuickAction icon={Calendar} label="Add Event" href="/admin/events" description="Schedule event" color="bg-orange-500/10 text-orange-500" />
-            <AdminQuickAction icon={Target} label="GTW Session" href="/admin/gtw" description="New guess the win" color="bg-cyan-500/10 text-cyan-500" />
             {isAdmin && <AdminQuickAction icon={Users} label="Manage Users" href="/admin/users" description="User management" color="bg-pink-500/10 text-pink-500" />}
           </div>
         </AdminCard>
