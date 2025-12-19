@@ -20,8 +20,11 @@ import {
   Target,
   Bell,
   FileText,
-  RefreshCw
+  RefreshCw,
+  Radio
 } from "lucide-react";
+import { LiveStreamStatus } from "@/components/admin/LiveStreamStatus";
+import { SystemMonitor } from "@/components/admin/SystemMonitor";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -354,6 +357,12 @@ export default function AdminDashboard() {
             <p className="text-xs text-muted-foreground">Total Giveaways</p>
           </div>
         </motion.div>
+      </div>
+
+      {/* Stream Status & System Monitor Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <LiveStreamStatus />
+        <SystemMonitor />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

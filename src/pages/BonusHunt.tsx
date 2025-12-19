@@ -538,6 +538,14 @@ export default function BonusHunt() {
                 <span className="font-black text-lg tracking-wide">HUNT #{huntNumber}</span>
                 <span className="text-muted-foreground text-sm hidden sm:inline">•</span>
                 <span className="text-muted-foreground text-sm hidden sm:inline">{formatDate(displayHunt.date)}</span>
+                {displayHunt.start_time && (
+                  <>
+                    <span className="text-muted-foreground text-sm hidden md:inline">•</span>
+                    <span className="text-xs text-muted-foreground hidden md:inline">
+                      {new Date(displayHunt.start_time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </>
+                )}
                 {displayHunt.status === "complete" && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">COMPLETED</span>
                 )}
@@ -565,6 +573,30 @@ export default function BonusHunt() {
               </div>
             </motion.div>
 
+            {/* Countdown Banner - Outside Tabs */}
+            {displayHunt.start_time && countdown.isActive && displayHunt.status === "to_be_played" && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/30 rounded-xl p-4"
+              >
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    <span className="font-medium">Hunt starts in</span>
+                  </div>
+                  <span className="text-2xl font-black text-primary">{countdown.label}</span>
+                  <span className="text-sm text-muted-foreground">
+                    ({new Date(displayHunt.start_time).toLocaleString("en-GB", { 
+                      day: "numeric", 
+                      month: "short", 
+                      hour: "2-digit", 
+                      minute: "2-digit" 
+                    })})
+                  </span>
+                </div>
+              </motion.div>
+            )}
             {/* Hunt History Picker Dialog */}
             <Dialog open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
               <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
@@ -846,23 +878,6 @@ export default function BonusHunt() {
                         value={displayHunt.status === "ongoing" ? "LIVE" : displayHunt.status === "to_be_played" ? "UPCOMING" : "ENDED"}
                         valueColor={displayHunt.status === "ongoing" ? "text-green-500" : displayHunt.status === "to_be_played" ? "text-yellow-500" : ""}
                       />
-                      {displayHunt.start_time && (
-                        <>
-                          <StatRow 
-                            icon="⏰" 
-                            label="START TIME" 
-                            value={new Date(displayHunt.start_time).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          />
-                          {countdown.isActive && (
-                            <StatRow
-                              icon="⏳"
-                              label="STARTS IN"
-                              value={countdown.label}
-                              valueColor="text-primary"
-                            />
-                          )}
-                        </>
-                      )}
                       <StatRow icon="🎁" label="BONUS" value={slots?.length || 0} />
                       <StatRow icon="🎯" label="TARGET BALANCE" value={`${currencySymbol}${displayHunt.target_balance?.toLocaleString() || '0'}`} />
                       <StatRow 

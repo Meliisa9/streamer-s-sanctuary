@@ -259,6 +259,7 @@ export type Database = {
       bonus_hunts: {
         Row: {
           average_bet: number | null
+          avgx_bet_ranges: Json | null
           created_at: string
           created_by: string | null
           currency: string | null
@@ -278,6 +279,7 @@ export type Database = {
         }
         Insert: {
           average_bet?: number | null
+          avgx_bet_ranges?: Json | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
@@ -297,6 +299,7 @@ export type Database = {
         }
         Update: {
           average_bet?: number | null
+          avgx_bet_ranges?: Json | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
@@ -1633,6 +1636,10 @@ export type Database = {
       determine_avgx_winners: {
         Args: { hunt_id_param: string }
         Returns: undefined
+      }
+      generate_avgx_bet_ranges: {
+        Args: { hunt_id_param: string }
+        Returns: Json
       }
       has_permission: {
         Args: { _permission: string; _user_id: string }
