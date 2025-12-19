@@ -24,6 +24,7 @@ import { useUserFollow } from "@/hooks/useUserFollow";
 import { ProfileComments } from "@/components/ProfileComments";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { FollowersModal } from "@/components/FollowersModal";
+import { UserImageLink } from "@/components/UserAvatarLink";
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -35,6 +36,7 @@ export default function Profile() {
   const [connectingProvider, setConnectingProvider] = useState<string | null>(null);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
+  const [activeTab, setActiveTab] = useState("profile");
   const { achievements, getAchievementProgress, stats, refreshAchievements, getLevelInfo } = useAchievements();
   const { following, followers, followersCount, followingCount } = useUserFollow(user?.id);
   const { bookmarks, getBookmarksByType } = useBookmarks();
@@ -121,6 +123,29 @@ export default function Profile() {
       setSearchParams({});
     }
   }, [searchParams, user]);
+
+  // Handle hash-based comment navigation (e.g., #comment-123)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith("#comment-")) {
+      // Switch to social tab first
+      setActiveTab("social");
+      // Wait for tab content to render, then scroll to comment
+      setTimeout(() => {
+        const commentId = hash.replace("#", "");
+        const element = document.getElementById(commentId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add("ring-2", "ring-primary", "ring-offset-2");
+          setTimeout(() => {
+            element.classList.remove("ring-2", "ring-primary", "ring-offset-2");
+          }, 3000);
+        }
+      }, 300);
+    } else if (hash === "#wall") {
+      setActiveTab("social");
+    }
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -423,7 +448,7 @@ export default function Profile() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
         >
-          <Tabs defaultValue="profile" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="w-full justify-start mb-6 bg-secondary/30 p-1 rounded-xl flex-wrap">
               <TabsTrigger value="profile" className="gap-2">
                 <User className="w-4 h-4" />
@@ -690,11 +715,12 @@ export default function Profile() {
                   {followers && followers.length > 0 ? (
                     <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
                       {followers.map((f) => (
-                        <Link
+                        <UserImageLink
                           key={f.follower_id}
-                          to={`/user/${f.profile?.username || f.follower_id}`}
+                          userId={f.follower_id}
+                          username={f.profile?.username}
+                          avatarUrl={f.profile?.avatar_url}
                           className="group"
-                          title={f.profile?.display_name || f.profile?.username || "User"}
                         >
                           <div className="w-12 h-12 rounded-full bg-secondary border-2 border-transparent group-hover:border-primary transition-all overflow-hidden">
                             {f.profile?.avatar_url ? (
@@ -705,7 +731,7 @@ export default function Profile() {
                               </div>
                             )}
                           </div>
-                        </Link>
+                        </UserImageLink>
                       ))}
                     </div>
                   ) : (
@@ -719,11 +745,12 @@ export default function Profile() {
                   {following && following.length > 0 ? (
                     <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
                       {following.map((f) => (
-                        <Link
+                        <UserImageLink
                           key={f.following_id}
-                          to={`/user/${f.profile?.username || f.following_id}`}
+                          userId={f.following_id}
+                          username={f.profile?.username}
+                          avatarUrl={f.profile?.avatar_url}
                           className="group"
-                          title={f.profile?.display_name || f.profile?.username || "User"}
                         >
                           <div className="w-12 h-12 rounded-full bg-secondary border-2 border-transparent group-hover:border-primary transition-all overflow-hidden">
                             {f.profile?.avatar_url ? (
@@ -734,7 +761,7 @@ export default function Profile() {
                               </div>
                             )}
                           </div>
-                        </Link>
+                        </UserImageLink>
                       ))}
                     </div>
                   ) : (

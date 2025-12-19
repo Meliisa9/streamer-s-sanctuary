@@ -7,6 +7,7 @@ import { Target, Trophy, Users, Clock, Lock, CheckCircle2, History, Medal, Star,
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { UserImageLink } from "@/components/UserAvatarLink";
 import type { Tables } from "@/integrations/supabase/types";
 
 type GTWSession = Tables<"gtw_sessions"> & { currency?: string };
@@ -92,7 +93,7 @@ function GuessTheWin() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("username, display_name, points, avatar_url")
+        .select("user_id, username, display_name, points, avatar_url")
         .order("points", { ascending: false })
         .limit(8);
       if (error) throw error;
@@ -399,7 +400,12 @@ function GuessTheWin() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {recentWinners.map((session: any) => (
                     <div key={session.id} className="glass rounded-lg p-3 flex items-center gap-3">
-                      <Link to={`/user/${session.profiles?.username}`} className="flex-shrink-0">
+                      <UserImageLink 
+                        userId={session.winner_id || ""} 
+                        username={session.profiles?.username}
+                        avatarUrl={session.profiles?.avatar_url}
+                        className="flex-shrink-0"
+                      >
                         <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
                           {session.profiles?.avatar_url ? (
                             <img src={session.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -407,11 +413,15 @@ function GuessTheWin() {
                             <Trophy className="w-5 h-5 text-accent" />
                           )}
                         </div>
-                      </Link>
+                      </UserImageLink>
                       <div className="flex-1 min-w-0">
-                        <Link to={`/user/${session.profiles?.username}`} className="font-medium text-sm truncate hover:text-primary transition-colors block">
+                        <UserImageLink 
+                          userId={session.winner_id || ""} 
+                          username={session.profiles?.username}
+                          className="font-medium text-sm truncate hover:text-primary transition-colors block"
+                        >
                           {session.profiles?.display_name || session.profiles?.username || "Winner"}
-                        </Link>
+                        </UserImageLink>
                         <p className="text-xs text-muted-foreground truncate">{session.title}</p>
                       </div>
                       <span className="text-accent font-bold text-sm">
@@ -452,7 +462,12 @@ function GuessTheWin() {
                       }`}>
                         {index + 1}
                       </span>
-                      <Link to={`/user/${player.username}`} className="flex-shrink-0">
+                      <UserImageLink 
+                        userId={player.user_id} 
+                        username={player.username}
+                        avatarUrl={player.avatar_url}
+                        className="flex-shrink-0"
+                      >
                         <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-primary transition-all cursor-pointer">
                           {player.avatar_url ? (
                             <img src={player.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -462,11 +477,15 @@ function GuessTheWin() {
                             </span>
                           )}
                         </div>
-                      </Link>
+                      </UserImageLink>
                       <div className="flex-1 min-w-0">
-                        <Link to={`/user/${player.username}`} className="font-medium text-sm truncate hover:text-primary transition-colors block">
+                        <UserImageLink 
+                          userId={player.user_id} 
+                          username={player.username}
+                          className="font-medium text-sm truncate hover:text-primary transition-colors block"
+                        >
                           {player.display_name || player.username}
-                        </Link>
+                        </UserImageLink>
                       </div>
                       <span className="font-bold text-primary text-sm">{player.points?.toLocaleString()}</span>
                     </div>

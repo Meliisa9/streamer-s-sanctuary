@@ -2,10 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, Users, Loader2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Users, Loader2 } from "lucide-react";
+import { UserAvatarLink } from "@/components/UserAvatarLink";
 
 interface FollowersModalProps {
   isOpen: boolean;
@@ -88,28 +87,25 @@ export function FollowersModal({ isOpen, onClose, userId, initialTab = "follower
 
     return (
       <div className="space-y-2 max-h-[400px] overflow-y-auto">
-        {users.map((user) => (
-          <Link
-            key={user.user_id}
-            to={`/user/${user.username || user.user_id}`}
+        {users.map((userItem) => (
+          <UserAvatarLink
+            key={userItem.user_id}
+            userId={userItem.user_id}
+            username={userItem.username}
+            avatarUrl={userItem.avatar_url}
+            size="lg"
             onClick={onClose}
             className="flex items-center gap-3 p-3 rounded-xl hover:bg-secondary/50 transition-colors"
           >
-            <Avatar className="w-10 h-10">
-              <AvatarImage src={user.avatar_url || undefined} />
-              <AvatarFallback>
-                <User className="w-5 h-5" />
-              </AvatarFallback>
-            </Avatar>
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">
-                {user.display_name || user.username || "Anonymous"}
+                {userItem.display_name || userItem.username || "Anonymous"}
               </p>
-              {user.username && (
-                <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
+              {userItem.username && (
+                <p className="text-sm text-muted-foreground truncate">@{userItem.username}</p>
               )}
             </div>
-          </Link>
+          </UserAvatarLink>
         ))}
       </div>
     );
