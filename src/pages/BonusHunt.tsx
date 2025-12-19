@@ -4,16 +4,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useBonusHuntRealtime } from "@/hooks/useBonusHuntRealtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { BonusHuntProgress } from "@/components/bonus-hunt/BonusHuntProgress";
 import { 
   Target, Trophy, TrendingUp, DollarSign, 
   Clock, CheckCircle2, History, Search,
   ChevronLeft, ChevronRight, Zap, Star,
   Play, Pause, Hash, Coins, BarChart3,
-  Calendar, Timer, ArrowUpRight
+  Calendar, Timer, ArrowUpRight, Radio
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -96,6 +98,9 @@ export default function BonusHunt() {
     },
     enabled: !!activeHuntId,
   });
+
+  // Enable real-time updates
+  useBonusHuntRealtime(activeHuntId);
 
   // Fetch user's guess for current hunt
   const { data: userGuess } = useQuery({
@@ -522,6 +527,22 @@ export default function BonusHunt() {
               transition={{ delay: 0.1 }}
               className="space-y-4"
             >
+              {/* Progress Indicator */}
+              {displayHunt.starting_balance && displayHunt.starting_balance > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Radio className="w-3 h-3 text-green-500 animate-pulse" />
+                    <span>Live Updates Enabled</span>
+                  </div>
+                  <BonusHuntProgress
+                    startingBalance={displayHunt.starting_balance}
+                    currentBalance={totalWinnings}
+                    targetBalance={displayHunt.target_balance || undefined}
+                    currency={displayHunt.currency || "USD"}
+                  />
+                </div>
+              )}
+
               {/* Summary Box */}
               <div className="bg-card/30 border border-border/50 rounded-xl p-5">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Summary</h3>
