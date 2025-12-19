@@ -61,10 +61,10 @@ serve(async (req) => {
     console.log(`Admin code action: ${action} for user: ${user.id}`);
 
     if (action === 'check') {
-      // Check if user has an access code set
+      // Check if user has an access code set (not just row exists, but has actual code)
       const { data, error } = await supabaseAdmin
         .from('admin_access_codes')
-        .select('id')
+        .select('id, access_code')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -73,8 +73,12 @@ serve(async (req) => {
         throw error;
       }
 
+      // Only return hasCode: true if row exists AND access_code is not empty
+      const hasCode = !!data && !!data.access_code && data.access_code.trim() !== '';
+      console.log(`Check result for user ${user.id}: hasCode=${hasCode}`);
+
       return new Response(
-        JSON.stringify({ hasCode: !!data }),
+        JSON.stringify({ hasCode }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
