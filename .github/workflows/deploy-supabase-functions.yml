@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'supabase/functions/**'
+      - 'supabase/config.toml'
+  workflow_dispatch:
 
 jobs:
   deploy:
