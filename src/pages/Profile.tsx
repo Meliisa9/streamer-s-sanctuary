@@ -874,11 +874,11 @@ export default function Profile() {
                               <div className="flex-1">
                                 <p className="font-medium text-sm">{achievement.name}</p>
                                 <p className="text-xs text-muted-foreground">{achievement.description}</p>
-                                {!progress.unlocked && progress.current !== undefined && (
+                                {!progress.unlocked && progress.progress !== undefined && (
                                   <div className="mt-2">
-                                    <Progress value={(progress.current / achievement.requirement) * 100} className="h-1" />
+                                    <Progress value={(progress.progress / achievement.requirement) * 100} className="h-1" />
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      {progress.current}/{achievement.requirement}
+                                      {progress.progress}/{achievement.requirement}
                                     </p>
                                   </div>
                                 )}
