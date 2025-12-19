@@ -36,7 +36,7 @@ export default function Profile() {
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
   const { achievements, getAchievementProgress, stats, refreshAchievements, getLevelInfo } = useAchievements();
-  const { following, followers } = useUserFollow(user?.id);
+  const { following, followers, followersCount, followingCount } = useUserFollow(user?.id);
   const { bookmarks, getBookmarksByType } = useBookmarks();
   
   const [formData, setFormData] = useState({
@@ -380,14 +380,14 @@ export default function Profile() {
                   onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
                   className="text-center hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <p className="text-2xl font-bold">{profile?.followers_count || 0}</p>
+                  <p className="text-2xl font-bold">{followersCount}</p>
                   <p className="text-xs text-muted-foreground">Followers</p>
                 </button>
                 <button 
                   onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
                   className="text-center hover:opacity-80 transition-opacity cursor-pointer"
                 >
-                  <p className="text-2xl font-bold">{profile?.following_count || 0}</p>
+                  <p className="text-2xl font-bold">{followingCount}</p>
                   <p className="text-xs text-muted-foreground">Following</p>
                 </button>
                 <div className="text-center">

@@ -38,13 +38,13 @@ export async function notifyFollow(followerId: string, followingId: string, foll
   });
 }
 
-export async function notifyComment(profileOwnerId: string, commenterName: string, profileUsername: string) {
+export async function notifyComment(profileOwnerId: string, commenterName: string, _profileUsername: string) {
   await sendSocialNotification({
     userId: profileOwnerId,
     type: "comment",
     title: "New Comment",
     message: `${commenterName} commented on your profile`,
-    link: `/user/${profileUsername}`,
+    link: `/profile`,
   });
 }
 
