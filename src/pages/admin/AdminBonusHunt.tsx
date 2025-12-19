@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useBonusHuntRealtime } from "@/hooks/useBonusHuntRealtime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,13 +24,15 @@ import {
 import { 
   Plus, Edit2, Trash2, Trophy, Target, Loader2, 
   ListPlus, Eye, CheckCircle2, ArrowRight, ArrowLeft, X,
-  Calculator, RefreshCw
+  Calculator, RefreshCw, Zap, Radio
 } from "lucide-react";
 import { 
   calculateBonusHuntStats, 
   calculateMultiplier, 
   updateBonusHuntStats 
 } from "@/hooks/useBonusHuntCalculations";
+import { QuickSlotEntry } from "@/components/bonus-hunt/QuickSlotEntry";
+import { BonusHuntProgress } from "@/components/bonus-hunt/BonusHuntProgress";
 
 interface BonusHunt {
   id: string;
@@ -70,6 +73,7 @@ export default function AdminBonusHunt() {
   const queryClient = useQueryClient();
   const [isHuntDialogOpen, setIsHuntDialogOpen] = useState(false);
   const [isSlotDialogOpen, setIsSlotDialogOpen] = useState(false);
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [editingHunt, setEditingHunt] = useState<BonusHunt | null>(null);
   const [selectedHuntForSlots, setSelectedHuntForSlots] = useState<BonusHunt | null>(null);
   const [editingSlot, setEditingSlot] = useState<BonusHuntSlot | null>(null);
@@ -103,6 +107,9 @@ export default function AdminBonusHunt() {
     sort_order: 0,
   });
 
+  // Enable real-time updates
+  useBonusHuntRealtime(selectedHuntForSlots?.id);
+
   const { data: hunts, isLoading } = useQuery({
     queryKey: ["admin-bonus-hunts"],
     queryFn: async () => {
@@ -129,6 +136,11 @@ export default function AdminBonusHunt() {
     },
     enabled: !!selectedHuntForSlots,
   });
+
+  // Calculate live stats for the selected hunt
+  const liveStats = slots && selectedHuntForSlots 
+    ? calculateBonusHuntStats(slots, selectedHuntForSlots.starting_balance || null)
+    : null;
 
   const resetHuntForm = () => {
     setHuntForm({
@@ -377,6 +389,37 @@ export default function AdminBonusHunt() {
     queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
     toast({ title: "Stats recalculated successfully!" });
   };
+
+  // Bulk add slots mutation
+  const bulkAddSlotsMutation = useMutation({
+    mutationFn: async (slotsToAdd: { slot_name: string; provider: string; bet_amount: string }[]) => {
+      if (!selectedHuntForSlots) throw new Error("No hunt selected");
+      
+      const currentSlotCount = slots?.length || 0;
+      const payload = slotsToAdd.map((slot, index) => ({
+        hunt_id: selectedHuntForSlots.id,
+        slot_name: slot.slot_name,
+        provider: slot.provider || null,
+        bet_amount: slot.bet_amount ? parseFloat(slot.bet_amount) : null,
+        sort_order: currentSlotCount + index + 1,
+      }));
+
+      const { error } = await supabase.from("bonus_hunt_slots").insert(payload);
+      if (error) throw error;
+      
+      return selectedHuntForSlots.id;
+    },
+    onSuccess: async (huntId) => {
+      await updateBonusHuntStats(huntId);
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunt-slots"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-bonus-hunts"] });
+      toast({ title: `Slots added - Stats recalculated!` });
+      setIsQuickAddOpen(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
 
   const handleEditHunt = (hunt: BonusHunt) => {
     setEditingHunt(hunt);
@@ -807,8 +850,28 @@ export default function AdminBonusHunt() {
                 onClick={recalculateStats}
               >
                 <RefreshCw className="w-4 h-4" />
-                Recalculate Stats
+                Recalculate
               </Button>
+              <Dialog open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Zap className="w-4 h-4" />
+                    Quick Add
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Quick Add Slots</DialogTitle>
+                  </DialogHeader>
+                  <QuickSlotEntry
+                    onAddSlots={async (slotsToAdd) => {
+                      await bulkAddSlotsMutation.mutateAsync(slotsToAdd);
+                    }}
+                    isLoading={bulkAddSlotsMutation.isPending}
+                    existingSlotCount={slots?.length || 0}
+                  />
+                </DialogContent>
+              </Dialog>
               <Dialog open={isSlotDialogOpen} onOpenChange={setIsSlotDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2" onClick={resetSlotForm}>
