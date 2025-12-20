@@ -162,12 +162,14 @@ function isNavItemActive(itemPath: string, currentPath: string): boolean {
     return currentPath === "/admin/stream";
   }
   
-  // For settings, match exact /admin/settings or settings sub-pages except auth-health
+  // For settings main page, only match exact path (sub-pages have their own nav items)
   if (itemPath === "/admin/settings") {
-    // Exclude auth-health which has its own nav state
-    if (currentPath === "/admin/auth-health") return false;
-    // Match /admin/settings exactly or any sub-path like /admin/settings/navigation
-    return currentPath === "/admin/settings" || currentPath.startsWith("/admin/settings/");
+    return currentPath === "/admin/settings";
+  }
+  
+  // For settings sub-pages, match exact path only
+  if (itemPath.startsWith("/admin/settings/")) {
+    return currentPath === itemPath;
   }
   
   // Standard prefix matching for other items
