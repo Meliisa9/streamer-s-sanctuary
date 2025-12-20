@@ -112,13 +112,6 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
             transition={{ duration: 0.5 }}
           >
             <div className="flex items-center gap-3 mb-4">
-              {settings.logo_url ? (
-                <img src={settings.logo_url} alt={settings.site_name} className="w-10 h-10 rounded-xl object-cover" />
-              ) : (
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-neon flex items-center justify-center">
-                  <span className="text-xl font-bold text-primary-foreground">{settings.site_name[0]}</span>
-                </div>
-              )}
               <span className="font-space-grotesk font-bold text-xl">{settings.site_name}</span>
             </div>
             <p className="text-sm text-muted-foreground mb-4">

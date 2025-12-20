@@ -28,6 +28,10 @@ interface Prediction {
   loss_pool: number;
   min_bet: number;
   max_bet: number;
+  option_a_label: string;
+  option_b_label: string;
+  option_a_pool: number;
+  option_b_pool: number;
   created_at: string;
 }
 
@@ -41,6 +45,8 @@ export default function AdminPredictions() {
     description: "",
     min_bet: 10,
     max_bet: 1000,
+    option_a_label: "Profit",
+    option_b_label: "Loss",
   });
   const { user } = useAuth();
   const { toast } = useToast();
@@ -75,6 +81,8 @@ export default function AdminPredictions() {
           description: formData.description || null,
           min_bet: formData.min_bet,
           max_bet: formData.max_bet,
+          option_a_label: formData.option_a_label,
+          option_b_label: formData.option_b_label,
         })
         .eq("id", editingPrediction.id);
 
@@ -89,6 +97,8 @@ export default function AdminPredictions() {
         description: formData.description || null,
         min_bet: formData.min_bet,
         max_bet: formData.max_bet,
+        option_a_label: formData.option_a_label,
+        option_b_label: formData.option_b_label,
         created_by: user?.id,
       });
 
@@ -101,7 +111,7 @@ export default function AdminPredictions() {
 
     setIsDialogOpen(false);
     setEditingPrediction(null);
-    setFormData({ title: "", description: "", min_bet: 10, max_bet: 1000 });
+    setFormData({ title: "", description: "", min_bet: 10, max_bet: 1000, option_a_label: "Profit", option_b_label: "Loss" });
     fetchPredictions();
   };
 
@@ -117,13 +127,13 @@ export default function AdminPredictions() {
     }
   };
 
-  const resolvePrediction = async (id: string, outcome: "profit" | "loss") => {
+  const resolvePrediction = async (id: string, outcome: "option_a" | "option_b") => {
     const prediction = predictions.find((p) => p.id === id);
     if (!prediction) return;
 
-    // Calculate payouts
-    const winningPool = outcome === "profit" ? prediction.profit_pool : prediction.loss_pool;
-    const losingPool = outcome === "profit" ? prediction.loss_pool : prediction.profit_pool;
+    // Calculate payouts using the new option pools
+    const winningPool = outcome === "option_a" ? (prediction.option_a_pool || 0) : (prediction.option_b_pool || 0);
+    const losingPool = outcome === "option_a" ? (prediction.option_b_pool || 0) : (prediction.option_a_pool || 0);
     const totalPool = winningPool + losingPool;
 
     // Get winning bets and distribute payouts
@@ -158,12 +168,13 @@ export default function AdminPredictions() {
         }
 
         // Send notification
+        const outcomeLabel = outcome === "option_a" ? prediction.option_a_label : prediction.option_b_label;
         await supabase.from("user_notifications").insert({
           user_id: bet.user_id,
           title: "You won your prediction bet!",
-          message: `You won ${payout} points from the "${prediction.title}" prediction!`,
+          message: `You won ${payout} points from the "${prediction.title}" prediction (${outcomeLabel})!`,
           type: "achievement",
-          link: "/predictions",
+          link: "/stream",
         });
       }
     }
@@ -179,7 +190,8 @@ export default function AdminPredictions() {
       .eq("id", id);
 
     if (!error) {
-      toast({ title: `Prediction resolved as ${outcome}` });
+      const outcomeLabel = outcome === "option_a" ? prediction.option_a_label : prediction.option_b_label;
+      toast({ title: `Prediction resolved as ${outcomeLabel}` });
       fetchPredictions();
     }
   };
@@ -199,6 +211,8 @@ export default function AdminPredictions() {
       description: prediction.description || "",
       min_bet: prediction.min_bet,
       max_bet: prediction.max_bet,
+      option_a_label: prediction.option_a_label || "Profit",
+      option_b_label: prediction.option_b_label || "Loss",
     });
     setIsDialogOpen(true);
   };
@@ -232,7 +246,7 @@ export default function AdminPredictions() {
               className="gap-2"
               onClick={() => {
                 setEditingPrediction(null);
-                setFormData({ title: "", description: "", min_bet: 10, max_bet: 1000 });
+                setFormData({ title: "", description: "", min_bet: 10, max_bet: 1000, option_a_label: "Profit", option_b_label: "Loss" });
               }}
             >
               <Plus className="w-4 h-4" />
@@ -262,6 +276,24 @@ export default function AdminPredictions() {
                   placeholder="Additional details about the prediction..."
                   rows={3}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Option A Label</Label>
+                  <Input
+                    value={formData.option_a_label}
+                    onChange={(e) => setFormData({ ...formData, option_a_label: e.target.value })}
+                    placeholder="e.g., Profit, Yes, Win"
+                  />
+                </div>
+                <div>
+                  <Label>Option B Label</Label>
+                  <Input
+                    value={formData.option_b_label}
+                    onChange={(e) => setFormData({ ...formData, option_b_label: e.target.value })}
+                    placeholder="e.g., Loss, No, Lose"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -335,11 +367,11 @@ export default function AdminPredictions() {
                       <div className="text-sm space-y-1">
                         <div className="flex items-center gap-1 text-green-400">
                           <TrendingUp className="w-3 h-3" />
-                          {prediction.profit_pool.toLocaleString()}
+                          {prediction.option_a_label}: {(prediction.option_a_pool || 0).toLocaleString()}
                         </div>
                         <div className="flex items-center gap-1 text-red-400">
                           <TrendingDown className="w-3 h-3" />
-                          {prediction.loss_pool.toLocaleString()}
+                          {prediction.option_b_label}: {(prediction.option_b_pool || 0).toLocaleString()}
                         </div>
                       </div>
                     </TableCell>
@@ -350,12 +382,12 @@ export default function AdminPredictions() {
                       {prediction.outcome ? (
                         <Badge
                           className={
-                            prediction.outcome === "profit"
+                            prediction.outcome === "option_a"
                               ? "bg-green-500/20 text-green-400"
                               : "bg-red-500/20 text-red-400"
                           }
                         >
-                          {prediction.outcome}
+                          {prediction.outcome === "option_a" ? prediction.option_a_label : prediction.option_b_label}
                         </Badge>
                       ) : (
                         "-"
@@ -387,19 +419,19 @@ export default function AdminPredictions() {
                               size="sm"
                               variant="outline"
                               className="text-green-400"
-                              onClick={() => resolvePrediction(prediction.id, "profit")}
+                              onClick={() => resolvePrediction(prediction.id, "option_a")}
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
-                              Profit
+                              {prediction.option_a_label}
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               className="text-red-400"
-                              onClick={() => resolvePrediction(prediction.id, "loss")}
+                              onClick={() => resolvePrediction(prediction.id, "option_b")}
                             >
                               <XCircle className="w-4 h-4 mr-1" />
-                              Loss
+                              {prediction.option_b_label}
                             </Button>
                           </>
                         )}
