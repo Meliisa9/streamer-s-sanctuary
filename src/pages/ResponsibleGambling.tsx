@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { AlertTriangle, Heart, Phone, Clock, DollarSign, HelpCircle, ChevronRight, ExternalLink, ShieldAlert, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,6 +43,8 @@ const helpResources = [
 ];
 
 export default function ResponsibleGambling() {
+  const location = useLocation();
+  
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-gambling"],
     queryFn: async () => {
@@ -55,17 +59,58 @@ export default function ResponsibleGambling() {
   });
 
   const defaultContent = `
-    <h2>Responsible Gambling</h2>
-    <p>Gambling should be fun and entertaining, not a way to make money.</p>
-    <h3 id="set-limits">Set Limits</h3>
-    <p>Always set a budget before you start and stick to it. Never gamble more than you can afford to lose.</p>
-    <h3 id="warning-signs">Know the Warning Signs</h3>
-    <p>If gambling is affecting your relationships, finances, or mental health, it may be time to seek help.</p>
-    <h3 id="get-help">Get Help</h3>
-    <p>If you or someone you know has a gambling problem, please reach out to a professional helpline in your country.</p>
-    <h3 id="age-restriction">Age Restriction</h3>
-    <p>You must be 18 years or older to participate in gambling activities. Always play responsibly.</p>
+    <h2 id="responsible-gambling" class="scroll-mt-24">Responsible Gambling</h2>
+    <p>Gambling should be fun and entertaining, not a way to make money. This page provides important information and resources to help you gamble responsibly.</p>
+    
+    <h3 id="set-limits" class="scroll-mt-24">Set Limits</h3>
+    <p>Always set a budget before you start and stick to it. Here are some tips:</p>
+    <ul>
+      <li>Decide how much money you can afford to lose before you start</li>
+      <li>Set a time limit for your gambling sessions</li>
+      <li>Never gamble with money you need for essential expenses</li>
+      <li>Don't chase your losses - accept them as part of the entertainment cost</li>
+      <li>Take regular breaks and step away from the screen</li>
+    </ul>
+    
+    <h3 id="warning-signs" class="scroll-mt-24">Know the Warning Signs</h3>
+    <p>If gambling is affecting your relationships, finances, or mental health, it may be time to seek help. Warning signs include:</p>
+    <ul>
+      <li>Spending more money or time gambling than you intended</li>
+      <li>Feeling restless or irritable when trying to stop gambling</li>
+      <li>Lying to family members about your gambling habits</li>
+      <li>Borrowing money or selling possessions to fund gambling</li>
+      <li>Neglecting work, family, or other responsibilities</li>
+      <li>Gambling to escape problems or relieve feelings of helplessness</li>
+    </ul>
+    
+    <h3 id="get-help" class="scroll-mt-24">Get Help</h3>
+    <p>If you or someone you know has a gambling problem, please reach out to a professional helpline in your country. Help is available 24/7, and all calls are confidential. Remember, seeking help is a sign of strength, not weakness.</p>
+    
+    <h3 id="age-restriction" class="scroll-mt-24">Age Restriction</h3>
+    <p>You must be 18 years or older (or the legal gambling age in your jurisdiction) to participate in gambling activities. Always play responsibly and verify that online gambling is legal in your area before participating.</p>
   `;
+
+  // Handle anchor scrolling after content loads
+  useEffect(() => {
+    if (!isLoading && location.hash) {
+      const id = location.hash.replace("#", "");
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+  }, [isLoading, location.hash]);
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.pushState(null, "", `#${id}`);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -96,6 +141,7 @@ export default function ResponsibleGambling() {
             <a
               key={link.id}
               href={`#${link.id}`}
+              onClick={(e) => handleAnchorClick(e, link.id)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-red-500/50 hover:bg-red-500/5 transition-all group"
             >
               <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-red-400 transition-colors" />
@@ -202,14 +248,16 @@ export default function ResponsibleGambling() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="glass rounded-2xl p-8 md:p-10 prose prose-invert max-w-none
+          className="glass rounded-2xl p-8 md:p-12 prose prose-invert prose-lg max-w-none
             prose-headings:text-foreground prose-headings:font-bold
             prose-h2:text-3xl prose-h2:mb-6 prose-h2:mt-0 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-4
-            prose-h3:text-xl prose-h3:text-red-400 prose-h3:mt-8 prose-h3:mb-4
-            prose-p:text-muted-foreground prose-p:leading-relaxed
-            prose-ul:text-muted-foreground prose-li:marker:text-red-400
+            prose-h3:text-2xl prose-h3:text-red-400 prose-h3:mt-10 prose-h3:mb-5
+            prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:text-base md:prose-p:text-lg
+            prose-ul:text-muted-foreground prose-ul:text-base md:prose-ul:text-lg
+            prose-li:marker:text-red-400 prose-li:my-2
             prose-a:text-red-400 prose-a:no-underline hover:prose-a:underline
-            prose-strong:text-foreground"
+            prose-strong:text-foreground
+            [&_h3]:scroll-mt-24"
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
         />
       )}

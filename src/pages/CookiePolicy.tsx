@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Cookie, Settings, BarChart3, Shield, Zap, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,6 +46,8 @@ const cookieTypes = [
 ];
 
 export default function CookiePolicy() {
+  const location = useLocation();
+  
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-cookies"],
     queryFn: async () => {
@@ -58,17 +62,60 @@ export default function CookiePolicy() {
   });
 
   const defaultContent = `
-    <h2>Cookie Policy</h2>
-    <p>This website uses cookies to enhance your browsing experience.</p>
-    <h3 id="what-are-cookies">What Are Cookies?</h3>
-    <p>Cookies are small text files stored on your device when you visit a website.</p>
-    <h3 id="essential">Essential Cookies</h3>
-    <p>These cookies are necessary for the website to function properly.</p>
-    <h3 id="analytics">Analytics Cookies</h3>
-    <p>We use analytics to understand how visitors interact with our site.</p>
-    <h3 id="managing">Managing Cookies</h3>
-    <p>You can manage cookie preferences through your browser settings.</p>
+    <h2 id="cookie-policy" class="scroll-mt-24">Cookie Policy</h2>
+    <p>This website uses cookies to enhance your browsing experience. This policy explains what cookies are, how we use them, and how you can manage your preferences.</p>
+    
+    <h3 id="what-are-cookies" class="scroll-mt-24">What Are Cookies?</h3>
+    <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and provide a better user experience. Cookies can be "session cookies" (deleted when you close your browser) or "persistent cookies" (remain until they expire or you delete them).</p>
+    
+    <h3 id="essential" class="scroll-mt-24">Essential Cookies</h3>
+    <p>These cookies are necessary for the website to function properly. They include:</p>
+    <ul>
+      <li>Authentication cookies to keep you logged in</li>
+      <li>Security cookies to protect against fraudulent activity</li>
+      <li>Session cookies to remember your preferences during a visit</li>
+    </ul>
+    <p>You cannot opt out of essential cookies as they are required for the website to work.</p>
+    
+    <h3 id="analytics" class="scroll-mt-24">Analytics Cookies</h3>
+    <p>We use analytics to understand how visitors interact with our site. This helps us improve our services. Analytics cookies may collect:</p>
+    <ul>
+      <li>Pages you visit and time spent on each page</li>
+      <li>How you arrived at our website</li>
+      <li>Technical information about your device and browser</li>
+    </ul>
+    
+    <h3 id="managing" class="scroll-mt-24">Managing Cookies</h3>
+    <p>You can manage cookie preferences through your browser settings. Most browsers allow you to:</p>
+    <ul>
+      <li>View and delete existing cookies</li>
+      <li>Block cookies from specific or all websites</li>
+      <li>Set preferences for different types of cookies</li>
+    </ul>
+    <p>Note that blocking certain cookies may impact website functionality.</p>
   `;
+
+  // Handle anchor scrolling after content loads
+  useEffect(() => {
+    if (!isLoading && location.hash) {
+      const id = location.hash.replace("#", "");
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+  }, [isLoading, location.hash]);
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.pushState(null, "", `#${id}`);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -99,6 +146,7 @@ export default function CookiePolicy() {
             <a
               key={link.id}
               href={`#${link.id}`}
+              onClick={(e) => handleAnchorClick(e, link.id)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
             >
               <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-amber-400 transition-colors" />
@@ -144,14 +192,16 @@ export default function CookiePolicy() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="glass rounded-2xl p-8 md:p-10 prose prose-invert max-w-none
+          className="glass rounded-2xl p-8 md:p-12 prose prose-invert prose-lg max-w-none
             prose-headings:text-foreground prose-headings:font-bold
             prose-h2:text-3xl prose-h2:mb-6 prose-h2:mt-0 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-4
-            prose-h3:text-xl prose-h3:text-amber-400 prose-h3:mt-8 prose-h3:mb-4
-            prose-p:text-muted-foreground prose-p:leading-relaxed
-            prose-ul:text-muted-foreground prose-li:marker:text-amber-400
+            prose-h3:text-2xl prose-h3:text-amber-400 prose-h3:mt-10 prose-h3:mb-5
+            prose-p:text-muted-foreground prose-p:leading-relaxed prose-p:text-base md:prose-p:text-lg
+            prose-ul:text-muted-foreground prose-ul:text-base md:prose-ul:text-lg
+            prose-li:marker:text-amber-400 prose-li:my-2
             prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline
-            prose-strong:text-foreground"
+            prose-strong:text-foreground
+            [&_h3]:scroll-mt-24"
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
         />
       )}
