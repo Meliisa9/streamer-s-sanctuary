@@ -20,6 +20,7 @@ interface DiagnosticData {
 export function DevDiagnosticsOverlay() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [permissionChecked, setPermissionChecked] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [diagnostics, setDiagnostics] = useState<DiagnosticData>({
     dbLatency: 0,
@@ -29,21 +30,27 @@ export function DevDiagnosticsOverlay() {
     lastUpdate: new Date(),
   });
 
-  const { user, isAdmin } = useAuth();
-  const isDev = import.meta.env.DEV;
+  const { user, isAdmin, isLoading: authLoading } = useAuth();
 
-  // Check permission for viewing diagnostics
+  // Check permission for viewing diagnostics - only after auth is loaded
   useEffect(() => {
     const checkPermission = async () => {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+
       // Must be logged in
       if (!user) { 
-        setHasPermission(false); 
+        setHasPermission(false);
+        setPermissionChecked(true);
         return; 
       }
       
       // Admins always have access
       if (isAdmin) { 
-        setHasPermission(true); 
+        setHasPermission(true);
+        setPermissionChecked(true);
         return; 
       }
       
@@ -56,19 +63,20 @@ export function DevDiagnosticsOverlay() {
         if (error) {
           console.error("Error checking diagnostics permission:", error);
           setHasPermission(false);
-          return;
+        } else {
+          setHasPermission(data === true);
         }
-        setHasPermission(data === true);
       } catch (err) {
         console.error("Failed to check diagnostics permission:", err);
         setHasPermission(false);
       }
+      setPermissionChecked(true);
     };
     checkPermission();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, authLoading]);
 
   useEffect(() => {
-    if ((!isDev && !hasPermission) || !isOpen) return;
+    if (!hasPermission || !isOpen) return;
 
     const updateDiagnostics = async () => {
       const start = performance.now();
@@ -98,10 +106,13 @@ export function DevDiagnosticsOverlay() {
     });
 
     return () => { clearInterval(interval); supabase.removeChannel(channel); };
-  }, [isDev, hasPermission, isOpen]);
+  }, [hasPermission, isOpen]);
 
-  // Only show to admins or users with permission (or in dev mode)
-  if (!isDev && !hasPermission) return null;
+  // Don't render anything until permission check is complete
+  if (!permissionChecked) return null;
+  
+  // Only show to users with permission (admins automatically get it)
+  if (!hasPermission) return null;
 
   return (
     <>
