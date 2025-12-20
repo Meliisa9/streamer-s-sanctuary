@@ -133,6 +133,98 @@ export type Database = {
         }
         Relationships: []
       }
+      big_win_likes: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          win_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          win_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          win_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "big_win_likes_win_id_fkey"
+            columns: ["win_id"]
+            isOneToOne: false
+            referencedRelation: "big_wins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      big_wins: {
+        Row: {
+          bet_amount: number | null
+          created_at: string
+          description: string | null
+          game_name: string
+          id: string
+          image_url: string | null
+          is_verified: boolean | null
+          likes_count: number | null
+          multiplier: number | null
+          provider: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          user_id: string
+          verification_badge: string | null
+          video_url: string | null
+          win_amount: number
+        }
+        Insert: {
+          bet_amount?: number | null
+          created_at?: string
+          description?: string | null
+          game_name: string
+          id?: string
+          image_url?: string | null
+          is_verified?: boolean | null
+          likes_count?: number | null
+          multiplier?: number | null
+          provider?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id: string
+          verification_badge?: string | null
+          video_url?: string | null
+          win_amount: number
+        }
+        Update: {
+          bet_amount?: number | null
+          created_at?: string
+          description?: string | null
+          game_name?: string
+          id?: string
+          image_url?: string | null
+          is_verified?: boolean | null
+          likes_count?: number | null
+          multiplier?: number | null
+          provider?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          user_id?: string
+          verification_badge?: string | null
+          video_url?: string | null
+          win_amount?: number
+        }
+        Relationships: []
+      }
       bonus_hunt_avgx_guesses: {
         Row: {
           bet_range: string | null
@@ -1129,6 +1221,44 @@ export type Database = {
         }
         Relationships: []
       }
+      prediction_bets: {
+        Row: {
+          bet_amount: number
+          created_at: string
+          id: string
+          payout: number | null
+          predicted_outcome: string
+          prediction_id: string
+          user_id: string
+        }
+        Insert: {
+          bet_amount: number
+          created_at?: string
+          id?: string
+          payout?: number | null
+          predicted_outcome: string
+          prediction_id: string
+          user_id: string
+        }
+        Update: {
+          bet_amount?: number
+          created_at?: string
+          id?: string
+          payout?: number | null
+          predicted_outcome?: string
+          prediction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_bets_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "stream_predictions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_comment_likes: {
         Row: {
           comment_id: string
@@ -1361,6 +1491,116 @@ export type Database = {
           value?: Json | null
         }
         Relationships: []
+      }
+      stream_predictions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          locked_at: string | null
+          loss_pool: number
+          max_bet: number
+          min_bet: number
+          outcome: string | null
+          profit_pool: number
+          resolved_at: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          locked_at?: string | null
+          loss_pool?: number
+          max_bet?: number
+          min_bet?: number
+          outcome?: string | null
+          profit_pool?: number
+          resolved_at?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          locked_at?: string | null
+          loss_pool?: number
+          max_bet?: number
+          min_bet?: number
+          outcome?: string | null
+          profit_pool?: number
+          resolved_at?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      streamer_stats: {
+        Row: {
+          biggest_multiplier: number | null
+          biggest_win: number | null
+          biggest_win_game: string | null
+          created_at: string
+          date: string
+          ending_balance: number | null
+          games_played: string[] | null
+          id: string
+          notes: string | null
+          profit_loss: number | null
+          session_duration_minutes: number | null
+          starting_balance: number | null
+          streamer_id: string | null
+          total_wagered: number | null
+          updated_at: string
+        }
+        Insert: {
+          biggest_multiplier?: number | null
+          biggest_win?: number | null
+          biggest_win_game?: string | null
+          created_at?: string
+          date?: string
+          ending_balance?: number | null
+          games_played?: string[] | null
+          id?: string
+          notes?: string | null
+          profit_loss?: number | null
+          session_duration_minutes?: number | null
+          starting_balance?: number | null
+          streamer_id?: string | null
+          total_wagered?: number | null
+          updated_at?: string
+        }
+        Update: {
+          biggest_multiplier?: number | null
+          biggest_win?: number | null
+          biggest_win_game?: string | null
+          created_at?: string
+          date?: string
+          ending_balance?: number | null
+          games_played?: string[] | null
+          id?: string
+          notes?: string | null
+          profit_loss?: number | null
+          session_duration_minutes?: number | null
+          starting_balance?: number | null
+          streamer_id?: string | null
+          total_wagered?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streamer_stats_streamer_id_fkey"
+            columns: ["streamer_id"]
+            isOneToOne: false
+            referencedRelation: "streamers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       streamers: {
         Row: {
