@@ -508,21 +508,23 @@ export default function Videos() {
           </div>
         </div>
 
-        {/* Category Sections - Big Wins & Max Wins */}
-        <div className="space-y-10">
-          <VideoSection 
-            title="Big Wins" 
-            icon={Flame} 
-            videos={bigWinsVideos} 
-            iconColor="text-orange-500" 
-          />
-          <VideoSection 
-            title="Max Wins" 
-            icon={Crown} 
-            videos={maxWinsVideos} 
-            iconColor="text-yellow-500" 
-          />
-        </div>
+        {/* Category Sections - Big Wins & Max Wins (placed after search/filter) */}
+        {!isLoading && (
+          <div className="space-y-10">
+            <VideoSection 
+              title="Big Wins" 
+              icon={Flame} 
+              videos={bigWinsVideos} 
+              iconColor="text-orange-500" 
+            />
+            <VideoSection 
+              title="Max Wins" 
+              icon={Crown} 
+              videos={maxWinsVideos} 
+              iconColor="text-yellow-500" 
+            />
+          </div>
+        )}
 
         {/* All Videos Grid */}
         {isLoading ? (
