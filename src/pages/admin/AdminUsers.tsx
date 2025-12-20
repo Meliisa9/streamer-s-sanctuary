@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Shield, User as UserIcon, Loader2, Plus, Pencil, Save, X, UserPlus, Trash2 } from "lucide-react";
+import { Search, Shield, User as UserIcon, Loader2, UserPlus, Trash2, Users, Crown, PenTool, MoreVertical, Eye, Ban, Award, TrendingUp, Calendar, Plus, X, Save, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EnhancedAddUserForm, EnhancedEditUserForm } from "@/components/admin/forms";
+import { format } from "date-fns";
 
 interface UserProfile {
   id: string;
