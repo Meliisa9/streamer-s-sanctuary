@@ -313,10 +313,6 @@ export default function AdminStreamers() {
 
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
-                  <Switch checked={formData.is_main_streamer} onCheckedChange={(checked) => setFormData({ ...formData, is_main_streamer: checked })} />
-                  <Label>Main Streamer</Label>
-                </div>
-                <div className="flex items-center gap-2">
                   <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
                   <Label>Active</Label>
                 </div>
@@ -350,7 +346,9 @@ export default function AdminStreamers() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold">{streamer.name}</h3>
-                  {streamer.is_main_streamer && <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">Main</span>}
+                  <span className={`px-2 py-0.5 text-xs rounded ${streamer.streamer_type === 'team_member' ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20 text-primary'}`}>
+                    {streamer.streamer_type === 'team_member' ? 'Team Member' : 'Streamer'}
+                  </span>
                   {!streamer.is_active && <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded">Inactive</span>}
                 </div>
                 <p className="text-sm text-muted-foreground truncate">{streamer.description || "No description"}</p>

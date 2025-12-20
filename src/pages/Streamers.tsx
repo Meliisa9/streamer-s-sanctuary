@@ -147,7 +147,7 @@ export default function Streamers() {
             <div className="flex items-center gap-6">
               <div className="text-center px-6 py-3 bg-background/50 backdrop-blur-sm rounded-2xl border border-border/50">
                 <p className="text-3xl font-bold text-primary">{mainStreamers.length}</p>
-                <p className="text-xs text-muted-foreground">Featured</p>
+                <p className="text-xs text-muted-foreground">Streamers</p>
               </div>
               <div className="text-center px-6 py-3 bg-background/50 backdrop-blur-sm rounded-2xl border border-border/50">
                 <p className="text-3xl font-bold">{otherStreamers.length}</p>
@@ -230,15 +230,7 @@ export default function Streamers() {
                               : "border border-border/50 hover:border-primary/40"
                           }`}
                         >
-                          {/* Featured Badge */}
-                          {streamer.is_main_streamer && (
-                            <div className="absolute top-4 right-4">
-                              <Badge className="bg-gradient-to-r from-primary to-purple-600 text-primary-foreground border-0">
-                                <Star className="w-3 h-3 mr-1 fill-current" />
-                                Featured
-                              </Badge>
-                            </div>
-                          )}
+                          {/* Remove Featured Badge - no longer showing */}
                           
                           {/* Background Glow */}
                           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -276,9 +268,6 @@ export default function Streamers() {
                             {/* Name */}
                             <div className="text-center mb-4">
                               <h3 className="text-xl font-bold group-hover:text-primary transition-colors">{streamer.name}</h3>
-                              {streamer.is_main_streamer && (
-                                <p className="text-sm text-primary font-medium">Featured Streamer</p>
-                              )}
                             </div>
 
                             {/* Description */}
@@ -323,14 +312,6 @@ export default function Streamers() {
                       {selectedStreamer.name[0]}
                     </AvatarFallback>
                   </Avatar>
-                  {selectedStreamer.is_main_streamer && (
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-primary to-purple-600 rounded-full">
-                      <span className="text-xs font-bold text-primary-foreground flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-current" />
-                        Featured
-                      </span>
-                    </div>
-                  )}
                 </div>
                 
                 {/* Name */}

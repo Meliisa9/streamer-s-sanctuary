@@ -8,6 +8,7 @@ import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DailyRewardsManager } from "@/components/DailyRewardsManager";
 import { DailyRewardPopup } from "@/components/DailyRewardPopup";
+import { LiveStreamAlert } from "@/components/LiveStreamAlert";
 import Index from "./pages/Index";
 import Videos from "./pages/Videos";
 import Bonuses from "./pages/Bonuses";
@@ -80,6 +81,7 @@ const App = () => (
         <TooltipProvider>
           <DailyRewardsManager />
           <DailyRewardPopup />
+          <LiveStreamAlert />
           <Toaster />
           <Sonner />
           <BrowserRouter>

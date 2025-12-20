@@ -134,11 +134,19 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
             .maybeSingle();
           
           if (mentionedUser && mentionedUser.user_id !== user.id && mentionedUser.user_id !== profileUserId) {
+            // Get profile owner's username to build proper link
+            const { data: profileOwnerData } = await supabase
+              .from("profiles")
+              .select("username")
+              .eq("user_id", profileUserId)
+              .maybeSingle();
+            
             await notifyMention(
               mentionedUser.user_id,
               commenterName,
               "a profile comment",
-              `/profile#comment-${data?.id}`
+              `/profile#comment-${data?.id}`,
+              profileOwnerData?.username
             );
           }
         }

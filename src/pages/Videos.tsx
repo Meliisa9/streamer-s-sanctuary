@@ -144,6 +144,16 @@ export default function Videos() {
     return match ? match[1] : null;
   };
 
+  // Check if URL is a Twitch VOD/Clip
+  const isTwitchUrl = (url: string) => {
+    return /twitch\.tv\/(videos\/\d+|[^\/]+\/clip\/|clips\.)/.test(url);
+  };
+
+  // Check if URL is a Kick VOD
+  const isKickUrl = (url: string) => {
+    return /kick\.com\/.*(\?video=|\/video\/)/.test(url);
+  };
+
   const getThumbnail = (video: Video) => {
     if (video.thumbnail_url) return video.thumbnail_url;
     const ytId = extractYouTubeId(video.video_url);
@@ -154,8 +164,11 @@ export default function Videos() {
   const handleVideoClick = (video: Video) => {
     const isLocalVideo = video.video_file_url && !video.is_external;
     const isYouTube = extractYouTubeId(video.video_url);
+    const isTwitch = isTwitchUrl(video.video_url);
+    const isKick = isKickUrl(video.video_url);
     
-    if (isLocalVideo || isYouTube) {
+    // Open modal for YouTube, Twitch, Kick, and local videos
+    if (isLocalVideo || isYouTube || isTwitch || isKick) {
       setSelectedVideo(video);
     } else {
       window.open(video.video_url, "_blank");

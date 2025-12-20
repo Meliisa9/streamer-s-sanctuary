@@ -575,50 +575,55 @@ export default function UserProfile() {
                     <User className="w-4 h-4 text-primary" />
                     Profile Information
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {profile.bio && (
-                      <div className="col-span-full p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Bio</p>
-                        <p>{profile.bio}</p>
+                  {(() => {
+                    const privacy = (profile as any)?.privacy_settings || {};
+                    return (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {profile.bio && (
+                          <div className="col-span-full p-4 bg-secondary/30 rounded-xl">
+                            <p className="text-sm text-muted-foreground mb-1">Bio</p>
+                            <p>{profile.bio}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.age && privacy.show_age !== false && (
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <p className="text-sm text-muted-foreground mb-1">Age</p>
+                            <p className="font-medium">{(profile as any).age} years old</p>
+                          </div>
+                        )}
+                        {(profile as any)?.country && privacy.show_country !== false && (
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <p className="text-sm text-muted-foreground mb-1">Country</p>
+                            <p className="font-medium">{(profile as any).country}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.city && privacy.show_city !== false && (
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <p className="text-sm text-muted-foreground mb-1">City</p>
+                            <p className="font-medium">{(profile as any).city}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.favorite_slot && privacy.show_favorites !== false && (
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <p className="text-sm text-muted-foreground mb-1">Favorite Slot</p>
+                            <p className="font-medium">{(profile as any).favorite_slot}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.favorite_casino && privacy.show_favorites !== false && (
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <p className="text-sm text-muted-foreground mb-1">Favorite Casino</p>
+                            <p className="font-medium">{(profile as any).favorite_casino}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.biggest_win && (
+                          <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
+                            <p className="text-sm text-yellow-500 mb-1">Biggest Win</p>
+                            <p className="font-medium">{(profile as any).biggest_win}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {(profile as any)?.age && (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Age</p>
-                        <p className="font-medium">{(profile as any).age} years old</p>
-                      </div>
-                    )}
-                    {(profile as any)?.country && (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Country</p>
-                        <p className="font-medium">{(profile as any).country}</p>
-                      </div>
-                    )}
-                    {(profile as any)?.city && (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">City</p>
-                        <p className="font-medium">{(profile as any).city}</p>
-                      </div>
-                    )}
-                    {(profile as any)?.favorite_slot && (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Favorite Slot</p>
-                        <p className="font-medium">{(profile as any).favorite_slot}</p>
-                      </div>
-                    )}
-                    {(profile as any)?.favorite_casino && (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Favorite Casino</p>
-                        <p className="font-medium">{(profile as any).favorite_casino}</p>
-                      </div>
-                    )}
-                    {(profile as any)?.biggest_win && (
-                      <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
-                        <p className="text-sm text-yellow-500 mb-1">Biggest Win</p>
-                        <p className="font-medium">{(profile as any).biggest_win}</p>
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                   {!profile.bio && !(profile as any)?.age && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
                     <div className="text-center py-8 text-muted-foreground">
                       <User className="w-10 h-10 mx-auto mb-3 opacity-30" />

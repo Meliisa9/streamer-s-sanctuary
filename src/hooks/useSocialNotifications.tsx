@@ -58,12 +58,17 @@ export async function notifyArticleLike(articleAuthorId: string, likerName: stri
   });
 }
 
-export async function notifyMention(mentionedUserId: string, mentionerName: string, context: string, link: string) {
+export async function notifyMention(mentionedUserId: string, mentionerName: string, context: string, link: string, profileUsername?: string) {
+  // For profile comments, link to the profile owner's page, not the recipient's own profile
+  const actualLink = link.startsWith('/profile') && profileUsername 
+    ? `/user/${profileUsername}${link.replace('/profile', '')}` 
+    : link;
+    
   await sendSocialNotification({
     userId: mentionedUserId,
     type: "mention",
     title: "You were mentioned",
     message: `${mentionerName} mentioned you in ${context}`,
-    link,
+    link: actualLink,
   });
 }
