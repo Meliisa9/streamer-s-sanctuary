@@ -78,17 +78,18 @@ const queryClient = new QueryClient({
 
 const App = () => (
   <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <OnlinePresenceProvider>
-          <SiteSettingsProvider>
-            <TooltipProvider>
-              <DailyRewardsManager />
-              <DailyRewardPopup />
-              <LiveStreamAlert />
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <OnlinePresenceProvider>
+            <SiteSettingsProvider>
+              <TooltipProvider>
+                <DailyRewardsManager />
+                <DailyRewardPopup />
+                <LiveStreamAlert />
+                <Toaster />
+                <Sonner />
+
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
 
@@ -152,14 +153,13 @@ const App = () => (
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </SiteSettingsProvider>
-        </OnlinePresenceProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+              </TooltipProvider>
+            </SiteSettingsProvider>
+          </OnlinePresenceProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   </ErrorBoundary>
 );
-
 
 export default App;
