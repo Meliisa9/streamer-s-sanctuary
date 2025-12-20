@@ -35,12 +35,34 @@ export function DevDiagnosticsOverlay() {
   // Check permission for viewing diagnostics
   useEffect(() => {
     const checkPermission = async () => {
-      if (!user) { setHasPermission(false); return; }
-      if (isAdmin) { setHasPermission(true); return; }
+      // Must be logged in
+      if (!user) { 
+        setHasPermission(false); 
+        return; 
+      }
       
-      // Check if user has the view_dev_diagnostics permission
-      const { data } = await supabase.rpc("has_permission", { _user_id: user.id, _permission: "view_dev_diagnostics" });
-      setHasPermission(data === true);
+      // Admins always have access
+      if (isAdmin) { 
+        setHasPermission(true); 
+        return; 
+      }
+      
+      // Check if user has the view_dev_diagnostics permission via RPC
+      try {
+        const { data, error } = await supabase.rpc("has_permission", { 
+          _user_id: user.id, 
+          _permission: "view_dev_diagnostics" 
+        });
+        if (error) {
+          console.error("Error checking diagnostics permission:", error);
+          setHasPermission(false);
+          return;
+        }
+        setHasPermission(data === true);
+      } catch (err) {
+        console.error("Failed to check diagnostics permission:", err);
+        setHasPermission(false);
+      }
     };
     checkPermission();
   }, [user, isAdmin]);
@@ -83,23 +105,23 @@ export function DevDiagnosticsOverlay() {
 
   return (
     <>
-      {/* Toggle Button - positioned at top right, out of the way */}
+      {/* Toggle Button - positioned at bottom left corner, out of the way of everything */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 right-4 z-[200] p-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-500 transition-all hover:scale-110 opacity-50 hover:opacity-100"
+        className="fixed bottom-4 left-4 z-[100] p-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-500 transition-all hover:scale-110 opacity-30 hover:opacity-100"
         title="Dev Diagnostics"
       >
-        <Bug className="w-4 h-4" />
+        <Bug className="w-3 h-3" />
       </button>
 
       {/* Overlay Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-14 right-4 z-[200] w-72 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden"
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-14 left-4 z-[100] w-72 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-border bg-secondary/30">

@@ -27,8 +27,6 @@ const settingsSubcategories = [
   { path: "/admin/settings/navigation", label: "Navigation", icon: Navigation },
   { path: "/admin/settings/video-categories", label: "Video Categories", icon: Video },
   { path: "/admin/settings/statistics", label: "Statistics", icon: BarChart3 },
-  { path: "/admin/settings/permissions", label: "Permissions", icon: Shield },
-  { path: "/admin/settings/roles", label: "Roles", icon: UserCog },
   { path: "/admin/settings/about", label: "About Page", icon: FileText },
   { path: "/admin/settings/notifications", label: "Send Notifications", icon: Bell },
   { path: "/admin/settings/email-templates", label: "Email Templates", icon: Mail },
