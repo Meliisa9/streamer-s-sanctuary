@@ -382,7 +382,8 @@ export default function AdminStream() {
                     onCheckedChange={(checked) => setSettings({ 
                       ...settings, 
                       is_live: checked, 
-                      live_platform: "twitch"
+                      live_platform: "twitch",
+                      show_live_badge_on_stream_page: checked // Auto-sync badge with live status
                     })}
                   />
                 </div>
@@ -413,7 +414,8 @@ export default function AdminStream() {
                     onCheckedChange={(checked) => setSettings({ 
                       ...settings, 
                       is_live: checked, 
-                      live_platform: "kick"
+                      live_platform: "kick",
+                      show_live_badge_on_stream_page: checked // Auto-sync badge with live status
                     })}
                   />
                 </div>
