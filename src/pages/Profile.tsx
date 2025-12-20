@@ -26,6 +26,7 @@ import { ProfileComments } from "@/components/ProfileComments";
 import { useBookmarks } from "@/hooks/useBookmarks";
 import { FollowersModal } from "@/components/FollowersModal";
 import { UserImageLink } from "@/components/UserAvatarLink";
+import { PrivacyControls } from "@/components/PrivacyControls";
 import {
   Select,
   SelectContent,
@@ -1059,6 +1060,15 @@ export default function Profile() {
                   Notification Preferences
                 </h3>
                 <NotificationPreferences />
+              </div>
+
+              {/* Privacy Controls */}
+              <div className="glass rounded-2xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary" />
+                  Privacy Controls
+                </h3>
+                <PrivacyControls />
               </div>
             </TabsContent>
           </Tabs>

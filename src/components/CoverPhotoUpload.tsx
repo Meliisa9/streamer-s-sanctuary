@@ -54,6 +54,14 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
 
       const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName);
 
+      // Directly update the database to persist the cover photo
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ cover_url: publicUrl })
+        .eq("user_id", userId);
+
+      if (updateError) throw updateError;
+
       onCoverChange(publicUrl);
       setIsOpen(false);
       toast({ title: "Cover photo updated!" });
@@ -64,7 +72,7 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
     }
   };
 
-  const handleUrlSubmit = () => {
+  const handleUrlSubmit = async () => {
     if (!urlInput.trim()) {
       toast({ title: "Please enter a URL", variant: "destructive" });
       return;
@@ -78,16 +86,39 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
       return;
     }
 
-    onCoverChange(urlInput);
-    setIsOpen(false);
-    setUrlInput("");
-    toast({ title: "Cover photo updated!" });
+    // Directly update the database
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ cover_url: urlInput })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      onCoverChange(urlInput);
+      setIsOpen(false);
+      setUrlInput("");
+      toast({ title: "Cover photo updated!" });
+    } catch (error: any) {
+      toast({ title: "Failed to update cover", description: error.message, variant: "destructive" });
+    }
   };
 
-  const handleRemoveCover = () => {
-    onCoverChange("");
-    setIsOpen(false);
-    toast({ title: "Cover photo removed" });
+  const handleRemoveCover = async () => {
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ cover_url: null })
+        .eq("user_id", userId);
+
+      if (error) throw error;
+
+      onCoverChange("");
+      setIsOpen(false);
+      toast({ title: "Cover photo removed" });
+    } catch (error: any) {
+      toast({ title: "Failed to remove cover", description: error.message, variant: "destructive" });
+    }
   };
 
   return (
