@@ -47,7 +47,19 @@ export default function AdminBonuses() {
     is_featured: false,
     is_published: true,
     sort_order: 0,
+    countries: [] as string[],
   });
+
+  const regionOptions = [
+    "Worldwide",
+    "Europe",
+    "North America", 
+    "South America",
+    "Asia",
+    "Africa",
+    "Oceania",
+    "Middle East",
+  ];
 
   useEffect(() => {
     fetchBonuses();
@@ -83,6 +95,7 @@ export default function AdminBonuses() {
       is_featured: false,
       is_published: true,
       sort_order: 0,
+      countries: [],
     });
     setEditingBonus(null);
     setShowForm(false);
@@ -104,9 +117,19 @@ export default function AdminBonuses() {
       is_featured: bonus.is_featured,
       is_published: bonus.is_published,
       sort_order: bonus.sort_order,
+      countries: (bonus as any).countries || [],
     });
     setEditingBonus(bonus);
     setShowForm(true);
+  };
+
+  const toggleRegion = (region: string) => {
+    setFormData(prev => ({
+      ...prev,
+      countries: prev.countries.includes(region)
+        ? prev.countries.filter(r => r !== region)
+        : [...prev.countries, region]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -269,7 +292,32 @@ export default function AdminBonuses() {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-6">
+            
+            {/* Region Multi-Select */}
+            <div className="col-span-2">
+              <label className="text-sm font-medium mb-2 block">Region Availability</label>
+              <div className="flex flex-wrap gap-2">
+                {regionOptions.map((region) => (
+                  <button
+                    key={region}
+                    type="button"
+                    onClick={() => toggleRegion(region)}
+                    className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                      formData.countries.includes(region)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-secondary border-border hover:border-primary/50"
+                    }`}
+                  >
+                    {region}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formData.countries.length === 0 ? "No regions selected (will show as Worldwide)" : `Selected: ${formData.countries.join(", ")}`}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-6 col-span-2">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={formData.is_exclusive} onChange={(e) => setFormData({ ...formData, is_exclusive: e.target.checked })} />
                 <span className="text-sm">Exclusive</span>

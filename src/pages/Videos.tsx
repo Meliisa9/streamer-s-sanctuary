@@ -516,9 +516,23 @@ export default function Videos() {
 
         {/* Search and Filter */}
         <div className="flex flex-col gap-4">
-          {/* Category Navigation - Styled Horizontal Scroll */}
-          <div className="relative">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none scroll-smooth">
+          {/* Category Navigation - Styled Horizontal Scroll with Arrows */}
+          <div className="relative group">
+            {/* Left Arrow */}
+            <button
+              onClick={() => {
+                const container = document.getElementById('category-scroll');
+                if (container) container.scrollBy({ left: -200, behavior: 'smooth' });
+              }}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-secondary hover:scale-110 -translate-x-1/2"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            
+            <div 
+              id="category-scroll"
+              className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none scroll-smooth px-2"
+            >
               {categoryNames.map((cat) => (
                 <Button
                   key={cat}
@@ -535,8 +549,21 @@ export default function Videos() {
                 </Button>
               ))}
             </div>
+            
+            {/* Right Arrow */}
+            <button
+              onClick={() => {
+                const container = document.getElementById('category-scroll');
+                if (container) container.scrollBy({ left: 200, behavior: 'smooth' });
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center bg-background/90 backdrop-blur-sm border border-border rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-secondary hover:scale-110 translate-x-1/2"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            
             {/* Fade edges to indicate scrollability */}
-            <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+            <div className="absolute left-0 top-0 bottom-2 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-2 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none" />
           </div>
           
           {/* Search Input */}

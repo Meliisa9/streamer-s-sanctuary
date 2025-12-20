@@ -215,10 +215,12 @@ export default function Bonuses() {
                       <div>
                         <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                           <Globe className="w-3 h-3" />
-                          Countries
+                          Region
                         </p>
                         <p className="font-semibold text-sm">
-                          {casino.countries?.join(", ") || "Worldwide"}
+                          {casino.countries && casino.countries.length > 0 
+                            ? casino.countries.join(", ") 
+                            : "Worldwide"}
                         </p>
                       </div>
                     </div>

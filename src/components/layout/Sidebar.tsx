@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NavItem {
   icon: React.ElementType;
@@ -62,10 +63,51 @@ const adminNavItems: NavItem[] = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [isLive, setIsLive] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, isModerator, isWriter, signOut } = useAuth();
   const { settings } = useSiteSettings();
+
+  // Fetch and subscribe to live status
+  useEffect(() => {
+    const fetchLiveStatus = async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "is_live")
+        .maybeSingle();
+      
+      if (data) {
+        setIsLive(data.value === true || data.value === "true" || data.value === 1);
+      }
+    };
+
+    fetchLiveStatus();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('sidebar-live-status')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'site_settings',
+        },
+        (payload: any) => {
+          if (payload.new?.key === 'is_live') {
+            const val = payload.new.value;
+            setIsLive(val === true || val === "true" || val === 1);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const sidebarVariants = {
     expanded: { width: 260 },
@@ -132,7 +174,8 @@ export function Sidebar() {
               {item.label}
             </span>
           )}
-          {item.badge && !collapsed && (
+          {/* Dynamic LIVE badge for Giveaways - only show when isLive is true */}
+          {item.badge === "LIVE" && isLive && !collapsed && (
             <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse">
               {item.badge}
             </span>

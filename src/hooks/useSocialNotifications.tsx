@@ -39,12 +39,17 @@ export async function notifyFollow(followerId: string, followingId: string, foll
 }
 
 export async function notifyComment(profileOwnerId: string, commenterName: string, profileUsername: string, commentId?: string) {
+  // Build link with comment anchor for scrolling
+  const link = commentId 
+    ? `/user/${profileUsername}#comment-${commentId}` 
+    : `/user/${profileUsername}#wall`;
+    
   await sendSocialNotification({
     userId: profileOwnerId,
     type: "comment",
     title: "New Comment",
     message: `${commenterName} commented on your profile`,
-    link: commentId ? `/profile#comment-${commentId}` : `/profile#wall`,
+    link,
   });
 }
 
@@ -58,11 +63,18 @@ export async function notifyArticleLike(articleAuthorId: string, likerName: stri
   });
 }
 
-export async function notifyMention(mentionedUserId: string, mentionerName: string, context: string, link: string, profileUsername?: string) {
-  // For profile comments, link to the profile owner's page, not the recipient's own profile
-  const actualLink = link.startsWith('/profile') && profileUsername 
-    ? `/user/${profileUsername}${link.replace('/profile', '')}` 
-    : link;
+export async function notifyMention(mentionedUserId: string, mentionerName: string, context: string, link: string, profileUsername?: string, commentId?: string) {
+  // For profile comments, link to the profile owner's page with the comment anchor
+  let actualLink = link;
+  if (link.startsWith('/profile') && profileUsername) {
+    // Build the link to the user's profile with the comment anchor
+    actualLink = `/user/${profileUsername}`;
+    if (commentId) {
+      actualLink += `#comment-${commentId}`;
+    } else if (link.includes('#')) {
+      actualLink += link.substring(link.indexOf('#'));
+    }
+  }
     
   await sendSocialNotification({
     userId: mentionedUserId,

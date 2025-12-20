@@ -132,17 +132,39 @@ export default function AdminStream() {
 
     setIsSaving(true);
     try {
+      // Auto-sync channel names and social links based on stream config
+      const updatedSettings = { ...settings };
+      const updatedLinkSettings = { ...linkSettings };
+      
+      // If stream channel is set, auto-configure detection channels and social links
+      if (settings.stream_channel) {
+        if (settings.stream_platform === "twitch") {
+          updatedSettings.twitch_channel = settings.stream_channel;
+          updatedLinkSettings.twitch_url = `https://twitch.tv/${settings.stream_channel}`;
+        } else if (settings.stream_platform === "kick") {
+          updatedSettings.kick_channel = settings.stream_channel;
+          updatedLinkSettings.kick_url = `https://kick.com/${settings.stream_channel}`;
+        }
+        // Auto-enable detection if a channel is configured
+        updatedSettings.auto_detect_enabled = true;
+      }
+      
       // Save stream settings
-      for (const [key, value] of Object.entries(settings)) {
+      for (const [key, value] of Object.entries(updatedSettings)) {
         const { error } = await supabase.from("site_settings").upsert({ key, value }, { onConflict: "key" });
         if (error) throw error;
       }
       // Save link settings
-      for (const [key, value] of Object.entries(linkSettings)) {
+      for (const [key, value] of Object.entries(updatedLinkSettings)) {
         const { error } = await supabase.from("site_settings").upsert({ key, value }, { onConflict: "key" });
         if (error) throw error;
       }
-      toast({ title: "Settings saved successfully" });
+      
+      // Update local state to reflect auto-synced values
+      setSettings(updatedSettings);
+      setLinkSettings(updatedLinkSettings);
+      
+      toast({ title: "Settings saved successfully", description: "Auto Detection and Social Links have been synced." });
     } catch (error: any) {
       toast({ title: "Error saving settings", description: error.message, variant: "destructive" });
     } finally {
