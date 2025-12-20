@@ -195,21 +195,24 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-50 flex flex-col"
     >
       {/* Logo */}
-      <NavLink to="/" className="p-4 flex items-center hover:opacity-80 transition-opacity overflow-hidden">
+      <NavLink
+        to="/"
+        className="p-4 flex flex-col items-center justify-center text-center hover:opacity-80 transition-opacity overflow-hidden"
+      >
         {settings.logo_url ? (
-          <motion.div 
-            className="flex-1 min-w-0"
+          <motion.div
+            className="flex-1 min-w-0 flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
-            <img 
-              src={settings.logo_url} 
-              alt={settings.site_name || "Logo"} 
-              className={`${collapsed ? "w-10 h-10 rounded-xl object-cover" : "h-12 max-w-full object-contain object-left"}`}
+            <img
+              src={settings.logo_url}
+              alt={settings.site_name || "Logo"}
+              className={`${collapsed ? "w-10 h-10 rounded-xl object-cover" : "h-12 max-w-full object-contain object-center mx-auto"}`}
             />
           </motion.div>
         ) : (
-          <div className="overflow-hidden min-w-0">
+          <div className="overflow-hidden min-w-0 w-full">
             {settings.site_name && (
               <h1 className="font-space-grotesk font-bold text-lg text-foreground leading-tight truncate">
                 {settings.site_name}
