@@ -1,231 +1,311 @@
-# StreamerX - Casino Streamer Platform
+# StreamerX - Casino Streamer Community Platform
 
-A full-featured casino streaming community platform built with React, TypeScript, and Supabase.
+> A professional-grade, full-stack casino streaming community platform built with modern web technologies. Features a complete content management system, user engagement features, real-time functionality, and enterprise-level security.
 
-## Features
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)
+![Tailwind](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss)
 
-- 🎰 **Casino Bonuses** - Display and manage casino bonuses with affiliate links
-- 📹 **Video Gallery** - Showcase streaming clips and highlights
-- 🎁 **Giveaways** - Run community giveaways with entry tracking
-- 📰 **News System** - Publish articles and updates
-- 📅 **Events Calendar** - Schedule streams and community events
-- 🎯 **Guess The Win** - Interactive prediction game for viewers
-- 🏆 **Leaderboard** - Track community points and rankings
-- 👤 **User Profiles** - Member profiles with social links
-- 🔐 **Authentication** - Email/password + OAuth (Twitch, Discord)
-- 🛡️ **Admin Panel** - Full content management system
-- 📊 **Audit Logging** - Track all admin actions
+## 📋 Table of Contents
 
-## Tech Stack
+- [Overview](#-overview)
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Quick Start](#-quick-start)
+- [Installation Guide](#-installation-guide)
+- [Project Structure](#-project-structure)
+- [Admin Panel](#-admin-panel)
+- [Security](#-security)
+- [Deployment](#-deployment)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-- **Frontend**: React 18, TypeScript, Vite
-- **Styling**: Tailwind CSS, shadcn/ui
-- **Backend**: Supabase (PostgreSQL, Auth, RLS)
-- **State Management**: TanStack Query
-- **Animations**: Framer Motion
-- **Forms**: React Hook Form, Zod validation
+---
 
-## Prerequisites
+## 🎯 Overview
 
-- Node.js 18+ 
-- npm or bun
-- Supabase account (or Lovable Cloud)
+StreamerX is a complete community platform designed for casino streamers and their audiences. It provides everything needed to build an engaged community around streaming content, including video galleries, giveaway management, news publishing, event scheduling, and interactive games.
 
-## Installation
+### Who is this for?
+
+- **Casino Streamers** looking for a professional community website
+- **Content Creators** who want to manage bonuses, giveaways, and events
+- **Developers** who need a reference implementation of a full-stack React + Supabase application
+
+---
+
+## ✨ Features
+
+### Content Management
+- 🎰 **Casino Bonuses** - Display affiliate bonuses with logos, promo codes, and country targeting
+- 📹 **Video Gallery** - Categorized video library with likes, views, and bookmarks
+- 📰 **News System** - Rich-text blog/news with categories, comments, and likes
+- 🎁 **Giveaways** - Entry tracking, countdown timers, winner selection, requirements
+- 📅 **Events Calendar** - Scheduled streams, community events, reminder subscriptions
+- 👤 **Streamer Profiles** - Multi-streamer support with social links
+
+### Community Features
+- 🏆 **Leaderboard** - Points-based ranking system
+- 🎯 **Bonus Hunt** - Interactive slot tracking with community predictions
+- 📊 **Polls** - Community voting with multiple choice support
+- 💬 **Profile Comments** - Social interaction on user profiles
+- 🔔 **Notifications** - Real-time user notifications
+- 🏅 **Achievements** - Unlockable badges and titles
+
+### User System
+- 🔐 **Authentication** - Email/password + OAuth (Twitch, Discord, Kick)
+- 👤 **User Profiles** - Customizable with avatars, covers, bios, social links
+- ⭐ **Points System** - Earn points through participation
+- 📱 **Push Notifications** - Browser push notification support
+
+### Admin Panel
+- 📊 **Dashboard** - Overview stats and quick actions
+- 👥 **User Management** - View, edit, ban, assign roles
+- 🛡️ **Role System** - Admin, Moderator, Writer, User roles
+- 📝 **Audit Logging** - Track all admin actions
+- ⚙️ **Site Settings** - Branding, navigation, legal pages
+- 📈 **Analytics** - User activity and engagement metrics
+
+---
+
+## 🛠 Tech Stack
+
+### Frontend
+| Technology | Purpose |
+|------------|---------|
+| **React 18** | UI library with hooks and concurrent features |
+| **TypeScript 5** | Type-safe JavaScript |
+| **Vite** | Fast development server and build tool |
+| **Tailwind CSS** | Utility-first CSS framework |
+| **shadcn/ui** | High-quality React components |
+| **Framer Motion** | Smooth animations and transitions |
+| **TanStack Query** | Server state management and caching |
+| **React Router** | Client-side routing |
+| **React Hook Form** | Form handling with Zod validation |
+
+### Backend (Lovable Cloud / Supabase)
+| Technology | Purpose |
+|------------|---------|
+| **PostgreSQL** | Primary database |
+| **Row Level Security** | Database-level access control |
+| **Edge Functions** | Serverless backend logic (Deno) |
+| **Auth** | User authentication with OAuth support |
+| **Realtime** | WebSocket subscriptions for live updates |
+| **Storage** | File uploads (avatars, images) |
+
+---
+
+## 🚀 Quick Start
+
+The fastest way to get started is using Lovable Cloud:
+
+1. **Fork/Remix** - Click "Remix" on the Lovable project
+2. **Connect Cloud** - Lovable Cloud is automatically connected
+3. **Publish** - Click the Publish button
+
+Your app is now live! 🎉
+
+---
+
+## 📦 Installation Guide
+
+### Prerequisites
+
+Before you begin, make sure you have:
+
+- **Node.js 18+** - [Download here](https://nodejs.org/)
+- **npm** (comes with Node.js) or **bun** - [Install bun](https://bun.sh/)
+- **Git** - [Download here](https://git-scm.com/)
 
 ### Step 1: Clone the Repository
 
+Open your terminal and run:
+
 ```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
+
+# Navigate to the project folder
 cd <YOUR_PROJECT_NAME>
 ```
 
 ### Step 2: Install Dependencies
 
 ```bash
+# Using npm
 npm install
-# or
+
+# OR using bun (faster)
 bun install
 ```
 
+This will download all required packages. It may take 1-2 minutes.
+
 ### Step 3: Environment Setup
 
-The `.env` file is automatically generated by Lovable Cloud with these variables:
-- `VITE_SUPABASE_URL` - Your Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` - Your Supabase anon key
-- `VITE_SUPABASE_PROJECT_ID` - Your Supabase project ID
+The project uses environment variables for configuration. These are automatically provided by Lovable Cloud.
 
-If running locally without Lovable Cloud, create a `.env` file:
+**If running locally without Lovable Cloud**, create a `.env` file:
 
 ```env
-VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
+VITE_SUPABASE_PROJECT_ID=your_supabase_project_id
 ```
 
-### Step 4: Database Setup
-
-The database schema is automatically set up via migrations. Tables include:
-
-- `profiles` - User profiles with social links
-- `user_roles` - Role-based access control (admin, moderator, user)
-- `casino_bonuses` - Casino bonus listings
-- `videos` - Video content with categories
-- `video_categories` - Video categorization
-- `video_likes` - Video like tracking
-- `news_articles` - News/blog posts
-- `news_comments` - Article comments
-- `giveaways` - Giveaway campaigns
-- `giveaway_entries` - Entry tracking
-- `events` - Scheduled events
-- `gtw_sessions` - Guess The Win game sessions
-- `gtw_guesses` - User guesses
-- `audit_logs` - Admin action logging
-- `site_settings` - Site configuration
-
-### Step 5: Start Development Server
+### Step 4: Start Development Server
 
 ```bash
+# Using npm
 npm run dev
-# or
+
+# OR using bun
 bun dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Open your browser and go to: **http://localhost:5173**
 
-## Making Yourself an Admin
+You should see the StreamerX homepage! 🎉
 
-1. Create an account through the /auth page
-2. Access your Supabase dashboard or use SQL Editor
-3. Run this query (replace with your user ID):
+### Step 5: Create Your Admin Account
 
-```sql
--- Find your user ID first
-SELECT id, email FROM auth.users WHERE email = 'your@email.com';
+1. Click "Login / Signup" in the sidebar
+2. Create an account using email or OAuth
+3. Access your backend database (Lovable Cloud > Database)
+4. Find your user ID in the `profiles` table
+5. Add a row to `user_roles` table:
+   - `user_id`: Your user ID
+   - `role`: `admin`
+6. Refresh the page - you now have admin access!
 
--- Then add admin role
-INSERT INTO public.user_roles (user_id, role) 
-VALUES ('your-user-id-here', 'admin');
-```
+---
 
-Or via Lovable Cloud:
-1. Go to Cloud > Database > Tables > user_roles
-2. Add a new row with your user_id and role = 'admin'
-
-## OAuth Setup (Optional)
-
-### Twitch OAuth
-
-1. Go to [Twitch Developer Console](https://dev.twitch.tv/console)
-2. Create a new application
-3. Set OAuth Redirect URL to: `https://your-project.supabase.co/auth/v1/callback`
-4. Copy Client ID and Client Secret
-5. In Lovable Cloud > Auth Settings > Twitch, add your credentials
-
-### Discord OAuth
-
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application
-3. Add OAuth2 redirect: `https://your-project.supabase.co/auth/v1/callback`
-4. Copy Client ID and Client Secret
-5. In Lovable Cloud > Auth Settings > Discord, add your credentials
-
-## Project Structure
+## 📁 Project Structure
 
 ```
-src/
-├── components/
-│   ├── layout/          # MainLayout, Sidebar, Footer
-│   └── ui/              # shadcn/ui components
-├── contexts/
-│   └── AuthContext.tsx  # Authentication state
-├── hooks/               # Custom React hooks
-├── integrations/
-│   └── supabase/        # Supabase client & types
-├── lib/                 # Utility functions
-├── pages/
-│   ├── admin/           # Admin panel pages
-│   ├── Auth.tsx         # Login/signup
-│   ├── Bonuses.tsx      # Casino bonuses
-│   ├── Events.tsx       # Events calendar
-│   ├── Giveaways.tsx    # Giveaways listing
-│   ├── GuessTheWin.tsx  # GTW game
-│   ├── Index.tsx        # Homepage
-│   ├── Leaderboard.tsx  # Points leaderboard
-│   ├── News.tsx         # News articles
-│   ├── Profile.tsx      # User profile
-│   └── Videos.tsx       # Video gallery
-└── index.css            # Global styles & design tokens
+streamers/
+├── public/                 # Static assets (favicon, robots.txt)
+├── src/
+│   ├── assets/            # Images, fonts, etc.
+│   ├── components/        # Reusable React components
+│   │   ├── admin/         # Admin panel components
+│   │   ├── bonus-hunt/    # Bonus hunt feature components
+│   │   ├── layout/        # MainLayout, Sidebar, Footer
+│   │   ├── profile/       # Profile-related components
+│   │   └── ui/            # shadcn/ui components
+│   ├── contexts/          # React contexts (Auth, OnlinePresence)
+│   ├── hooks/             # Custom React hooks
+│   ├── integrations/      # External service integrations
+│   │   └── supabase/      # Supabase client & types
+│   ├── lib/               # Utility functions
+│   ├── pages/             # Page components
+│   │   └── admin/         # Admin panel pages
+│   ├── App.tsx            # Main app with routing
+│   ├── main.tsx           # App entry point
+│   └── index.css          # Global styles & design tokens
+├── supabase/
+│   ├── functions/         # Edge functions (Deno)
+│   └── config.toml        # Supabase configuration
+├── scripts/               # Database setup scripts
+└── package.json           # Dependencies and scripts
 ```
 
-## Admin Panel
+---
 
-Access `/admin` (requires admin or moderator role):
+## 🔧 Admin Panel
 
-- **Dashboard** - Overview stats
-- **Videos** - Manage video content
-- **Bonuses** - Manage casino bonuses
-- **Giveaways** - Create/manage giveaways
-- **News** - Publish articles
-- **Events** - Schedule events
-- **Users** - User management (admin only)
-- **Audit Log** - View admin actions
+Access the admin panel at `/admin` (requires admin or moderator role).
 
-## Deployment
+### Admin Sections
 
-### Via Lovable
+| Section | Description | Required Role |
+|---------|-------------|---------------|
+| Dashboard | Overview stats, quick actions | Admin, Moderator |
+| Videos | Manage video content | Admin, Moderator |
+| News | Publish articles | Admin, Moderator, Writer |
+| Bonuses | Manage casino bonuses | Admin, Moderator |
+| Giveaways | Create/manage giveaways | Admin, Moderator |
+| Events | Schedule events | Admin, Moderator |
+| Users | User management | Admin only |
+| Roles | Permission management | Admin only |
+| Settings | Site configuration | Admin only |
+| Audit Log | View admin actions | Admin only |
+
+### Admin Access Code
+
+Each admin must set a personal access code on first login. This provides an additional layer of security beyond role-based access.
+
+---
+
+## 🔒 Security
+
+### Security Features Implemented
+
+| Feature | Description |
+|---------|-------------|
+| **Row Level Security (RLS)** | All database tables have RLS policies |
+| **Role-Based Access Control** | Admin, Moderator, Writer, User roles |
+| **Secure Authentication** | JWT-based with OAuth support |
+| **Input Validation** | Zod schemas for all forms |
+| **XSS Protection** | DOMPurify for HTML sanitization |
+| **Audit Logging** | All admin actions are logged |
+| **Admin Access Codes** | Hashed server-side with salt |
+| **CORS Configuration** | Headers on all Edge Functions |
+
+### Security Best Practices
+
+1. **Never store roles client-side** - Roles are always checked via database
+2. **Use RLS policies** - Database enforces access rules
+3. **Sanitize user input** - All HTML content is sanitized
+4. **Hash sensitive data** - Access codes are hashed with salt
+5. **Validate on client AND server** - Double validation for all inputs
+
+---
+
+## 🚢 Deployment
+
+### Deploy with Lovable (Recommended)
 
 1. Open your project in Lovable
-2. Click "Publish" button
-3. Your app is deployed!
+2. Click the "Publish" button (top right)
+3. Your app is deployed! Get a `.lovable.app` URL
 
-### Via Vercel/Netlify
+### Custom Domain
 
-1. Connect your GitHub repository
-2. Set environment variables
-3. Deploy
+1. Go to Project Settings > Domains
+2. Add your custom domain
+3. Update DNS records as instructed
 
-### Via Docker
+### Self-Hosting
 
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 4173
-CMD ["npm", "run", "preview"]
-```
+See our [self-hosting guide](https://docs.lovable.dev/tips-tricks/self-hosting) for detailed instructions on deploying to your own infrastructure.
 
-## Security Features
+---
 
-- **Row Level Security (RLS)** - All tables protected
-- **Role-based access** - Admin, Moderator, User roles
-- **Input validation** - Zod schemas for forms
-- **Secure authentication** - Supabase Auth with OAuth
-- **Audit logging** - Track all admin actions
+## 🤝 Contributing
 
-## Customization
+Contributions are welcome! Please:
 
-### Branding
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
-1. Update logo in `Sidebar.tsx` and `Footer.tsx`
-2. Modify colors in `src/index.css` (CSS variables)
-3. Update site name throughout components
+---
 
-### Adding Features
+## 📄 License
 
-1. Create new pages in `src/pages/`
-2. Add routes in `src/App.tsx`
-3. Create database tables via migrations
-4. Update navigation in `Sidebar.tsx`
+This project is licensed under the MIT License - feel free to use it for your own projects!
 
-## Support
+---
 
-For issues or questions:
-- Open a GitHub issue
-- Contact via Discord
+## 📞 Support
 
-## License
+- **GitHub Issues** - Report bugs or request features
+- **Discord** - Join the community for help
+- **Documentation** - Visit [docs.lovable.dev](https://docs.lovable.dev)
 
-MIT License - feel free to use for your own projects!
+---
+
+Built with ❤️ using [Lovable](https://lovable.dev)
