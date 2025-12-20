@@ -77,7 +77,6 @@ export function AdminSidebarLogo({ collapsed = false }: AdminSidebarLogoProps) {
       {!collapsed && (
         <div className="min-w-0">
           <h2 className="font-bold text-lg leading-tight truncate">{siteName}</h2>
-          <p className="text-xs text-muted-foreground truncate">{tagline}</p>
         </div>
       )}
     </motion.div>
