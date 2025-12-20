@@ -70,12 +70,25 @@ export default function AdminSendNotifications() {
   const { data: recentNotifications } = useQuery({
     queryKey: ["recent-admin-notifications"],
     queryFn: async () => {
+      // Only fetch admin-sent notifications (system, giveaway, event, alert, info, reward types)
+      // Exclude social notifications like mentions, follows, comments which are auto-generated
       const { data } = await supabase
         .from("user_notifications")
         .select("*")
+        .in("type", ["system", "giveaway", "event", "alert", "info", "reward", "achievement"])
         .order("created_at", { ascending: false })
         .limit(10);
-      return data || [];
+      
+      // Deduplicate by title to avoid showing the same broadcast multiple times
+      const seen = new Set<string>();
+      const unique = data?.filter(n => {
+        const key = `${n.title}-${n.type}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      
+      return unique || [];
     },
   });
 
