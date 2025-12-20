@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Twitch, MessageCircle, Mail, Lock, User, X, Loader2, 
-  Eye, EyeOff, CheckCircle, Info
+  Eye, EyeOff, CheckCircle, Info, KeyRound, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,14 +33,18 @@ const passwordRequirements = [
 ];
 
 function Auth() {
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string; confirmPassword?: string }>({});
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -54,6 +58,14 @@ function Auth() {
       navigate("/");
     }
   }, [user, navigate]);
+
+  // Check for password reset mode from URL
+  useEffect(() => {
+    const urlMode = searchParams.get("mode");
+    if (urlMode === "reset") {
+      setMode("reset");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const checkSidebarState = () => {
@@ -89,17 +101,28 @@ function Auth() {
   }, [isLoading, toast]);
 
   const validateForm = () => {
-    const newErrors: { email?: string; password?: string; username?: string } = {};
+    const newErrors: { email?: string; password?: string; username?: string; confirmPassword?: string } = {};
     
-    const emailResult = emailSchema.safeParse(email);
-    if (!emailResult.success) {
-      newErrors.email = emailResult.error.errors[0].message;
+    // Email validation (not needed for reset mode)
+    if (mode !== "reset") {
+      const emailResult = emailSchema.safeParse(email);
+      if (!emailResult.success) {
+        newErrors.email = emailResult.error.errors[0].message;
+      }
     }
     
+    // Password validation for login, signup, and reset
     if (mode !== "forgot") {
       const passwordResult = passwordSchema.safeParse(password);
       if (!passwordResult.success) {
         newErrors.password = passwordResult.error.errors[0].message;
+      }
+    }
+    
+    // Confirm password for reset mode
+    if (mode === "reset") {
+      if (password !== confirmPassword) {
+        newErrors.confirmPassword = "Passwords do not match";
       }
     }
     
@@ -140,7 +163,30 @@ function Auth() {
     }
 
     try {
-      if (mode === "forgot") {
+      if (mode === "reset") {
+        // Handle password reset
+        const { error } = await supabase.auth.updateUser({
+          password: password,
+        });
+        
+        if (error) throw error;
+        
+        setPasswordResetSuccess(true);
+        toast({
+          title: "Password updated!",
+          description: "Your password has been successfully changed. You can now log in.",
+        });
+        
+        // Sign out and redirect to login after a short delay
+        setTimeout(async () => {
+          await supabase.auth.signOut();
+          setMode("login");
+          setPasswordResetSuccess(false);
+          setPassword("");
+          setConfirmPassword("");
+          navigate("/auth");
+        }, 2000);
+      } else if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth?mode=reset`,
         });
@@ -373,26 +419,47 @@ function Auth() {
                       <Mail className="w-8 h-8 text-white" />
                     ) : mode === "signup" ? (
                       <User className="w-8 h-8 text-white" />
+                    ) : mode === "reset" ? (
+                      <KeyRound className="w-8 h-8 text-white" />
                     ) : (
                       <Lock className="w-8 h-8 text-white" />
                     )}
                   </div>
                   <h1 className="text-2xl font-bold mb-2">
-                    {mode === "login" ? "Welcome Back" : mode === "signup" ? "Create Account" : "Reset Password"}
+                    {mode === "login" ? "Welcome Back" : mode === "signup" ? "Create Account" : mode === "reset" ? "Set New Password" : "Reset Password"}
                   </h1>
                   <p className="text-muted-foreground text-sm">
                     {mode === "login"
                       ? "Sign in to access your account"
                       : mode === "signup"
                       ? "Join the community today"
+                      : mode === "reset"
+                      ? "Enter your new password below"
                       : "Enter your email to receive a reset link"}
                   </p>
                 </motion.div>
               </AnimatePresence>
             </div>
 
+            {/* Back to Login button for reset/forgot modes */}
+            {(mode === "forgot" || mode === "reset") && (
+              <button
+                type="button"
+                onClick={() => { 
+                  setMode("login"); 
+                  setResetEmailSent(false); 
+                  setPasswordResetSuccess(false);
+                  setErrors({});
+                }}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to login
+              </button>
+            )}
+
             {/* OAuth Buttons */}
-            {mode !== "forgot" && (
+            {(mode === "login" || mode === "signup") && (
               <>
                 <div className="grid grid-cols-3 gap-3 mb-6">
                   <TooltipProvider>
@@ -483,27 +550,30 @@ function Auth() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setErrors((prev) => ({ ...prev, email: undefined }));
-                    }}
-                    placeholder="Enter your email"
-                    className={`w-full pl-10 pr-4 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                      errors.email ? "border-destructive" : "border-border/50 focus:border-primary"
-                    }`}
-                  />
+              {/* Email field - hidden for reset mode */}
+              {mode !== "reset" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setErrors((prev) => ({ ...prev, email: undefined }));
+                      }}
+                      placeholder="Enter your email"
+                      className={`w-full pl-10 pr-4 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        errors.email ? "border-destructive" : "border-border/50 focus:border-primary"
+                      }`}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-sm text-destructive">{errors.email}</p>
+                  )}
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
-              </div>
+              )}
 
               {mode !== "forgot" && (
                 <div className="space-y-2">
@@ -598,7 +668,37 @@ function Auth() {
                 </div>
               )}
 
-              {/* Remember Me - for login only */}
+              {/* Confirm Password - for reset mode only */}
+              {mode === "reset" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Confirm New Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                      }}
+                      placeholder="Confirm your new password"
+                      className={`w-full pl-10 pr-12 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        errors.confirmPassword ? "border-destructive" : "border-border/50 focus:border-primary"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+                  )}
+                </div>
+              )}
               {mode === "login" && (
                 <div className="flex items-center gap-2">
                   <Checkbox
@@ -637,14 +737,21 @@ function Auth() {
               <Button
                 type="submit"
                 className="w-full h-12 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white font-semibold rounded-xl shadow-lg shadow-primary/25 transition-all"
-                disabled={isLoading || (mode === "forgot" && resetEmailSent)}
+                disabled={isLoading || (mode === "forgot" && resetEmailSent) || passwordResetSuccess}
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
+                ) : passwordResetSuccess ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Password Updated!
+                  </span>
                 ) : mode === "login" ? (
                   "Sign In"
                 ) : mode === "signup" ? (
                   "Create Account"
+                ) : mode === "reset" ? (
+                  "Update Password"
                 ) : resetEmailSent ? (
                   <span className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5" />
@@ -656,21 +763,23 @@ function Auth() {
               </Button>
             </form>
 
-            {/* Toggle Mode */}
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              {mode === "login" ? "Don't have an account?" : mode === "signup" ? "Already have an account?" : "Remember your password?"}{" "}
-              <button
-                type="button"
-                onClick={() => { 
-                  setMode(mode === "forgot" ? "login" : mode === "login" ? "signup" : "login"); 
-                  setResetEmailSent(false);
-                  setErrors({});
-                }}
-                className="text-primary hover:underline font-medium"
-              >
-                {mode === "login" ? "Sign up" : "Sign in"}
-              </button>
-            </p>
+            {/* Toggle Mode - hidden for reset mode */}
+            {mode !== "reset" && (
+              <p className="text-center text-sm text-muted-foreground mt-6">
+                {mode === "login" ? "Don't have an account?" : mode === "signup" ? "Already have an account?" : "Remember your password?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => { 
+                    setMode(mode === "forgot" ? "login" : mode === "login" ? "signup" : "login"); 
+                    setResetEmailSent(false);
+                    setErrors({});
+                  }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {mode === "login" ? "Sign up" : "Sign in"}
+                </button>
+              </p>
+            )}
           </div>
 
           {/* Terms */}
