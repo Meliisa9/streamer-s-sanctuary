@@ -195,26 +195,28 @@ export function Sidebar() {
       className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-50 flex flex-col"
     >
       {/* Logo */}
-      <NavLink to="/" className="p-4 flex items-center hover:opacity-80 transition-opacity">
+      <NavLink to="/" className="p-4 flex items-center hover:opacity-80 transition-opacity overflow-hidden">
         {settings.logo_url ? (
           <motion.div 
-            className={`${collapsed ? "w-10 h-10" : "w-full"} flex-shrink-0`}
+            className="flex-1 min-w-0"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
             <img 
               src={settings.logo_url} 
-              alt={settings.site_name} 
-              className={`${collapsed ? "w-10 h-10 rounded-xl object-cover" : "h-12 w-full object-contain object-left"}`}
+              alt={settings.site_name || "Logo"} 
+              className={`${collapsed ? "w-10 h-10 rounded-xl object-cover" : "h-12 max-w-full object-contain object-left"}`}
             />
           </motion.div>
         ) : (
-          <div className="overflow-hidden">
-            <h1 className="font-space-grotesk font-bold text-lg text-foreground leading-tight">
-              {settings.site_name}
-            </h1>
-            {!collapsed && (
-              <p className="text-xs text-muted-foreground">{settings.site_tagline}</p>
+          <div className="overflow-hidden min-w-0">
+            {settings.site_name && (
+              <h1 className="font-space-grotesk font-bold text-lg text-foreground leading-tight truncate">
+                {settings.site_name}
+              </h1>
+            )}
+            {!collapsed && settings.site_tagline && (
+              <p className="text-xs text-muted-foreground truncate">{settings.site_tagline}</p>
             )}
           </div>
         )}
