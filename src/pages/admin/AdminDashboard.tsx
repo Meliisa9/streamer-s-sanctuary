@@ -27,7 +27,7 @@ import { LiveStreamStatus } from "@/components/admin/LiveStreamStatus";
 import { SystemMonitor } from "@/components/admin/SystemMonitor";
 import { AdminDiagnosticsPanel } from "@/components/admin/AdminDiagnosticsPanel";
 import { StreamHealthWidget } from "@/components/admin/StreamHealthWidget";
-import { supabase } from "@/integrations/supabase/client";
+import { QuickActionsWidget } from "@/components/admin/QuickActionsWidget";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -372,7 +372,8 @@ export default function AdminDashboard() {
       {/* Diagnostics Panel */}
       <AdminDiagnosticsPanel />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Quick Actions Widget */}
+      <QuickActionsWidget />
         {/* Quick Actions */}
         <AdminCard 
           title="Quick Actions" 
