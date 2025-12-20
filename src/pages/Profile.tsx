@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ import {
   User, Trophy, Gift, Target, Save, LogOut, 
   Calendar, Edit2, Shield, TrendingUp,
   MessageSquare, Heart, Award, Link2, CheckCircle2, Settings, Loader2, Users, Bookmark,
-  Video, Newspaper, Mail, AlertCircle, MapPin, Cake, Star, Gamepad2, Flame
+  Video, Newspaper, Mail, AlertCircle, MapPin, Cake, Star, Gamepad2, Flame,
+  Camera, Sparkles, Crown, Zap, Eye, ExternalLink, Clock, ChevronRight
 } from "lucide-react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useUserFollow } from "@/hooks/useUserFollow";
@@ -167,7 +168,6 @@ export default function Profile() {
 
   useEffect(() => {
     if (profile) {
-      // Convert age to approximate birthdate for display
       const age = (profile as any).age;
       let birthdate = "";
       if (age) {
@@ -190,7 +190,6 @@ export default function Profile() {
     }
   }, [profile]);
 
-  // Calculate age from birthdate
   const calculateAge = (birthdate: string): number | null => {
     if (!birthdate) return null;
     const birth = new Date(birthdate);
@@ -379,253 +378,305 @@ export default function Profile() {
   };
 
   const unlockedCount = ACHIEVEMENTS.filter(a => getAchievementProgress(a.key).unlocked).length;
-  
-  // Get display age from profile
   const displayAge = (profile as any)?.age;
 
   return (
-    <div className="min-h-screen py-8 px-6">
-      <div className="container mx-auto max-w-6xl">
-        {/* Header with Profile Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-2xl overflow-hidden mb-6"
+    <div className="min-h-screen">
+      {/* Hero Section with Profile Card */}
+      <div className="relative">
+        {/* Cover Photo Background */}
+        <div 
+          className="h-56 md:h-72 relative"
+          style={(profile as any)?.cover_url ? { 
+            backgroundImage: `url(${(profile as any).cover_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          } : undefined}
         >
-          {/* Profile Header Banner with Cover Photo */}
-          <div 
-            className="h-36 md:h-44 relative bg-gradient-to-r from-primary/30 via-primary/20 to-accent/30"
-            style={(profile as any)?.cover_url ? { 
-              backgroundImage: `url(${(profile as any).cover_url})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            } : undefined}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-            
-            {/* Cover Photo Upload and Edit buttons - positioned together */}
-            <div className="absolute top-4 right-4 flex gap-2 z-10">
-              {isEditing && (
-                <CoverPhotoUpload
-                  currentCoverUrl={(profile as any)?.cover_url}
-                  userId={user.id}
-                  onCoverChange={(url) => setFormData({ ...formData, cover_url: url })}
-                />
-              )}
+          {!(profile as any)?.cover_url && (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/20 to-accent/30" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          
+          {/* Floating Action Buttons */}
+          <div className="absolute top-4 right-4 flex gap-2 z-10">
+            {isEditing && (
+              <CoverPhotoUpload
+                currentCoverUrl={(profile as any)?.cover_url}
+                userId={user.id}
+                onCoverChange={(url) => setFormData({ ...formData, cover_url: url })}
+              />
+            )}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button
                 variant={isEditing ? "outline" : "secondary"}
                 size="sm"
                 onClick={() => setIsEditing(!isEditing)}
-                className="gap-2"
+                className="gap-2 backdrop-blur-sm bg-background/60 border-border/50"
               >
-                {isEditing ? <>Cancel</> : <><Edit2 className="w-4 h-4" />Edit</>}
+                {isEditing ? "Cancel" : <><Edit2 className="w-4 h-4" />Edit Profile</>}
               </Button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button 
                 variant="outline" 
                 size="sm"
-                className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10" 
+                className="gap-2 backdrop-blur-sm bg-background/60 border-destructive/30 text-destructive hover:bg-destructive/10" 
                 onClick={handleSignOut}
               >
                 <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Sign Out</span>
               </Button>
-            </div>
-            
-            <div className="absolute -bottom-12 left-6">
-              <div className="relative">
-                <div className="w-28 h-28 rounded-2xl bg-background border-4 border-background overflow-hidden shadow-xl">
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-secondary flex items-center justify-center">
-                      <User className="w-12 h-12 text-muted-foreground" />
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Profile Card Overlay */}
+        <div className="container mx-auto max-w-6xl px-4 -mt-32 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card/95 backdrop-blur-xl rounded-3xl border border-border/50 shadow-2xl overflow-hidden"
+          >
+            <div className="p-6 md:p-8">
+              {/* Avatar and Basic Info */}
+              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+                {/* Avatar */}
+                <div className="relative group">
+                  <div className="w-32 h-32 md:w-36 md:h-36 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 p-1">
+                    <div className="w-full h-full rounded-xl overflow-hidden bg-background">
+                      {profile?.avatar_url ? (
+                        <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-secondary">
+                          <User className="w-16 h-16 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {isEditing && (
+                    <div className="absolute -bottom-2 -right-2">
+                      <AvatarUpload
+                        currentAvatarUrl={formData.avatar_url}
+                        userId={user.id}
+                        onAvatarChange={(url) => setFormData({ ...formData, avatar_url: url })}
+                      />
                     </div>
                   )}
+                  {/* Online indicator */}
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-4 border-background" />
                 </div>
-                {isEditing && (
-                  <AvatarUpload
-                    currentAvatarUrl={formData.avatar_url}
-                    userId={user.id}
-                    onAvatarChange={(url) => setFormData({ ...formData, avatar_url: url })}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
 
-          {/* Profile Info */}
-          <div className="pt-16 px-6 pb-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold">{formData.username || "Anonymous"}</h1>
-                  <Badge variant="outline" className={level.color}>{level.name}</Badge>
+                {/* User Info */}
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <h1 className="text-2xl md:text-3xl font-bold">{formData.username || "Anonymous"}</h1>
+                    <Badge className={`${level.color} border-0 gap-1`}>
+                      <Crown className="w-3 h-3" />
+                      {level.name}
+                    </Badge>
+                    {stats.consecutiveSignIns >= 7 && (
+                      <Badge variant="outline" className="border-orange-500/50 text-orange-500 gap-1">
+                        <Flame className="w-3 h-3" />
+                        {stats.consecutiveSignIns} Day Streak
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground mb-3">@{formData.username || "username"}</p>
+                  
+                  {/* Quick Stats Row */}
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      Joined {memberSince}
+                    </div>
+                    {(profile as any)?.country && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                        <MapPin className="w-4 h-4" />
+                        {(profile as any).country}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-sm">@{formData.username || "username"}</p>
+
+                {/* Level Progress Card */}
+                <div className="w-full md:w-auto">
+                  <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 border border-primary/20 min-w-[200px]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Level {level.level}</span>
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <Progress value={level.progressPercent} className="h-2 mb-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{profile?.points || 0} XP</span>
+                      <span>{level.xpToNextLevel > 0 ? `${level.xpToNextLevel} to next` : "Max Level"}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              
-              {/* Enhanced Stats Tabs */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/20 shadow-sm">
-                  <Trophy className="w-4 h-4 text-primary" />
-                  <div>
-                    <p className="text-lg font-bold text-primary">{profile?.points || 0}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Points</p>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mt-6">
+                <motion.div 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl p-4 border border-primary/20 cursor-default"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Points</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-orange-500/20 to-orange-500/5 rounded-xl border border-orange-500/20 shadow-sm">
-                  <Flame className="w-4 h-4 text-orange-500" />
-                  <div>
-                    <p className="text-lg font-bold text-orange-500">{stats.consecutiveSignIns}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Streak</p>
+                  <p className="text-2xl font-bold text-primary">{profile?.points || 0}</p>
+                </motion.div>
+
+                <motion.div 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="bg-gradient-to-br from-orange-500/15 to-orange-500/5 rounded-xl p-4 border border-orange-500/20 cursor-default"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Streak</span>
                   </div>
-                </div>
-                <button 
+                  <p className="text-2xl font-bold text-orange-500">{stats.consecutiveSignIns}</p>
+                </motion.div>
+
+                <motion.button 
+                  whileHover={{ scale: 1.02, y: -2 }}
                   onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-blue-500/20 to-blue-500/5 rounded-xl border border-blue-500/20 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                  className="bg-gradient-to-br from-blue-500/15 to-blue-500/5 rounded-xl p-4 border border-blue-500/20 text-left"
                 >
-                  <Users className="w-4 h-4 text-blue-500" />
-                  <div>
-                    <p className="text-lg font-bold">{followersCount}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Followers</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users className="w-4 h-4 text-blue-500" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Followers</span>
                   </div>
-                </button>
-                <button 
+                  <p className="text-2xl font-bold">{followersCount}</p>
+                </motion.button>
+
+                <motion.button 
+                  whileHover={{ scale: 1.02, y: -2 }}
                   onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-purple-500/20 to-purple-500/5 rounded-xl border border-purple-500/20 shadow-sm hover:shadow-md transition-all cursor-pointer"
+                  className="bg-gradient-to-br from-purple-500/15 to-purple-500/5 rounded-xl p-4 border border-purple-500/20 text-left"
                 >
-                  <Heart className="w-4 h-4 text-purple-500" />
-                  <div>
-                    <p className="text-lg font-bold">{followingCount}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Following</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Heart className="w-4 h-4 text-purple-500" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Following</span>
                   </div>
-                </button>
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20 shadow-sm">
-                  <Award className="w-4 h-4 text-yellow-500" />
-                  <div>
-                    <p className="text-lg font-bold">{unlockedCount}/{ACHIEVEMENTS.length}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Achievements</p>
+                  <p className="text-2xl font-bold">{followingCount}</p>
+                </motion.button>
+
+                <motion.div 
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  className="bg-gradient-to-br from-yellow-500/15 to-yellow-500/5 rounded-xl p-4 border border-yellow-500/20 cursor-default"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Award className="w-4 h-4 text-yellow-500" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wide">Badges</span>
                   </div>
-                </div>
+                  <p className="text-2xl font-bold">{unlockedCount}<span className="text-sm text-muted-foreground">/{ACHIEVEMENTS.length}</span></p>
+                </motion.div>
               </div>
             </div>
+          </motion.div>
+        </div>
+      </div>
 
-            {/* Level Progress */}
-            <div className="mt-4 p-3 bg-secondary/30 rounded-xl">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium">
-                  Level {level.level}: {level.name}
-                  {level.xpToNextLevel > 0 && (
-                    <span className="text-muted-foreground ml-2">({level.xpToNextLevel} XP to next level)</span>
-                  )}
-                </span>
-                <span className="text-xs text-muted-foreground">{level.progressPercent.toFixed(0)}%</span>
-              </div>
-              <Progress value={level.progressPercent} className="h-1.5" />
-              <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-                <span>{level.currentXP} XP</span>
-                <span>{level.maxXP === Infinity ? "Max Level" : `${level.maxXP + 1} XP`}</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Tabbed Content */}
+      {/* Tabbed Content */}
+      <div className="container mx-auto max-w-6xl px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
+          transition={{ delay: 0.1 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start mb-6 bg-secondary/30 p-1 rounded-xl flex-wrap">
-              <TabsTrigger value="profile" className="gap-2">
+            <TabsList className="w-full justify-start mb-6 bg-card/50 backdrop-blur-sm p-1.5 rounded-xl border border-border/50 flex-wrap gap-1">
+              <TabsTrigger value="profile" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <User className="w-4 h-4" />Profile
               </TabsTrigger>
-              <TabsTrigger value="bookmarks" className="gap-2">
+              <TabsTrigger value="bookmarks" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <Bookmark className="w-4 h-4" />Bookmarks
               </TabsTrigger>
-              <TabsTrigger value="achievements" className="gap-2">
+              <TabsTrigger value="achievements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <Award className="w-4 h-4" />Achievements
               </TabsTrigger>
-              <TabsTrigger value="activity" className="gap-2">
+              <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <TrendingUp className="w-4 h-4" />Activity
               </TabsTrigger>
-              <TabsTrigger value="settings" className="gap-2">
+              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <Settings className="w-4 h-4" />Settings
               </TabsTrigger>
             </TabsList>
 
-            {/* Profile Tab - Now includes display-only profile info, connected accounts, and wall */}
+            {/* Profile Tab */}
             <TabsContent value="profile" className="space-y-6">
-              {/* Member Since - Separate */}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="w-4 h-4" />
-                Member since {memberSince}
-              </div>
-              
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Profile Info Display - Unique info not shown in Casino Corner */}
-                <div className="lg:col-span-2 glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">About Me</h3>
-                  <div className="space-y-4">
-                    {/* Bio */}
-                    {profile?.bio && (
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <p className="text-sm text-muted-foreground mb-1">Bio</p>
-                        <p>{profile.bio}</p>
-                      </div>
-                    )}
+                {/* Main Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* About Me */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+                  >
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <User className="w-4 h-4 text-primary" />
+                      About Me
+                    </h3>
                     
-                    {/* Profile Details Grid - respect privacy settings, exclude casino stats shown in Casino Corner */}
+                    {profile?.bio ? (
+                      <div className="p-4 bg-secondary/30 rounded-xl mb-4">
+                        <p className="text-foreground">{profile.bio}</p>
+                      </div>
+                    ) : null}
+                    
+                    {/* Profile Details Grid */}
                     {(() => {
                       const privacy = (profile as any)?.privacy_settings || {};
                       return (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                           {displayAge && privacy.show_age !== false && (
-                            <div className="p-4 bg-secondary/30 rounded-xl">
+                            <div className="p-4 bg-secondary/30 rounded-xl hover:bg-secondary/40 transition-colors">
                               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                                 <Cake className="w-4 h-4" />
-                                <span className="text-sm">Age</span>
+                                <span className="text-xs uppercase tracking-wide">Age</span>
                               </div>
-                              <p className="font-medium">{displayAge} years old</p>
+                              <p className="font-medium">{displayAge} years</p>
                             </div>
                           )}
                           {(profile as any)?.country && privacy.show_country !== false && (
-                            <div className="p-4 bg-secondary/30 rounded-xl">
+                            <div className="p-4 bg-secondary/30 rounded-xl hover:bg-secondary/40 transition-colors">
                               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                                 <MapPin className="w-4 h-4" />
-                                <span className="text-sm">Country</span>
+                                <span className="text-xs uppercase tracking-wide">Country</span>
                               </div>
                               <p className="font-medium">{(profile as any).country}</p>
                             </div>
                           )}
                           {(profile as any)?.city && privacy.show_city !== false && (
-                            <div className="p-4 bg-secondary/30 rounded-xl">
+                            <div className="p-4 bg-secondary/30 rounded-xl hover:bg-secondary/40 transition-colors">
                               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                                 <MapPin className="w-4 h-4" />
-                                <span className="text-sm">City</span>
+                                <span className="text-xs uppercase tracking-wide">City</span>
                               </div>
                               <p className="font-medium">{(profile as any).city}</p>
                             </div>
                           )}
-                          {/* Member Stats */}
-                          <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="p-4 bg-secondary/30 rounded-xl hover:bg-secondary/40 transition-colors">
                             <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <TrendingUp className="w-4 h-4" />
-                              <span className="text-sm">Total Activity</span>
+                              <Zap className="w-4 h-4" />
+                              <span className="text-xs uppercase tracking-wide">Activity</span>
                             </div>
                             <p className="font-medium">{totalActivity} actions</p>
                           </div>
-                          <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="p-4 bg-secondary/30 rounded-xl hover:bg-secondary/40 transition-colors">
                             <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                              <Target className="w-4 h-4" />
-                              <span className="text-sm">Giveaway Entries</span>
+                              <Gift className="w-4 h-4" />
+                              <span className="text-xs uppercase tracking-wide">Entries</span>
                             </div>
                             <p className="font-medium">{stats.giveawayEntries}</p>
                           </div>
-                          <div className="p-4 bg-secondary/30 rounded-xl">
+                          <div className="p-4 bg-secondary/30 rounded-xl hover:bg-secondary/40 transition-colors">
                             <div className="flex items-center gap-2 text-muted-foreground mb-1">
                               <MessageSquare className="w-4 h-4" />
-                              <span className="text-sm">Comments</span>
+                              <span className="text-xs uppercase tracking-wide">Comments</span>
                             </div>
                             <p className="font-medium">{stats.comments}</p>
                           </div>
@@ -636,31 +687,161 @@ export default function Profile() {
                     {!profile?.bio && !displayAge && !(profile as any)?.country && (
                       <div className="text-center py-8 text-muted-foreground">
                         <User className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                        <p>No profile information set yet.</p>
-                        <p className="text-sm">Go to Settings tab to add your details.</p>
+                        <p className="font-medium">No profile information yet</p>
+                        <p className="text-sm">Add your details in the Settings tab</p>
                       </div>
                     )}
-                  </div>
+                  </motion.div>
+
+                  {/* Connected Accounts */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 }}
+                    className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+                  >
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <Link2 className="w-4 h-4 text-primary" />
+                      Connected Accounts
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {/* Twitch */}
+                      <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/30 hover:border-purple-500/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Twitch</p>
+                            <p className="text-xs">
+                              {twitchConnected || profile?.twitch_username ? (
+                                <span className="flex items-center gap-1 text-green-400">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {profile?.twitch_username ? `@${profile.twitch_username}` : "Connected"}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">Not connected</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        {!twitchConnected && (
+                          <Button size="sm" variant="outline" onClick={handleConnectTwitch} disabled={connectingProvider === "twitch"} className="h-8 text-xs">
+                            {connectingProvider === "twitch" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Discord */}
+                      <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/30 hover:border-indigo-500/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418Z"/>
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Discord</p>
+                            <p className="text-xs">
+                              {discordConnected || profile?.discord_tag ? (
+                                <span className="flex items-center gap-1 text-green-400">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  {profile?.discord_tag || "Connected"}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">Not connected</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        {!discordConnected && (
+                          <Button size="sm" variant="outline" onClick={handleConnectDiscord} disabled={connectingProvider === "discord"} className="h-8 text-xs">
+                            {connectingProvider === "discord" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Kick */}
+                      <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/30 hover:border-green-500/30 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-green-600/20 flex items-center justify-center">
+                            <span className="text-green-400 font-bold text-sm">K</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">Kick</p>
+                            <p className="text-xs">
+                              {kickConnected ? (
+                                <span className="flex items-center gap-1 text-green-400">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  @{profile?.kick_username}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">Not connected</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        {!kickConnected && (
+                          <Button size="sm" variant="outline" onClick={handleConnectKick} disabled={connectingProvider === "kick"} className="h-8 text-xs">
+                            {connectingProvider === "kick" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Profile Comments */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+                  >
+                    <ProfileComments profileUserId={user.id} />
+                  </motion.div>
                 </div>
 
                 {/* Sidebar */}
                 <div className="space-y-6">
                   {/* Quick Links */}
-                  <div className="glass rounded-2xl p-6">
-                    <h3 className="font-semibold mb-4">Quick Links</h3>
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+                  >
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-primary" />
+                      Quick Links
+                    </h3>
                     <div className="space-y-2">
                       <Link to="/giveaways">
-                        <Button variant="ghost" className="w-full justify-start gap-2 h-9">
-                          <Gift className="w-4 h-4" />Browse Giveaways
+                        <Button variant="ghost" className="w-full justify-between h-11 hover:bg-primary/10 group">
+                          <span className="flex items-center gap-2">
+                            <Gift className="w-4 h-4" />Browse Giveaways
+                          </span>
+                          <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </Link>
                       <Link to="/leaderboard">
-                        <Button variant="ghost" className="w-full justify-start gap-2 h-9">
-                          <Trophy className="w-4 h-4" />Leaderboard
+                        <Button variant="ghost" className="w-full justify-between h-11 hover:bg-primary/10 group">
+                          <span className="flex items-center gap-2">
+                            <Trophy className="w-4 h-4" />Leaderboard
+                          </span>
+                          <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Button>
+                      </Link>
+                      <Link to="/achievements">
+                        <Button variant="ghost" className="w-full justify-between h-11 hover:bg-primary/10 group">
+                          <span className="flex items-center gap-2">
+                            <Award className="w-4 h-4" />All Achievements
+                          </span>
+                          <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                         </Button>
                       </Link>
                     </div>
-                  </div>
+                  </motion.div>
                   
                   {/* Casino Corner Box */}
                   <GamblingStatsBox 
@@ -670,108 +851,15 @@ export default function Profile() {
                   />
                 </div>
               </div>
-
-              {/* Connected Accounts */}
-              <div className="glass rounded-2xl p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Link2 className="w-4 h-4 text-primary" />
-                  Connected Accounts
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Twitch */}
-                  <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center">
-                        <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Twitch</p>
-                        <p className="text-xs">
-                          {twitchConnected || profile?.twitch_username ? (
-                            <span className="flex items-center gap-1 text-green-400">
-                              <CheckCircle2 className="w-3 h-3" />
-                              {profile?.twitch_username ? `@${profile.twitch_username}` : "Connected"}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">Not connected</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    {!twitchConnected && (
-                      <Button size="sm" variant="outline" onClick={handleConnectTwitch} disabled={connectingProvider === "twitch"} className="h-8 text-xs">
-                        {connectingProvider === "twitch" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Discord */}
-                  <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center">
-                        <svg className="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418Z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Discord</p>
-                        <p className="text-xs">
-                          {discordConnected || profile?.discord_tag ? (
-                            <span className="flex items-center gap-1 text-green-400">
-                              <CheckCircle2 className="w-3 h-3" />
-                              {profile?.discord_tag || "Connected"}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">Not connected</span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    {!discordConnected && (
-                      <Button size="sm" variant="outline" onClick={handleConnectDiscord} disabled={connectingProvider === "discord"} className="h-8 text-xs">
-                        {connectingProvider === "discord" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Kick */}
-                  <div className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl border border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-green-600/20 flex items-center justify-center">
-                        <span className="text-green-400 font-bold text-sm">K</span>
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">Kick</p>
-                        <p className="text-xs text-muted-foreground">
-                          {kickConnected ? (
-                            <span className="flex items-center gap-1 text-green-400">
-                              <CheckCircle2 className="w-3 h-3" />
-                              @{profile?.kick_username}
-                            </span>
-                          ) : "Not connected"}
-                        </p>
-                      </div>
-                    </div>
-                    {!kickConnected && (
-                      <Button size="sm" variant="outline" onClick={handleConnectKick} disabled={connectingProvider === "kick"} className="h-8 text-xs">
-                        {connectingProvider === "kick" ? <Loader2 className="w-3 h-3 animate-spin" /> : "Connect"}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Profile Comments */}
-              <div className="glass rounded-2xl p-6">
-                <ProfileComments profileUserId={user.id} />
-              </div>
             </TabsContent>
 
             {/* Bookmarks Tab */}
             <TabsContent value="bookmarks" className="space-y-6">
-              <div className="glass rounded-2xl p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
                 <h3 className="font-semibold mb-6 flex items-center gap-2">
                   <Bookmark className="w-4 h-4 text-primary" />
                   Your Bookmarks
@@ -779,26 +867,27 @@ export default function Profile() {
                 
                 {/* Videos */}
                 {bookmarkedVideos && bookmarkedVideos.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <div className="mb-8">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
                       <Video className="w-4 h-4" />
                       Videos ({bookmarkedVideos.length})
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {bookmarkedVideos.map((video) => (
-                        <Link key={video.id} to="/videos" className="glass rounded-lg overflow-hidden hover:ring-1 hover:ring-primary/30 transition-all group">
-                          {video.thumbnail_url ? (
-                            <div className="aspect-video w-full overflow-hidden">
-                              <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <Link key={video.id} to={`/videos?v=${video.id}`}>
+                          <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="group relative rounded-xl overflow-hidden bg-secondary/30 border border-border/30 hover:border-primary/30 transition-all"
+                          >
+                            <div className="aspect-video bg-muted">
+                              {video.thumbnail_url && (
+                                <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover" />
+                              )}
                             </div>
-                          ) : (
-                            <div className="aspect-video w-full bg-secondary flex items-center justify-center">
-                              <Video className="w-8 h-8 text-muted-foreground/40" />
+                            <div className="p-3">
+                              <p className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">{video.title}</p>
                             </div>
-                          )}
-                          <div className="p-2">
-                            <p className="font-medium text-sm line-clamp-1">{video.title}</p>
-                          </div>
+                          </motion.div>
                         </Link>
                       ))}
                     </div>
@@ -807,26 +896,27 @@ export default function Profile() {
 
                 {/* Articles */}
                 {bookmarkedArticles && bookmarkedArticles.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <div className="mb-8">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
                       <Newspaper className="w-4 h-4" />
                       Articles ({bookmarkedArticles.length})
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {bookmarkedArticles.map((article) => (
-                        <Link key={article.id} to={`/news/${article.slug}`} className="glass rounded-lg overflow-hidden hover:ring-1 hover:ring-primary/30 transition-all group">
-                          {article.image_url ? (
-                            <div className="aspect-video w-full overflow-hidden">
-                              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <Link key={article.id} to={`/news/${article.slug}`}>
+                          <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="group relative rounded-xl overflow-hidden bg-secondary/30 border border-border/30 hover:border-primary/30 transition-all"
+                          >
+                            <div className="aspect-video bg-muted">
+                              {article.image_url && (
+                                <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
+                              )}
                             </div>
-                          ) : (
-                            <div className="aspect-video w-full bg-secondary flex items-center justify-center">
-                              <Newspaper className="w-8 h-8 text-muted-foreground/40" />
+                            <div className="p-3">
+                              <p className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors">{article.title}</p>
                             </div>
-                          )}
-                          <div className="p-2">
-                            <p className="font-medium text-sm line-clamp-1">{article.title}</p>
-                          </div>
+                          </motion.div>
                         </Link>
                       ))}
                     </div>
@@ -835,27 +925,28 @@ export default function Profile() {
 
                 {/* Giveaways */}
                 {bookmarkedGiveaways && bookmarkedGiveaways.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <div className="mb-8">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
                       <Gift className="w-4 h-4" />
                       Giveaways ({bookmarkedGiveaways.length})
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {bookmarkedGiveaways.map((giveaway) => (
-                        <Link key={giveaway.id} to="/giveaways" className="glass rounded-lg overflow-hidden hover:ring-1 hover:ring-primary/30 transition-all group">
-                          {giveaway.image_url ? (
-                            <div className="aspect-video w-full overflow-hidden">
-                              <img src={giveaway.image_url} alt={giveaway.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                        <Link key={giveaway.id} to={`/giveaways`}>
+                          <motion.div 
+                            whileHover={{ scale: 1.02, y: -2 }}
+                            className="group relative rounded-xl overflow-hidden bg-secondary/30 border border-border/30 hover:border-primary/30 transition-all"
+                          >
+                            <div className="aspect-video bg-muted">
+                              {giveaway.image_url && (
+                                <img src={giveaway.image_url} alt={giveaway.title} className="w-full h-full object-cover" />
+                              )}
                             </div>
-                          ) : (
-                            <div className="aspect-video w-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                              <Gift className="w-8 h-8 text-primary/60" />
+                            <div className="p-3">
+                              <p className="text-sm font-medium line-clamp-1 group-hover:text-primary transition-colors">{giveaway.title}</p>
+                              <p className="text-xs text-primary">{giveaway.prize}</p>
                             </div>
-                          )}
-                          <div className="p-2">
-                            <p className="font-medium text-sm line-clamp-1">{giveaway.title}</p>
-                            <p className="text-xs text-primary">{giveaway.prize}</p>
-                          </div>
+                          </motion.div>
                         </Link>
                       ))}
                     </div>
@@ -865,44 +956,54 @@ export default function Profile() {
                 {(!bookmarkedVideos?.length && !bookmarkedArticles?.length && !bookmarkedGiveaways?.length) && (
                   <div className="text-center py-12 text-muted-foreground">
                     <Bookmark className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <p>You haven't bookmarked anything yet.</p>
+                    <p className="font-medium">No bookmarks yet</p>
+                    <p className="text-sm">Start bookmarking content to see it here</p>
                   </div>
                 )}
-              </div>
+              </motion.div>
             </TabsContent>
 
             {/* Achievements Tab */}
             <TabsContent value="achievements" className="space-y-6">
-              <div className="glass rounded-2xl p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Award className="w-4 h-4 text-primary" />
-                    Achievements ({unlockedCount}/{ACHIEVEMENTS.length})
+                    Achievements
                   </h3>
+                  <Badge variant="outline" className="gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {unlockedCount}/{ACHIEVEMENTS.length} Unlocked
+                  </Badge>
                 </div>
-                
+
                 {Object.entries(achievementsByCategory).map(([category, categoryAchievements]) => (
-                  <div key={category} className="mb-6">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                  <div key={category} className="mb-8 last:mb-0">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
                       {categoryNames[category as keyof typeof categoryNames] || category}
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {categoryAchievements.map((achievement) => {
                         const progress = getAchievementProgress(achievement.key);
                         return (
-                          <div
+                          <motion.div
                             key={achievement.key}
+                            whileHover={{ scale: 1.01 }}
                             className={`p-4 rounded-xl border transition-all ${
-                              progress.unlocked
-                                ? "bg-primary/10 border-primary/30"
-                                : "bg-secondary/30 border-border/50 opacity-60"
+                              progress.unlocked 
+                                ? "bg-primary/10 border-primary/30" 
+                                : "bg-secondary/30 border-border/30 opacity-60"
                             }`}
                           >
                             <div className="flex items-center gap-3">
                               <span className="text-2xl">{achievement.icon}</span>
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <p className="font-medium text-sm">{achievement.name}</p>
-                                <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                                <p className="text-xs text-muted-foreground truncate">{achievement.description}</p>
                                 {!progress.unlocked && progress.progress !== undefined && (
                                   <div className="mt-2">
                                     <Progress value={(progress.progress / achievement.requirement) * 100} className="h-1" />
@@ -912,92 +1013,114 @@ export default function Profile() {
                                   </div>
                                 )}
                               </div>
-                              {progress.unlocked && <CheckCircle2 className="w-5 h-5 text-primary" />}
+                              {progress.unlocked && <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />}
                             </div>
-                          </div>
+                          </motion.div>
                         );
                       })}
                     </div>
                   </div>
                 ))}
-              </div>
+              </motion.div>
             </TabsContent>
 
             {/* Activity Tab */}
             <TabsContent value="activity" className="space-y-6">
-              <div className="glass rounded-2xl p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
                 <h3 className="font-semibold mb-6 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4 text-primary" />
                   Activity Stats
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                    <Gift className="w-6 h-6 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{stats.giveawayEntries}</p>
-                    <p className="text-xs text-muted-foreground">Giveaway Entries</p>
-                  </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                    <Target className="w-6 h-6 mx-auto mb-2 text-green-500" />
-                    <p className="text-2xl font-bold">{stats.gtwGuesses}</p>
-                    <p className="text-xs text-muted-foreground">GTW Guesses</p>
-                  </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                    <MessageSquare className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-                    <p className="text-2xl font-bold">{stats.comments}</p>
-                    <p className="text-xs text-muted-foreground">Comments</p>
-                  </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl text-center">
-                    <Heart className="w-6 h-6 mx-auto mb-2 text-red-500" />
-                    <p className="text-2xl font-bold">{stats.articleLikes}</p>
-                    <p className="text-xs text-muted-foreground">Likes</p>
-                  </div>
+                  <motion.div 
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    className="p-6 bg-gradient-to-br from-primary/15 to-primary/5 rounded-xl border border-primary/20 text-center"
+                  >
+                    <Gift className="w-8 h-8 mx-auto mb-3 text-primary" />
+                    <p className="text-3xl font-bold">{stats.giveawayEntries}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Giveaway Entries</p>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    className="p-6 bg-gradient-to-br from-green-500/15 to-green-500/5 rounded-xl border border-green-500/20 text-center"
+                  >
+                    <Target className="w-8 h-8 mx-auto mb-3 text-green-500" />
+                    <p className="text-3xl font-bold">{stats.gtwGuesses}</p>
+                    <p className="text-xs text-muted-foreground mt-1">GTW Guesses</p>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    className="p-6 bg-gradient-to-br from-blue-500/15 to-blue-500/5 rounded-xl border border-blue-500/20 text-center"
+                  >
+                    <MessageSquare className="w-8 h-8 mx-auto mb-3 text-blue-500" />
+                    <p className="text-3xl font-bold">{stats.comments}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Comments</p>
+                  </motion.div>
+                  <motion.div 
+                    whileHover={{ scale: 1.02, y: -2 }}
+                    className="p-6 bg-gradient-to-br from-red-500/15 to-red-500/5 rounded-xl border border-red-500/20 text-center"
+                  >
+                    <Heart className="w-8 h-8 mx-auto mb-3 text-red-500" />
+                    <p className="text-3xl font-bold">{stats.articleLikes}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Likes</p>
+                  </motion.div>
                 </div>
-              </div>
+              </motion.div>
             </TabsContent>
 
-            {/* Settings Tab - Now contains all editable profile fields */}
+            {/* Settings Tab */}
             <TabsContent value="settings" className="space-y-6">
               {/* Profile Information Edit Form */}
-              <div className="glass rounded-2xl p-6">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
+                <h3 className="font-semibold mb-6 flex items-center gap-2">
                   <User className="w-4 h-4 text-primary" />
                   Edit Profile Information
                 </h3>
-                <form onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Username</label>
                       <Input
                         value={formData.username}
                         onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                         placeholder="username"
+                        className="bg-secondary/30"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Cake className="w-4 h-4 text-muted-foreground" />
-                        Birth Date (Optional)
+                        Birth Date
                       </label>
                       <Input
                         type="date"
                         value={formData.birthdate}
                         onChange={(e) => setFormData({ ...formData, birthdate: e.target.value })}
                         max={new Date().toISOString().split('T')[0]}
+                        className="bg-secondary/30"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
-                        Country (Optional)
+                        Country
                       </label>
                       <Select
                         value={formData.country}
                         onValueChange={(value) => setFormData({ ...formData, country: value })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="bg-secondary/30">
                           <SelectValue placeholder="Select country" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1010,81 +1133,91 @@ export default function Profile() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-muted-foreground" />
-                        City (Optional)
+                        City
                       </label>
                       <Input
                         value={formData.city}
                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="Your city"
+                        className="bg-secondary/30"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Gamepad2 className="w-4 h-4 text-muted-foreground" />
-                        Favorite Slot (Optional)
+                        Favorite Slot
                       </label>
                       <Input
                         value={formData.favorite_slot}
                         onChange={(e) => setFormData({ ...formData, favorite_slot: e.target.value })}
                         placeholder="e.g., Gates of Olympus"
+                        className="bg-secondary/30"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Star className="w-4 h-4 text-muted-foreground" />
-                        Favorite Casino (Optional)
+                        Favorite Casino
                       </label>
                       <Input
                         value={formData.favorite_casino}
-                                      onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
                         placeholder="e.g., Stake"
+                        className="bg-secondary/30"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-medium flex items-center gap-2">
                         <Trophy className="w-4 h-4 text-yellow-500" />
-                        Biggest Win (Optional)
+                        Biggest Win
                       </label>
                       <Input
                         value={formData.biggest_win}
                         onChange={(e) => setFormData({ ...formData, biggest_win: e.target.value })}
                         placeholder="e.g., $50,000 on Gates of Olympus"
+                        className="bg-secondary/30"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2 mb-4">
+                  <div className="space-y-2">
                     <label className="text-sm font-medium">Bio</label>
                     <Textarea
                       value={formData.bio}
                       onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                       placeholder="Tell us about yourself..."
-                      rows={3}
+                      rows={4}
+                      className="bg-secondary/30"
                     />
                   </div>
 
-                  <Button type="submit" disabled={loading} className="w-full gap-2">
-                    <Save className="w-4 h-4" />
+                  <Button type="submit" disabled={loading} className="w-full gap-2" size="lg">
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     {loading ? "Saving..." : "Save Profile Changes"}
                   </Button>
                 </form>
-              </div>
+              </motion.div>
 
               {/* Email Change Section */}
-              <div className="glass rounded-2xl p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Mail className="w-4 h-4 text-primary" />
                   Change Email
                 </h3>
                 <div className="space-y-4">
                   <div className="p-4 bg-secondary/30 rounded-xl">
-                    <p className="text-sm text-muted-foreground mb-2">Current Email</p>
+                    <p className="text-sm text-muted-foreground mb-1">Current Email</p>
                     <p className="font-medium">{user.email}</p>
                   </div>
                   <div className="space-y-2">
@@ -1095,7 +1228,7 @@ export default function Profile() {
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="Enter new email"
-                        className="flex-1"
+                        className="flex-1 bg-secondary/30"
                       />
                       <Button onClick={handleEmailChange} disabled={emailChangePending || !newEmail}>
                         {emailChangePending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Change"}
@@ -1107,25 +1240,35 @@ export default function Profile() {
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Notification Preferences */}
-              <div className="glass rounded-2xl p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Settings className="w-4 h-4 text-primary" />
                   Notification Preferences
                 </h3>
                 <NotificationPreferences />
-              </div>
+              </motion.div>
 
               {/* Privacy Controls */}
-              <div className="glass rounded-2xl p-6">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-card/50 backdrop-blur-sm rounded-2xl p-6 border border-border/50"
+              >
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-primary" />
                   Privacy Controls
                 </h3>
                 <PrivacyControls />
-              </div>
+              </motion.div>
             </TabsContent>
           </Tabs>
         </motion.div>
