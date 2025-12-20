@@ -7,305 +7,520 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?logo=typescript)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss)
 
+---
+
 ## 📋 Table of Contents
 
-- [Overview](#-overview)
+- [What is StreamerX?](#-what-is-streamerx)
 - [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [Installation Guide](#-installation-guide)
+- [Requirements](#-requirements)
+- [Installation Guide (No GitHub)](#-installation-guide-without-github)
+- [Installation Guide (With GitHub)](#-installation-guide-with-github)
+- [Local Development Setup](#-local-development-setup)
+- [Public Server Deployment](#-public-server-deployment)
+- [Setting Up Your Admin Account](#-setting-up-your-admin-account)
 - [Project Structure](#-project-structure)
-- [Admin Panel](#-admin-panel)
-- [Security](#-security)
-- [Deployment](#-deployment)
-- [Contributing](#-contributing)
+- [Admin Panel Guide](#-admin-panel-guide)
+- [Security Features](#-security-features)
+- [Troubleshooting](#-troubleshooting)
+- [FAQ](#-frequently-asked-questions)
 - [License](#-license)
 
 ---
 
-## 🎯 Overview
+## 🎯 What is StreamerX?
 
-StreamerX is a complete community platform designed for casino streamers and their audiences. It provides everything needed to build an engaged community around streaming content, including video galleries, giveaway management, news publishing, event scheduling, and interactive games.
+**StreamerX** is a complete website platform designed for casino streamers and their communities. Think of it as your own professional website where you can:
 
-### Who is this for?
+- Show your streaming content and videos
+- Run giveaways for your community
+- Post news and updates
+- Schedule events and streams
+- Build a leaderboard for your most active fans
+- Manage casino bonus promotions
 
-- **Casino Streamers** looking for a professional community website
-- **Content Creators** who want to manage bonuses, giveaways, and events
-- **Developers** who need a reference implementation of a full-stack React + Supabase application
+**Who is this for?**
+
+- 🎰 **Casino Streamers** who want a professional community website
+- 🎮 **Content Creators** who want to engage their audience
+- 💼 **Businesses** looking for a complete community platform
+- 👨‍💻 **Developers** who want to learn from a production-ready application
 
 ---
 
 ## ✨ Features
 
-### Content Management
-- 🎰 **Casino Bonuses** - Display affiliate bonuses with logos, promo codes, and country targeting
-- 📹 **Video Gallery** - Categorized video library with likes, views, and bookmarks
-- 📰 **News System** - Rich-text blog/news with categories, comments, and likes
-- 🎁 **Giveaways** - Entry tracking, countdown timers, winner selection, requirements
-- 📅 **Events Calendar** - Scheduled streams, community events, reminder subscriptions
-- 👤 **Streamer Profiles** - Multi-streamer support with social links
+### For Your Community
+| Feature | What it does |
+|---------|--------------|
+| **Video Gallery** | Show your best clips and VODs with likes and views |
+| **Giveaways** | Run giveaways with entry requirements and winner picking |
+| **News & Blog** | Post updates and articles for your community |
+| **Events Calendar** | Schedule streams and events with reminders |
+| **Leaderboard** | Reward active users with points and rankings |
+| **Polls** | Get community feedback with voting |
+| **Achievements** | Unlock badges and titles for participation |
 
-### Community Features
-- 🏆 **Leaderboard** - Points-based ranking system
-- 🎯 **Bonus Hunt** - Interactive slot tracking with community predictions
-- 📊 **Polls** - Community voting with multiple choice support
-- 💬 **Profile Comments** - Social interaction on user profiles
-- 🔔 **Notifications** - Real-time user notifications
-- 🏅 **Achievements** - Unlockable badges and titles
+### For Streamers
+| Feature | What it does |
+|---------|--------------|
+| **Casino Bonuses** | Display affiliate links with promo codes |
+| **Bonus Hunt Tracker** | Interactive slot tracking for streams |
+| **Multi-Streamer Support** | Add multiple streamers with profiles |
+| **Live Stream Detection** | Auto-detect when you go live |
 
-### User System
-- 🔐 **Authentication** - Email/password + OAuth (Twitch, Discord, Kick)
-- 👤 **User Profiles** - Customizable with avatars, covers, bios, social links
-- ⭐ **Points System** - Earn points through participation
-- 📱 **Push Notifications** - Browser push notification support
-
-### Admin Panel
-- 📊 **Dashboard** - Overview stats and quick actions
-- 👥 **User Management** - View, edit, ban, assign roles
-- 🛡️ **Role System** - Admin, Moderator, Writer, User roles
-- 📝 **Audit Logging** - Track all admin actions
-- ⚙️ **Site Settings** - Branding, navigation, legal pages
-- 📈 **Analytics** - User activity and engagement metrics
+### For Admins
+| Feature | What it does |
+|---------|--------------|
+| **Full Dashboard** | See all stats at a glance |
+| **User Management** | View, edit, ban users easily |
+| **Role System** | Admin, Moderator, Writer roles |
+| **Audit Logging** | Track who changed what |
+| **Site Settings** | Customize branding, colors, content |
 
 ---
 
-## 🛠 Tech Stack
+## 📋 Requirements
 
-### Frontend
-| Technology | Purpose |
-|------------|---------|
-| **React 18** | UI library with hooks and concurrent features |
-| **TypeScript 5** | Type-safe JavaScript |
-| **Vite** | Fast development server and build tool |
-| **Tailwind CSS** | Utility-first CSS framework |
-| **shadcn/ui** | High-quality React components |
-| **Framer Motion** | Smooth animations and transitions |
-| **TanStack Query** | Server state management and caching |
-| **React Router** | Client-side routing |
-| **React Hook Form** | Form handling with Zod validation |
+Before you start, you need a few things on your computer. Don't worry - we'll walk you through each one!
 
-### Backend (Lovable Cloud / Supabase)
-| Technology | Purpose |
-|------------|---------|
-| **PostgreSQL** | Primary database |
-| **Row Level Security** | Database-level access control |
-| **Edge Functions** | Serverless backend logic (Deno) |
-| **Auth** | User authentication with OAuth support |
-| **Realtime** | WebSocket subscriptions for live updates |
-| **Storage** | File uploads (avatars, images) |
+### For Your Computer (Local Development)
+
+| What You Need | What It Is | How to Get It |
+|---------------|------------|---------------|
+| **Node.js 18+** | Runs JavaScript on your computer | [Download from nodejs.org](https://nodejs.org/) - click the "LTS" button |
+| **A Code Editor** | Where you edit files | [Download VS Code](https://code.visualstudio.com/) (free) |
+| **A Web Browser** | To view your website | Chrome, Firefox, Edge, or Safari |
+| **A Supabase Account** | Your database and backend | [Sign up at supabase.com](https://supabase.com/) (free tier available) |
+
+### For a Public Server
+
+Everything above, plus:
+| What You Need | What It Is | Options |
+|---------------|------------|---------|
+| **A Hosting Service** | Where your website lives online | Vercel, Netlify, Railway, or any VPS |
+| **A Domain Name** (optional) | Your website address (like mysite.com) | Namecheap, GoDaddy, Google Domains |
 
 ---
 
-## 🚀 Quick Start
+## 📦 Installation Guide (Without GitHub)
 
-The fastest way to get started is using Lovable Cloud:
+This guide is for people who want to install the project **without using GitHub or Git commands**.
 
-1. **Fork/Remix** - Click "Remix" on the Lovable project
-2. **Connect Cloud** - Lovable Cloud is automatically connected
-3. **Publish** - Click the Publish button
+### Step 1: Download the Project
 
-Your app is now live! 🎉
+1. Download the project as a ZIP file
+2. Find the downloaded ZIP file (usually in your Downloads folder)
+3. **Right-click** the ZIP file and select "Extract All" (Windows) or double-click (Mac)
+4. Choose where to save the folder (like your Desktop or Documents)
+5. You now have a folder called `streamers` (or similar) with all the files
+
+### Step 2: Install Node.js
+
+1. Go to [nodejs.org](https://nodejs.org/)
+2. Click the big green button that says **"LTS"** (Long Term Support)
+3. Open the downloaded file and follow the installation wizard
+4. Click "Next" on all screens and "Install" at the end
+5. **Restart your computer** after installation
+
+### Step 3: Open Terminal/Command Prompt
+
+**On Windows:**
+1. Press the **Windows key** on your keyboard
+2. Type `cmd` and press Enter
+3. A black window will open - this is Command Prompt
+
+**On Mac:**
+1. Press **Cmd + Space** to open Spotlight
+2. Type `terminal` and press Enter
+3. A white/black window will open - this is Terminal
+
+### Step 4: Navigate to Project Folder
+
+In your terminal, you need to go to the project folder. Type these commands:
+
+**On Windows:**
+```bash
+cd Desktop\streamers
+```
+(Replace `Desktop\streamers` with wherever you extracted the folder)
+
+**On Mac:**
+```bash
+cd ~/Desktop/streamers
+```
+
+**Tip:** You can also type `cd ` (with a space) and then drag the folder into the terminal window!
+
+### Step 5: Install Dependencies
+
+Now we install all the required packages. Type this command and press Enter:
+
+```bash
+npm install
+```
+
+**What's happening?** This downloads all the code libraries the project needs. It might take 2-5 minutes. You'll see lots of text scrolling - that's normal!
+
+**If you see errors:** Make sure you installed Node.js correctly and restarted your computer.
+
+### Step 6: Set Up Supabase (Your Database)
+
+1. Go to [supabase.com](https://supabase.com/) and create a free account
+2. Click "New Project" and give it a name (like "streamerx")
+3. Choose a strong password and save it somewhere safe
+4. Select the region closest to you
+5. Click "Create new project" and wait 2-3 minutes
+
+### Step 7: Get Your Supabase Keys
+
+1. In your Supabase project, click "Settings" (gear icon) in the left sidebar
+2. Click "API" under Configuration
+3. You'll see two important values:
+   - **Project URL** - looks like `https://xxxxx.supabase.co`
+   - **anon public** key - a long string of letters and numbers
+
+### Step 8: Create Environment File
+
+1. In your project folder, find the file called `.env.example` (or create a new file called `.env`)
+2. Open it with a text editor (like Notepad or VS Code)
+3. Add these lines (replace with YOUR values from Step 7):
+
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key-here
+VITE_SUPABASE_PROJECT_ID=your-project-id
+```
+
+4. Save the file as `.env` (just `.env`, no other name)
+
+### Step 9: Set Up Database Tables
+
+1. In your Supabase dashboard, click "SQL Editor" in the left sidebar
+2. Open the file `scripts/database/00-run-all.sql` from your project
+3. Copy ALL the content
+4. Paste it into the SQL Editor
+5. Click "Run" (or press Ctrl/Cmd + Enter)
+
+This creates all the database tables your website needs.
+
+### Step 10: Start the Website
+
+Go back to your terminal and type:
+
+```bash
+npm run dev
+```
+
+You should see something like:
+```
+  VITE v5.0.0  ready in 500 ms
+
+  ➜  Local:   http://localhost:5173/
+```
+
+### Step 11: View Your Website
+
+1. Open your web browser (Chrome, Firefox, etc.)
+2. Go to: **http://localhost:5173**
+3. 🎉 **You should see your StreamerX website!**
 
 ---
 
-## 📦 Installation Guide
+## 📦 Installation Guide (With GitHub)
 
-### Prerequisites
-
-Before you begin, make sure you have:
-
-- **Node.js 18+** - [Download here](https://nodejs.org/)
-- **npm** (comes with Node.js) or **bun** - [Install bun](https://bun.sh/)
-- **Git** - [Download here](https://git-scm.com/)
+If you're comfortable with GitHub, this method is faster.
 
 ### Step 1: Clone the Repository
 
-Open your terminal and run:
-
 ```bash
-# Clone the repository
-git clone <YOUR_GIT_URL>
+# Open terminal and run:
+git clone https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git
 
-# Navigate to the project folder
-cd <YOUR_PROJECT_NAME>
+# Go into the folder
+cd YOUR-REPO-NAME
 ```
 
 ### Step 2: Install Dependencies
 
 ```bash
-# Using npm
 npm install
-
-# OR using bun (faster)
-bun install
 ```
 
-This will download all required packages. It may take 1-2 minutes.
+### Step 3: Set Up Environment Variables
 
-### Step 3: Environment Setup
-
-The project uses environment variables for configuration. These are automatically provided by Lovable Cloud.
-
-**If running locally without Lovable Cloud**, create a `.env` file:
+Create a `.env` file in the root folder:
 
 ```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
-VITE_SUPABASE_PROJECT_ID=your_supabase_project_id
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key-here
+VITE_SUPABASE_PROJECT_ID=your-project-id
 ```
 
 ### Step 4: Start Development Server
 
 ```bash
-# Using npm
 npm run dev
-
-# OR using bun
-bun dev
 ```
 
-Open your browser and go to: **http://localhost:5173**
+Visit **http://localhost:5173** in your browser.
 
-You should see the StreamerX homepage! 🎉
+---
 
-### Step 5: Create Your Admin Account
+## 🖥️ Local Development Setup
 
-1. Click "Login / Signup" in the sidebar
-2. Create an account using email or OAuth
-3. Access your backend database (Lovable Cloud > Database)
-4. Find your user ID in the `profiles` table
-5. Add a row to `user_roles` table:
-   - `user_id`: Your user ID
-   - `role`: `admin`
-6. Refresh the page - you now have admin access!
+When you run the project on your own computer, it's called "local development." Here's what you need to know:
+
+### Starting the Website
+
+```bash
+npm run dev
+```
+
+This starts a "development server" on your computer. The website will be available at **http://localhost:5173**.
+
+### Stopping the Website
+
+In your terminal, press **Ctrl + C** (Windows/Mac) to stop the server.
+
+### Making Changes
+
+1. Open any file in your code editor
+2. Make your changes
+3. Save the file
+4. The website will automatically refresh with your changes!
+
+### Building for Production
+
+When you're ready to put your website online:
+
+```bash
+npm run build
+```
+
+This creates optimized files in a folder called `dist/`.
+
+---
+
+## 🌐 Public Server Deployment
+
+Here's how to put your website online for everyone to see.
+
+### Option 1: Vercel (Easiest - Recommended for Beginners)
+
+1. Go to [vercel.com](https://vercel.com/) and sign up (free)
+2. Connect your GitHub account
+3. Click "Import Project" and select your repository
+4. Add your environment variables:
+   - Click "Environment Variables"
+   - Add `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
+5. Click "Deploy"
+6. 🎉 Your website is live! You'll get a URL like `your-project.vercel.app`
+
+### Option 2: Netlify
+
+1. Go to [netlify.com](https://netlify.com/) and sign up
+2. Click "Add new site" → "Import an existing project"
+3. Connect GitHub and select your repo
+4. Set build command: `npm run build`
+5. Set publish directory: `dist`
+6. Add environment variables in Site Settings → Environment variables
+7. Deploy!
+
+### Option 3: Railway
+
+1. Go to [railway.app](https://railway.app/) and sign up
+2. Click "New Project" → "Deploy from GitHub repo"
+3. Select your repository
+4. Add environment variables
+5. Railway automatically deploys!
+
+### Option 4: Traditional VPS (Advanced)
+
+If you have a VPS (like DigitalOcean, Linode, or AWS):
+
+1. SSH into your server
+2. Install Node.js 18+
+3. Clone your repository
+4. Run `npm install`
+5. Run `npm run build`
+6. Serve the `dist/` folder with Nginx or Apache
+7. Set up SSL with Let's Encrypt
+
+---
+
+## 👑 Setting Up Your Admin Account
+
+After your website is running, you need to create an admin account.
+
+### Step 1: Create a Regular Account
+
+1. Go to your website
+2. Click "Login / Signup" in the sidebar
+3. Create an account using email or social login
+
+### Step 2: Find Your User ID
+
+1. Log into your Supabase dashboard
+2. Click "Table Editor" in the left sidebar
+3. Click on the "profiles" table
+4. Find your account (look for your email or username)
+5. Copy the value in the `user_id` column (it looks like: `a1b2c3d4-e5f6-7890-abcd-1234567890ab`)
+
+### Step 3: Assign Admin Role
+
+1. In Supabase Table Editor, click on the "user_roles" table
+2. Click "Insert row" (+ button)
+3. Fill in:
+   - `user_id`: Paste your user ID from Step 2
+   - `role`: Type exactly `admin`
+4. Click "Save"
+
+### Step 4: Verify Admin Access
+
+1. Go back to your website
+2. Refresh the page
+3. You should now see "Admin" in the sidebar!
+4. Click it to access the admin panel
 
 ---
 
 ## 📁 Project Structure
 
+Here's what all the folders mean:
+
 ```
 streamers/
-├── public/                 # Static assets (favicon, robots.txt)
-├── src/
-│   ├── assets/            # Images, fonts, etc.
-│   ├── components/        # Reusable React components
-│   │   ├── admin/         # Admin panel components
-│   │   ├── bonus-hunt/    # Bonus hunt feature components
-│   │   ├── layout/        # MainLayout, Sidebar, Footer
-│   │   ├── profile/       # Profile-related components
-│   │   └── ui/            # shadcn/ui components
-│   ├── contexts/          # React contexts (Auth, OnlinePresence)
-│   ├── hooks/             # Custom React hooks
-│   ├── integrations/      # External service integrations
-│   │   └── supabase/      # Supabase client & types
-│   ├── lib/               # Utility functions
-│   ├── pages/             # Page components
-│   │   └── admin/         # Admin panel pages
-│   ├── App.tsx            # Main app with routing
-│   ├── main.tsx           # App entry point
-│   └── index.css          # Global styles & design tokens
-├── supabase/
-│   ├── functions/         # Edge functions (Deno)
-│   └── config.toml        # Supabase configuration
-├── scripts/               # Database setup scripts
-└── package.json           # Dependencies and scripts
+├── 📁 public/              → Static files (favicon, robots.txt)
+├── 📁 src/                 → All the website code
+│   ├── 📁 assets/          → Images and fonts
+│   ├── 📁 components/      → Reusable pieces of the website
+│   │   ├── 📁 admin/       → Admin panel pieces
+│   │   ├── 📁 bonus-hunt/  → Bonus hunt feature
+│   │   ├── 📁 layout/      → Header, footer, sidebar
+│   │   └── 📁 ui/          → Buttons, cards, forms, etc.
+│   ├── 📁 contexts/        → Shared data (like who's logged in)
+│   ├── 📁 hooks/           → Reusable logic
+│   ├── 📁 integrations/    → Database connections
+│   ├── 📁 lib/             → Helper functions
+│   ├── 📁 pages/           → Each page of the website
+│   │   └── 📁 admin/       → Admin panel pages
+│   ├── App.tsx             → Main app file
+│   └── index.css           → Styles and colors
+├── 📁 supabase/
+│   └── 📁 functions/       → Backend code
+├── 📁 scripts/             → Database setup files
+├── 📁 docs/                → Documentation
+└── package.json            → Project info and dependencies
 ```
 
 ---
 
-## 🔧 Admin Panel
+## 🔧 Admin Panel Guide
 
-Access the admin panel at `/admin` (requires admin or moderator role).
+Once you have admin access, here's what you can do:
 
-### Admin Sections
-
-| Section | Description | Required Role |
-|---------|-------------|---------------|
-| Dashboard | Overview stats, quick actions | Admin, Moderator |
-| Videos | Manage video content | Admin, Moderator |
-| News | Publish articles | Admin, Moderator, Writer |
-| Bonuses | Manage casino bonuses | Admin, Moderator |
-| Giveaways | Create/manage giveaways | Admin, Moderator |
-| Events | Schedule events | Admin, Moderator |
-| Users | User management | Admin only |
-| Roles | Permission management | Admin only |
-| Settings | Site configuration | Admin only |
-| Audit Log | View admin actions | Admin only |
+| Section | What You Can Do |
+|---------|-----------------|
+| **Dashboard** | See stats, quick actions, stream status |
+| **Videos** | Add, edit, delete videos |
+| **News** | Write and publish articles |
+| **Bonuses** | Manage casino bonus listings |
+| **Giveaways** | Create giveaways, pick winners |
+| **Events** | Schedule events and streams |
+| **Polls** | Create community polls |
+| **Bonus Hunt** | Manage bonus hunt sessions |
+| **Streamers** | Add streamer profiles |
+| **Users** | View and manage users |
+| **Settings** | Branding, navigation, site options |
 
 ### Admin Access Code
 
-Each admin must set a personal access code on first login. This provides an additional layer of security beyond role-based access.
+When you first access the admin panel, you'll set a personal access code. This is an extra layer of security - you'll need to enter this code each time you access admin features.
 
 ---
 
-## 🔒 Security
+## 🔒 Security Features
 
-### Security Features Implemented
+StreamerX includes enterprise-level security:
 
-| Feature | Description |
-|---------|-------------|
-| **Row Level Security (RLS)** | All database tables have RLS policies |
-| **Role-Based Access Control** | Admin, Moderator, Writer, User roles |
-| **Secure Authentication** | JWT-based with OAuth support |
-| **Input Validation** | Zod schemas for all forms |
-| **XSS Protection** | DOMPurify for HTML sanitization |
-| **Audit Logging** | All admin actions are logged |
-| **Admin Access Codes** | Hashed server-side with salt |
-| **CORS Configuration** | Headers on all Edge Functions |
-
-### Security Best Practices
-
-1. **Never store roles client-side** - Roles are always checked via database
-2. **Use RLS policies** - Database enforces access rules
-3. **Sanitize user input** - All HTML content is sanitized
-4. **Hash sensitive data** - Access codes are hashed with salt
-5. **Validate on client AND server** - Double validation for all inputs
+| Feature | What It Does |
+|---------|--------------|
+| **Row Level Security** | Database rules that protect data |
+| **Role-Based Access** | Different permissions for different users |
+| **Secure Authentication** | Industry-standard login system |
+| **Input Validation** | Prevents bad data from entering |
+| **XSS Protection** | Blocks malicious scripts |
+| **Audit Logging** | Tracks all admin actions |
+| **Admin Access Codes** | Extra security for admin panel |
 
 ---
 
-## 🚢 Deployment
+## 🔧 Troubleshooting
 
-### Deploy with Lovable (Recommended)
+### "npm: command not found"
+- Node.js isn't installed correctly
+- Reinstall Node.js from [nodejs.org](https://nodejs.org/) and restart your computer
 
-1. Open your project in Lovable
-2. Click the "Publish" button (top right)
-3. Your app is deployed! Get a `.lovable.app` URL
+### "Cannot find module" errors
+- Run `npm install` again
+- Make sure you're in the right folder
 
-### Custom Domain
+### Website shows blank page
+- Check the browser console (F12 → Console tab) for errors
+- Make sure your `.env` file has the correct Supabase values
 
-1. Go to Project Settings > Domains
-2. Add your custom domain
-3. Update DNS records as instructed
+### "Supabase connection failed"
+- Double-check your `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`
+- Make sure your Supabase project is running
 
-### Self-Hosting
+### Admin panel not showing
+- Make sure you added your user to the `user_roles` table
+- Make sure the `role` value is exactly `admin` (lowercase)
+- Refresh the page or log out and back in
 
-See our [self-hosting guide](https://docs.lovable.dev/tips-tricks/self-hosting) for detailed instructions on deploying to your own infrastructure.
+### Port 5173 already in use
+- Another program is using that port
+- Close other terminal windows running `npm run dev`
+- Or use a different port: `npm run dev -- --port 3000`
 
 ---
 
-## 🤝 Contributing
+## ❓ Frequently Asked Questions
 
-Contributions are welcome! Please:
+**Q: Is this free to use?**
+A: Yes! The project is MIT licensed. You can use it for personal or commercial projects.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+**Q: Do I need to know how to code?**
+A: For basic setup and customization, no. For major changes, basic React knowledge helps.
+
+**Q: How much does hosting cost?**
+A: Vercel and Netlify have free tiers. Supabase has a generous free tier. You can run a small community for free!
+
+**Q: Can I use my own domain?**
+A: Yes! All hosting providers let you connect custom domains.
+
+**Q: Is my data secure?**
+A: Yes! All data is protected with Row Level Security, meaning users can only access what they're supposed to.
+
+**Q: Can I add my own features?**
+A: Absolutely! The codebase is well-organized and documented for customization.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - feel free to use it for your own projects!
+This project is licensed under the **MIT License** - you can use it for anything, modify it, and even sell it. Just keep the license file included.
 
 ---
 
-## 📞 Support
+## 📞 Need Help?
 
-- **GitHub Issues** - Report bugs or request features
-- **Discord** - Join the community for help
-- **Documentation** - Visit [docs.lovable.dev](https://docs.lovable.dev)
+- 📖 Check the [API Documentation](docs/API_DOCUMENTATION.md) for backend details
+- 📚 Read the [Project Documentation](docs/PROJECT_DOCUMENTATION.md) for technical details
+- 🐛 Found a bug? Open an issue on GitHub
+- 💬 Have questions? Start a discussion
 
 ---
 
-Built with ❤️ using [Lovable](https://lovable.dev)
+**Happy streaming! 🎰🎬**
