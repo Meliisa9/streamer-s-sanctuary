@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
 import { 
   Video, 
@@ -374,21 +375,9 @@ export default function AdminDashboard() {
 
       {/* Quick Actions Widget */}
       <QuickActionsWidget />
-        {/* Quick Actions */}
-        <AdminCard 
-          title="Quick Actions" 
-          icon={Zap}
-          delay={0.5}
-          className="lg:col-span-1"
-        >
-          <div className="grid grid-cols-1 gap-2">
-            <AdminQuickAction icon={Video} label="Add Video" href="/admin/videos" description="Upload new content" color="bg-blue-500/10 text-blue-500" />
-            <AdminQuickAction icon={Newspaper} label="Write Article" href="/admin/news" description="Create news post" color="bg-green-500/10 text-green-500" />
-            <AdminQuickAction icon={Gift} label="Create Giveaway" href="/admin/giveaways" description="Start new giveaway" color="bg-purple-500/10 text-purple-500" />
-            <AdminQuickAction icon={Calendar} label="Add Event" href="/admin/events" description="Schedule event" color="bg-orange-500/10 text-orange-500" />
-            {isAdmin && <AdminQuickAction icon={Users} label="Manage Users" href="/admin/users" description="User management" color="bg-pink-500/10 text-pink-500" />}
-          </div>
-        </AdminCard>
+
+      {/* Activity & Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Recent Activity */}
         <AdminCard 
