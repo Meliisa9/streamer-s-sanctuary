@@ -11,6 +11,7 @@ import { DailyRewardsManager } from "@/components/DailyRewardsManager";
 import { DailyRewardPopup } from "@/components/DailyRewardPopup";
 import { LiveStreamAlert } from "@/components/LiveStreamAlert";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { CookieConsent } from "@/components/CookieConsent";
 import Index from "./pages/Index";
 import Videos from "./pages/Videos";
 import Bonuses from "./pages/Bonuses";
@@ -94,6 +95,7 @@ const App = () => (
                 <DailyRewardsManager />
                 <DailyRewardPopup />
                 <LiveStreamAlert />
+                <CookieConsent />
                 <Toaster />
                 <Sonner />
 
