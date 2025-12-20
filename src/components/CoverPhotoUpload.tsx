@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +25,7 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
   const [uploading, setUploading] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const { toast } = useToast();
+  const { refreshProfile } = useAuth();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,6 +65,7 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
       if (updateError) throw updateError;
 
       onCoverChange(publicUrl);
+      await refreshProfile();
       setIsOpen(false);
       toast({ title: "Cover photo updated!" });
     } catch (error: any) {
@@ -96,6 +99,7 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
       if (error) throw error;
 
       onCoverChange(urlInput);
+      await refreshProfile();
       setIsOpen(false);
       setUrlInput("");
       toast({ title: "Cover photo updated!" });
@@ -114,6 +118,7 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
       if (error) throw error;
 
       onCoverChange("");
+      await refreshProfile();
       setIsOpen(false);
       toast({ title: "Cover photo removed" });
     } catch (error: any) {
