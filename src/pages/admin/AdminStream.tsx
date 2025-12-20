@@ -518,7 +518,11 @@ export default function AdminStream() {
                     <Label>Platform</Label>
                     <Select
                       value={settings.stream_platform}
-                      onValueChange={(value) => setSettings({ ...settings, stream_platform: value })}
+                      onValueChange={(value) => setSettings({ 
+                        ...settings, 
+                        stream_platform: value,
+                        live_platform: value as "twitch" | "kick"
+                      })}
                     >
                       <SelectTrigger>
                         <SelectValue />
