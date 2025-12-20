@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OnlinePresenceProvider } from "@/contexts/OnlinePresenceContext";
 import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { DailyRewardsManager } from "@/components/DailyRewardsManager";
 import { DailyRewardPopup } from "@/components/DailyRewardPopup";
 import { LiveStreamAlert } from "@/components/LiveStreamAlert";

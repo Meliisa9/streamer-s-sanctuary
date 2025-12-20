@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOnlinePresence } from "@/contexts/OnlinePresenceContext";
 import { useUserFollow } from "@/hooks/useUserFollow";
 import { ProfileComments } from "@/components/ProfileComments";
 import { SocialBadges } from "@/components/SocialBadges";
@@ -25,6 +26,7 @@ import { ReportDialog } from "@/components/ReportDialog";
 export default function UserProfile() {
   const { usernameOrId } = useParams<{ usernameOrId: string }>();
   const { user } = useAuth();
+  const { onlineUserIds } = useOnlinePresence();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("activity");
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
@@ -402,8 +404,10 @@ export default function UserProfile() {
                     {(profile.display_name || profile.username || "U")[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {/* Online Indicator */}
-                <div className="absolute bottom-2 right-2 w-5 h-5 bg-green-500 rounded-full border-3 border-background" />
+                {/* Online Indicator - only visible when user is online */}
+                {resolvedUserId && onlineUserIds.has(resolvedUserId) && (
+                  <div className="absolute bottom-2 right-2 w-5 h-5 bg-success rounded-full border-2 border-background animate-pulse" />
+                )}
               </div>
             </div>
 
