@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { 
   Save, Loader2, Info, Image, Bold, Italic, Link2, Type, Film, Upload, 
   Eye, Layout, Users, Target, Heart, Star, Quote, List, Heading1, Heading2,
-  AlignLeft, AlignCenter, Sparkles, Trash2, Plus, GripVertical
+  Sparkles, Trash2, Plus, GripVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
