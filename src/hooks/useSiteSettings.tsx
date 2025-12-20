@@ -102,7 +102,8 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
         if (key in loadedSettings) {
           const value = row.value;
           if (typeof defaultSettings[key] === "boolean") {
-            (loadedSettings as Record<string, any>)[key] = value === true || value === "true";
+            // Strict boolean parsing - only true values set to true, everything else is false
+            (loadedSettings as Record<string, any>)[key] = value === true || value === "true" || value === 1;
           } else {
             (loadedSettings as Record<string, any>)[key] = value ?? defaultSettings[key];
           }

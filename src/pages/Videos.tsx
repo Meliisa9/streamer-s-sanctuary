@@ -515,29 +515,42 @@ export default function Videos() {
         )}
 
         {/* Search and Filter */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 w-full md:w-auto">
-            {categoryNames.map((cat) => (
-              <Button
-                key={cat}
-                variant={selectedCategory === cat ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(cat)}
-                className="whitespace-nowrap"
-              >
-                {cat}
-              </Button>
-            ))}
+        <div className="flex flex-col gap-4">
+          {/* Category Navigation - Styled Horizontal Scroll */}
+          <div className="relative">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none scroll-smooth">
+              {categoryNames.map((cat) => (
+                <Button
+                  key={cat}
+                  variant={selectedCategory === cat ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`whitespace-nowrap flex-shrink-0 rounded-full px-5 py-2 text-sm font-medium transition-all duration-200 ${
+                    selectedCategory === cat
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                      : "bg-secondary/60 hover:bg-secondary text-foreground/80 hover:text-foreground border border-border/50"
+                  }`}
+                >
+                  {cat}
+                </Button>
+              ))}
+            </div>
+            {/* Fade edges to indicate scrollability */}
+            <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-background to-transparent pointer-events-none" />
           </div>
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search videos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
+          
+          {/* Search Input */}
+          <div className="flex justify-end">
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search videos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-secondary/50 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
           </div>
         </div>
 
