@@ -612,6 +612,12 @@ export default function UserProfile() {
                         <p className="font-medium">{(profile as any).favorite_casino}</p>
                       </div>
                     )}
+                    {(profile as any)?.biggest_win && (
+                      <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
+                        <p className="text-sm text-yellow-500 mb-1">Biggest Win</p>
+                        <p className="font-medium">{(profile as any).biggest_win}</p>
+                      </div>
+                    )}
                   </div>
                   {!profile.bio && !(profile as any)?.age && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
                     <div className="text-center py-8 text-muted-foreground">

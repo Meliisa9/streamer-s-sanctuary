@@ -71,6 +71,7 @@ export default function Profile() {
     city: "",
     favorite_slot: "",
     favorite_casino: "",
+    biggest_win: "",
   });
 
   // Fetch bookmarked content details
@@ -188,6 +189,7 @@ export default function Profile() {
         city: (profile as any).city || "",
         favorite_slot: (profile as any).favorite_slot || "",
         favorite_casino: (profile as any).favorite_casino || "",
+        biggest_win: (profile as any).biggest_win || "",
       });
     }
   }, [profile]);
@@ -222,6 +224,7 @@ export default function Profile() {
       city: formData.city || null,
       favorite_slot: formData.favorite_slot || null,
       favorite_casino: formData.favorite_casino || null,
+      biggest_win: formData.biggest_win || null,
     };
     
     const { error } = await supabase
@@ -623,6 +626,15 @@ export default function Profile() {
                           <p className="font-medium">{(profile as any).favorite_casino}</p>
                         </div>
                       )}
+                      {(profile as any)?.biggest_win && (
+                        <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
+                          <div className="flex items-center gap-2 text-yellow-500 mb-1">
+                            <Trophy className="w-4 h-4" />
+                            <span className="text-sm">Biggest Win</span>
+                          </div>
+                          <p className="font-medium">{(profile as any).biggest_win}</p>
+                        </div>
+                      )}
                     </div>
                     
                     {!profile?.bio && !displayAge && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
@@ -997,8 +1009,22 @@ export default function Profile() {
                       </label>
                       <Input
                         value={formData.favorite_casino}
-                        onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
+                                      onChange={(e) => setFormData({ ...formData, favorite_casino: e.target.value })}
                         placeholder="e.g., Stake"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-yellow-500" />
+                        Biggest Win (Optional)
+                      </label>
+                      <Input
+                        value={formData.biggest_win}
+                        onChange={(e) => setFormData({ ...formData, biggest_win: e.target.value })}
+                        placeholder="e.g., $50,000 on Gates of Olympus"
                       />
                     </div>
                   </div>
