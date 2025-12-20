@@ -28,11 +28,22 @@ import {
   Zap,
   Server,
   CheckCircle,
+  Palette,
+  FolderOpen,
+  UserCog,
+  Lock,
+  History,
+  Webhook,
+  Send,
+  Ban,
+  Tag,
+  Navigation,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { AdminCodeGate } from "@/components/admin/AdminCodeGate";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
+import { AdminSidebarLogo } from "@/components/admin/AdminSidebarLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,6 +56,7 @@ interface NavSection {
   title: string;
   items: NavItem[];
   roles: string[];
+  icon?: any;
 }
 
 interface NavItem {
@@ -55,9 +67,11 @@ interface NavItem {
   badge?: number;
 }
 
+// Reorganized navigation with smart grouping
 const navSections: NavSection[] = [
   {
     title: "Overview",
+    icon: LayoutDashboard,
     roles: ["admin", "moderator", "writer"],
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["admin", "moderator"] },
@@ -66,18 +80,21 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Content",
+    title: "Content Management",
+    icon: FolderOpen,
     roles: ["admin", "moderator", "writer"],
     items: [
       { icon: Video, label: "Videos", path: "/admin/videos", roles: ["admin", "moderator"] },
-      { icon: Newspaper, label: "News", path: "/admin/news", roles: ["admin", "moderator", "writer"] },
-      { icon: Trophy, label: "Bonuses", path: "/admin/bonuses", roles: ["admin", "moderator"] },
+      { icon: Tag, label: "Video Categories", path: "/admin/video-categories", roles: ["admin"] },
+      { icon: Newspaper, label: "News & Articles", path: "/admin/news", roles: ["admin", "moderator", "writer"] },
+      { icon: Trophy, label: "Casino Bonuses", path: "/admin/bonuses", roles: ["admin", "moderator"] },
       { icon: Gift, label: "Giveaways", path: "/admin/giveaways", roles: ["admin", "moderator"] },
       { icon: Calendar, label: "Events", path: "/admin/events", roles: ["admin", "moderator"] },
     ],
   },
   {
-    title: "Gaming",
+    title: "Interactive Features",
+    icon: Zap,
     roles: ["admin", "moderator"],
     items: [
       { icon: Crosshair, label: "Bonus Hunt", path: "/admin/bonus-hunt", roles: ["admin", "moderator"] },
@@ -85,24 +102,45 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Community",
+    title: "Stream & Community",
+    icon: Tv,
     roles: ["admin", "moderator"],
     items: [
       { icon: Users, label: "Streamers", path: "/admin/streamers", roles: ["admin", "moderator"] },
-      { icon: Tv, label: "Stream", path: "/admin/stream", roles: ["admin", "moderator"] },
-      { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin", "moderator"] },
+      { icon: Tv, label: "Live Stream", path: "/admin/stream", roles: ["admin", "moderator"] },
     ],
   },
   {
-    title: "Administration",
+    title: "User Management",
+    icon: UserCog,
     roles: ["admin"],
     items: [
-      { icon: Users, label: "Users", path: "/admin/users", roles: ["admin"] },
+      { icon: Users, label: "All Users", path: "/admin/users", roles: ["admin"] },
+      { icon: Ban, label: "User Bans", path: "/admin/user-bans", roles: ["admin"] },
       { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
       { icon: Shield, label: "Roles & Permissions", path: "/admin/roles", roles: ["admin"] },
-      { icon: Bell, label: "Webhooks", path: "/admin/webhooks", roles: ["admin"] },
-      { icon: FileText, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
-      { icon: Settings, label: "Settings", path: "/admin/settings", roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Site Configuration",
+    icon: Settings,
+    roles: ["admin"],
+    items: [
+      { icon: Settings, label: "General Settings", path: "/admin/settings", roles: ["admin"] },
+      { icon: Palette, label: "Branding", path: "/admin/settings/branding", roles: ["admin"] },
+      { icon: Navigation, label: "Navigation", path: "/admin/settings/navigation", roles: ["admin"] },
+      { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin"] },
+      { icon: Bell, label: "Send Notifications", path: "/admin/send-notifications", roles: ["admin"] },
+      { icon: Webhook, label: "Webhooks", path: "/admin/webhooks", roles: ["admin"] },
+    ],
+  },
+  {
+    title: "System & Logs",
+    icon: History,
+    roles: ["admin"],
+    items: [
+      { icon: History, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
+      { icon: CheckCircle, label: "Auth Health", path: "/admin/auth-health", roles: ["admin"] },
     ],
   },
 ];
@@ -427,21 +465,9 @@ function AdminLayoutContent() {
           "hidden lg:flex flex-col sticky top-0 h-screen border-r border-border/50 bg-card/30 backdrop-blur-sm transition-all duration-300",
           collapsed ? "w-[72px]" : "w-[260px]"
         )}>
-          {/* Header */}
+          {/* Header with dynamic logo */}
           <div className="p-4 border-b border-border/50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10">
-                <Shield className="w-6 h-6 text-primary" />
-              </div>
-              {!collapsed && (
-                <div>
-                  <h2 className="font-bold text-lg">Admin Panel</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {isWriter && !isModerator && !isAdmin ? "Writer Access" : "Management Console"}
-                  </p>
-                </div>
-              )}
-            </div>
+            <AdminSidebarLogo collapsed={collapsed} />
           </div>
 
           <AdminSidebar
