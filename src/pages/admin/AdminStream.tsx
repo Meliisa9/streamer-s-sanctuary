@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, isValid, parseISO } from "date-fns";
 
 interface StreamSettings {
   stream_platform: string;
@@ -252,12 +252,17 @@ export default function AdminStream() {
                   ? `Currently live on ${settings.live_platform === "kick" ? "Kick" : "Twitch"}`
                   : "Not currently streaming"}
               </p>
-              {settings.last_check && (
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Last checked {formatDistanceToNow(new Date(settings.last_check), { addSuffix: true })}
-                </p>
-              )}
+              {(() => {
+                if (!settings.last_check) return null;
+                const parsed = parseISO(settings.last_check);
+                if (!isValid(parsed)) return null;
+                return (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    Last checked {formatDistanceToNow(parsed, { addSuffix: true })}
+                  </p>
+                );
+              })()}
             </div>
           </div>
           <div className="flex items-center gap-2">
