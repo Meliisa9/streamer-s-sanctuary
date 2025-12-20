@@ -6,6 +6,7 @@ import {
   Eye, EyeOff, CheckCircle, Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -182,10 +183,21 @@ function Auth() {
           setMode("login");
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        // Set session persistence based on "Remember me" checkbox
+        // When rememberMe is false, we'll sign out when the browser closes
+        const { error, data } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
+
+        if (!error && data.session) {
+          // If "Remember me" is unchecked, store a flag to clear session on browser close
+          if (!rememberMe) {
+            sessionStorage.setItem('session_temporary', 'true');
+          } else {
+            sessionStorage.removeItem('session_temporary');
+          }
+        }
 
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
@@ -588,15 +600,17 @@ function Auth() {
 
               {/* Remember Me - for login only */}
               {mode === "login" && (
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
+                <div className="flex items-center gap-2">
+                  <Checkbox
                     id="rememberMe"
                     checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 rounded border-border bg-secondary accent-primary"
+                    onCheckedChange={(checked) => setRememberMe(checked === true)}
+                    className="h-5 w-5 border-2 border-muted-foreground/50 data-[state=checked]:border-primary data-[state=checked]:bg-primary rounded-md transition-all"
                   />
-                  <label htmlFor="rememberMe" className="text-sm text-muted-foreground">
+                  <label 
+                    htmlFor="rememberMe" 
+                    className="text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors"
+                  >
                     Remember me
                   </label>
                 </div>
