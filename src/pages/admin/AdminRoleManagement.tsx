@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Shield, Plus, Save, Loader2, Settings, Users, 
   Crown, UserCog, PenTool, User, Trash2, Edit2,
-  Check, X, AlertTriangle, Lock, ChevronDown
+  Check, X, AlertTriangle, Lock, ChevronDown, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +24,24 @@ import { AdminPageHeader } from "@/components/admin";
 interface RolePermission {
   id: string;
   role: string;
+  permission: string;
+  allowed: boolean;
+}
+
+interface CustomRole {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface CustomRolePermission {
+  id: string;
+  custom_role_id: string;
   permission: string;
   allowed: boolean;
 }
@@ -54,8 +74,20 @@ const roleConfig: Record<string, { icon: any; color: string; description: string
   user: { icon: User, color: "bg-gray-500/10 text-gray-500 border-gray-500/30", description: "Basic access" },
 };
 
+const colorOptions = [
+  { value: "#EF4444", label: "Red" },
+  { value: "#F97316", label: "Orange" },
+  { value: "#EAB308", label: "Yellow" },
+  { value: "#22C55E", label: "Green" },
+  { value: "#06B6D4", label: "Cyan" },
+  { value: "#3B82F6", label: "Blue" },
+  { value: "#8B5CF6", label: "Purple" },
+  { value: "#EC4899", label: "Pink" },
+  { value: "#6B7280", label: "Gray" },
+];
+
 export default function AdminRoleManagement() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
@@ -63,14 +95,49 @@ export default function AdminRoleManagement() {
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [newPermissions, setNewPermissions] = useState<Record<string, boolean>>({});
   const [expandedRoles, setExpandedRoles] = useState<string[]>(["admin", "moderator"]);
+  
+  // Custom role creation state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newRoleName, setNewRoleName] = useState("");
+  const [newRoleDisplayName, setNewRoleDisplayName] = useState("");
+  const [newRoleDescription, setNewRoleDescription] = useState("");
+  const [newRoleColor, setNewRoleColor] = useState("#3B82F6");
+  const [newRolePermissions, setNewRolePermissions] = useState<Record<string, boolean>>({});
+  
+  // Custom role editing state
+  const [editingCustomRole, setEditingCustomRole] = useState<CustomRole | null>(null);
+  const [editCustomRolePermissions, setEditCustomRolePermissions] = useState<Record<string, boolean>>({});
 
-  // Fetch role permissions
+  // Fetch role permissions (built-in roles)
   const { data: rolePermissions = [], isLoading } = useQuery({
     queryKey: ["role-permissions"],
     queryFn: async () => {
       const { data, error } = await supabase.from("role_permissions").select("*").order("role");
       if (error) throw error;
       return data as RolePermission[];
+    },
+  });
+
+  // Fetch custom roles
+  const { data: customRoles = [] } = useQuery({
+    queryKey: ["custom-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("custom_roles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as CustomRole[];
+    },
+  });
+
+  // Fetch custom role permissions
+  const { data: customRolePermissions = [] } = useQuery({
+    queryKey: ["custom-role-permissions"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("custom_role_permissions").select("*");
+      if (error) throw error;
+      return data as CustomRolePermission[];
     },
   });
 
@@ -86,7 +153,113 @@ export default function AdminRoleManagement() {
     },
   });
 
-  // Update permission mutation
+  // Fetch custom role user counts
+  const { data: customRoleCounts = {} } = useQuery({
+    queryKey: ["custom-role-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_custom_roles").select("custom_role_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      data?.forEach((r) => { counts[r.custom_role_id] = (counts[r.custom_role_id] || 0) + 1; });
+      return counts;
+    },
+  });
+
+  // Create custom role mutation
+  const createCustomRole = useMutation({
+    mutationFn: async () => {
+      // Create the role
+      const { data: roleData, error: roleError } = await supabase
+        .from("custom_roles")
+        .insert({
+          name: newRoleName.toLowerCase().replace(/\s+/g, "_"),
+          display_name: newRoleDisplayName,
+          description: newRoleDescription || null,
+          color: newRoleColor,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+      
+      if (roleError) throw roleError;
+
+      // Create permissions for the role
+      const permissionsToInsert = Object.entries(newRolePermissions)
+        .filter(([_, allowed]) => allowed)
+        .map(([permission]) => ({
+          custom_role_id: roleData.id,
+          permission,
+          allowed: true,
+        }));
+
+      if (permissionsToInsert.length > 0) {
+        const { error: permError } = await supabase
+          .from("custom_role_permissions")
+          .insert(permissionsToInsert);
+        if (permError) throw permError;
+      }
+
+      return roleData;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-role-permissions"] });
+      setShowCreateDialog(false);
+      resetCreateForm();
+      toast({ title: "Custom role created successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error creating role", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update custom role permissions mutation
+  const updateCustomRolePermissions = useMutation({
+    mutationFn: async ({ roleId, permissions }: { roleId: string; permissions: Record<string, boolean> }) => {
+      // Delete existing permissions
+      await supabase.from("custom_role_permissions").delete().eq("custom_role_id", roleId);
+
+      // Insert new permissions
+      const permissionsToInsert = Object.entries(permissions)
+        .filter(([_, allowed]) => allowed)
+        .map(([permission]) => ({
+          custom_role_id: roleId,
+          permission,
+          allowed: true,
+        }));
+
+      if (permissionsToInsert.length > 0) {
+        const { error } = await supabase.from("custom_role_permissions").insert(permissionsToInsert);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-role-permissions"] });
+      setEditingCustomRole(null);
+      toast({ title: "Role permissions updated" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error updating permissions", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Delete custom role mutation
+  const deleteCustomRole = useMutation({
+    mutationFn: async (roleId: string) => {
+      const { error } = await supabase.from("custom_roles").delete().eq("id", roleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["custom-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["custom-role-permissions"] });
+      toast({ title: "Role deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error deleting role", description: error.message, variant: "destructive" });
+    },
+  });
+
+  // Update built-in role permission mutation
   const updatePermission = useMutation({
     mutationFn: async ({ role, permission, allowed }: { role: string; permission: string; allowed: boolean }) => {
       const { error } = await supabase
@@ -103,7 +276,7 @@ export default function AdminRoleManagement() {
     },
   });
 
-  // Bulk update permissions
+  // Bulk update built-in role permissions
   const bulkUpdatePermissions = useMutation({
     mutationFn: async ({ role, permissions }: { role: string; permissions: Record<string, boolean> }) => {
       for (const [permission, allowed] of Object.entries(permissions)) {
@@ -124,6 +297,14 @@ export default function AdminRoleManagement() {
     },
   });
 
+  const resetCreateForm = () => {
+    setNewRoleName("");
+    setNewRoleDisplayName("");
+    setNewRoleDescription("");
+    setNewRoleColor("#3B82F6");
+    setNewRolePermissions({});
+  };
+
   const startEditingRole = (role: string) => {
     const perms: Record<string, boolean> = {};
     allPermissions.forEach((p) => {
@@ -134,8 +315,24 @@ export default function AdminRoleManagement() {
     setEditingRole(role);
   };
 
+  const startEditingCustomRole = (role: CustomRole) => {
+    const perms: Record<string, boolean> = {};
+    allPermissions.forEach((p) => {
+      const existing = customRolePermissions.find(
+        (rp) => rp.custom_role_id === role.id && rp.permission === p.key
+      );
+      perms[p.key] = existing?.allowed ?? false;
+    });
+    setEditCustomRolePermissions(perms);
+    setEditingCustomRole(role);
+  };
+
   const getPermissionCount = (role: string) => {
     return rolePermissions.filter((rp) => rp.role === role && rp.allowed).length;
+  };
+
+  const getCustomRolePermissionCount = (roleId: string) => {
+    return customRolePermissions.filter((rp) => rp.custom_role_id === roleId && rp.allowed).length;
   };
 
   const toggleRoleExpansion = (role: string) => {
@@ -162,11 +359,17 @@ export default function AdminRoleManagement() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        title="Role Management"
-        description="Manage user roles and their permissions"
-        icon={Shield}
-      />
+      <div className="flex items-center justify-between">
+        <AdminPageHeader
+          title="Role Management"
+          description="Manage user roles and their permissions"
+          icon={Shield}
+        />
+        <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Create Role
+        </Button>
+      </div>
 
       {/* Info Banner */}
       <motion.div
@@ -178,16 +381,20 @@ export default function AdminRoleManagement() {
         <div>
           <p className="font-medium text-blue-500">Role-Based Access Control</p>
           <p className="text-sm text-muted-foreground">
-            Configure permissions for each role. Admin role always has full access.
+            Configure permissions for built-in roles or create custom roles with specific permissions.
           </p>
         </div>
       </motion.div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-lg grid-cols-3">
           <TabsTrigger value="roles" className="gap-2">
             <Users className="w-4 h-4" />
-            Roles Overview
+            Built-in Roles
+          </TabsTrigger>
+          <TabsTrigger value="custom" className="gap-2">
+            <Sparkles className="w-4 h-4" />
+            Custom Roles
           </TabsTrigger>
           <TabsTrigger value="matrix" className="gap-2">
             <Settings className="w-4 h-4" />
@@ -195,7 +402,7 @@ export default function AdminRoleManagement() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Roles Overview Tab */}
+        {/* Built-in Roles Tab */}
         <TabsContent value="roles" className="space-y-4 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {builtInRoles.map((role, index) => {
@@ -299,6 +506,105 @@ export default function AdminRoleManagement() {
           </div>
         </TabsContent>
 
+        {/* Custom Roles Tab */}
+        <TabsContent value="custom" className="space-y-4 mt-6">
+          {customRoles.length === 0 ? (
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Sparkles className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Custom Roles</h3>
+                <p className="text-sm text-muted-foreground mb-4">Create custom roles with specific permissions</p>
+                <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Create First Role
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {customRoles.map((role, index) => {
+                const permCount = getCustomRolePermissionCount(role.id);
+                const userCount = customRoleCounts[role.id] || 0;
+
+                return (
+                  <motion.div
+                    key={role.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="p-2 rounded-xl"
+                              style={{ backgroundColor: `${role.color}20`, color: role.color }}
+                            >
+                              <Sparkles className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{role.display_name}</CardTitle>
+                              <CardDescription>{role.description || "Custom role"}</CardDescription>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">{userCount}</p>
+                            <p className="text-xs text-muted-foreground">users</p>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                          <span className="text-sm font-medium">Permissions Enabled</span>
+                          <Badge variant="outline">{permCount} / {allPermissions.length}</Badge>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1.5">
+                          {customRolePermissions
+                            .filter((rp) => rp.custom_role_id === role.id && rp.allowed)
+                            .slice(0, 4)
+                            .map((rp) => (
+                              <Badge key={rp.permission} variant="secondary" className="text-xs">
+                                {allPermissions.find((p) => p.key === rp.permission)?.label || rp.permission}
+                              </Badge>
+                            ))}
+                          {permCount > 4 && (
+                            <Badge variant="outline" className="text-xs">+{permCount - 4} more</Badge>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 gap-2"
+                            onClick={() => startEditingCustomRole(role)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => {
+                              if (confirm("Are you sure you want to delete this role?")) {
+                                deleteCustomRole.mutate(role.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
         {/* Permission Matrix Tab */}
         <TabsContent value="matrix" className="mt-6">
           <Card className="border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden">
@@ -365,7 +671,130 @@ export default function AdminRoleManagement() {
         </TabsContent>
       </Tabs>
 
-      {/* Edit Role Dialog */}
+      {/* Create Custom Role Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-primary" />
+              Create Custom Role
+            </DialogTitle>
+            <DialogDescription>
+              Create a new role with custom permissions
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Role Details */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="role-name">Role Name (internal)</Label>
+                  <Input
+                    id="role-name"
+                    placeholder="e.g., content_manager"
+                    value={newRoleName}
+                    onChange={(e) => setNewRoleName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="display-name">Display Name</Label>
+                  <Input
+                    id="display-name"
+                    placeholder="e.g., Content Manager"
+                    value={newRoleDisplayName}
+                    onChange={(e) => setNewRoleDisplayName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Describe what this role is for..."
+                  value={newRoleDescription}
+                  onChange={(e) => setNewRoleDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Role Color</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color.value}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                        newRoleColor === color.value 
+                          ? "border-foreground scale-110" 
+                          : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color.value }}
+                      onClick={() => setNewRoleColor(color.value)}
+                      title={color.label}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Permissions */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base">Permissions</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const allEnabled = Object.values(newRolePermissions).every(Boolean);
+                    const perms: Record<string, boolean> = {};
+                    allPermissions.forEach((p) => { perms[p.key] = !allEnabled; });
+                    setNewRolePermissions(perms);
+                  }}
+                >
+                  Toggle All
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-2">
+                {allPermissions.map((perm) => (
+                  <div
+                    key={perm.key}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                  >
+                    <div>
+                      <p className="font-medium text-sm">{perm.label}</p>
+                      <p className="text-xs text-muted-foreground">{perm.description}</p>
+                    </div>
+                    <Switch
+                      checked={newRolePermissions[perm.key] ?? false}
+                      onCheckedChange={(checked) =>
+                        setNewRolePermissions((prev) => ({ ...prev, [perm.key]: checked }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCreateDialog(false); resetCreateForm(); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createCustomRole.mutate()}
+              disabled={!newRoleName || !newRoleDisplayName || createCustomRole.isPending}
+              className="gap-2"
+            >
+              {createCustomRole.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Create Role
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Built-in Role Dialog */}
       <Dialog open={!!editingRole} onOpenChange={() => setEditingRole(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -408,6 +837,58 @@ export default function AdminRoleManagement() {
               className="gap-2"
             >
               {bulkUpdatePermissions.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Permissions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Custom Role Dialog */}
+      <Dialog open={!!editingCustomRole} onOpenChange={() => setEditingCustomRole(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Edit {editingCustomRole?.display_name} Permissions
+            </DialogTitle>
+            <DialogDescription>
+              Configure which actions this custom role can perform
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {allPermissions.map((perm) => (
+              <div
+                key={perm.key}
+                className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+              >
+                <div>
+                  <p className="font-medium text-sm">{perm.label}</p>
+                  <p className="text-xs text-muted-foreground">{perm.description}</p>
+                </div>
+                <Switch
+                  checked={editCustomRolePermissions[perm.key] ?? false}
+                  onCheckedChange={(checked) =>
+                    setEditCustomRolePermissions((prev) => ({ ...prev, [perm.key]: checked }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingCustomRole(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => editingCustomRole && updateCustomRolePermissions.mutate({ 
+                roleId: editingCustomRole.id, 
+                permissions: editCustomRolePermissions 
+              })}
+              disabled={updateCustomRolePermissions.isPending}
+              className="gap-2"
+            >
+              {updateCustomRolePermissions.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Permissions
             </Button>
           </DialogFooter>
