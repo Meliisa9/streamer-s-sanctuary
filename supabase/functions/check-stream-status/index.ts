@@ -19,11 +19,11 @@ serve(async (req) => {
 
     console.log("Checking stream status...");
 
-    // Fetch auto-detection settings
+    // Fetch auto-detection settings including stream platform
     const { data: settings, error: settingsError } = await supabase
       .from("site_settings")
       .select("key, value")
-      .in("key", ["auto_detect_enabled", "twitch_channel", "kick_channel"]);
+      .in("key", ["auto_detect_enabled", "twitch_channel", "kick_channel", "stream_platform"]);
 
     if (settingsError) {
       throw new Error(`Failed to fetch settings: ${settingsError.message}`);
@@ -44,13 +44,13 @@ serve(async (req) => {
 
     const twitchChannel = settingsMap.twitch_channel;
     const kickChannel = settingsMap.kick_channel;
+    const streamPlatform = settingsMap.stream_platform || "twitch";
 
     let isLive = false;
     let livePlatform: "twitch" | "kick" = "twitch";
 
-    // Check Twitch using Helix API (requires Client ID and OAuth token)
-    // For now, we'll use a simple check via the Twitch embed API
-    if (twitchChannel) {
+    // Only check Twitch if stream platform is set to Twitch
+    if (streamPlatform === "twitch" && twitchChannel) {
       try {
         // Using undocumented but stable Twitch API endpoint
         const twitchResponse = await fetch(
@@ -87,10 +87,12 @@ serve(async (req) => {
       } catch (e) {
         console.log("Twitch check failed:", e);
       }
+    } else if (streamPlatform === "twitch") {
+      console.log("Twitch platform selected but no channel configured");
     }
 
-    // Check Kick if not already live on Twitch
-    if (!isLive && kickChannel) {
+    // Only check Kick if stream platform is set to Kick
+    if (streamPlatform === "kick" && kickChannel) {
       try {
         const kickResponse = await fetch(
           `https://kick.com/api/v2/channels/${kickChannel}`

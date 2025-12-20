@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Bug, X, Database, Wifi, Clock, Cpu, 
-  ChevronUp, ChevronDown, Activity, Zap
+  ChevronUp, ChevronDown, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DiagnosticData {
   dbLatency: number;
@@ -19,6 +20,7 @@ interface DiagnosticData {
 export function DevDiagnosticsOverlay() {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
   const [diagnostics, setDiagnostics] = useState<DiagnosticData>({
     dbLatency: 0,
     realtimeConnected: false,
@@ -27,20 +29,30 @@ export function DevDiagnosticsOverlay() {
     lastUpdate: new Date(),
   });
 
-  // Only show in development
+  const { user, isAdmin } = useAuth();
   const isDev = import.meta.env.DEV;
 
+  // Check permission for viewing diagnostics
   useEffect(() => {
-    if (!isDev || !isOpen) return;
+    const checkPermission = async () => {
+      if (!user) { setHasPermission(false); return; }
+      if (isAdmin) { setHasPermission(true); return; }
+      
+      // Check if user has the view_dev_diagnostics permission
+      const { data } = await supabase.rpc("has_permission", { _user_id: user.id, _permission: "view_dev_diagnostics" });
+      setHasPermission(data === true);
+    };
+    checkPermission();
+  }, [user, isAdmin]);
+
+  useEffect(() => {
+    if ((!isDev && !hasPermission) || !isOpen) return;
 
     const updateDiagnostics = async () => {
-      // Measure DB latency
       const start = performance.now();
       try {
         await supabase.from("site_settings").select("key").limit(1);
         const latency = Math.round(performance.now() - start);
-        
-        // Get memory usage if available
         const memory = (performance as any).memory?.usedJSHeapSize;
         
         setDiagnostics((prev) => ({
@@ -58,42 +70,36 @@ export function DevDiagnosticsOverlay() {
     updateDiagnostics();
     const interval = setInterval(updateDiagnostics, 5000);
 
-    // Check realtime connection
     const channel = supabase.channel("dev-diagnostics");
     channel.subscribe((status) => {
-      setDiagnostics((prev) => ({
-        ...prev,
-        realtimeConnected: status === "SUBSCRIBED",
-      }));
+      setDiagnostics((prev) => ({ ...prev, realtimeConnected: status === "SUBSCRIBED" }));
     });
 
-    return () => {
-      clearInterval(interval);
-      supabase.removeChannel(channel);
-    };
-  }, [isDev, isOpen]);
+    return () => { clearInterval(interval); supabase.removeChannel(channel); };
+  }, [isDev, hasPermission, isOpen]);
 
-  if (!isDev) return null;
+  // Only show to admins or users with permission (or in dev mode)
+  if (!isDev && !hasPermission) return null;
 
   return (
     <>
-      {/* Toggle Button */}
+      {/* Toggle Button - positioned at top right, out of the way */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-4 left-4 z-[200] p-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-500 transition-all hover:scale-110"
+        className="fixed top-4 right-4 z-[200] p-2 rounded-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-500 transition-all hover:scale-110 opacity-50 hover:opacity-100"
         title="Dev Diagnostics"
       >
-        <Bug className="w-5 h-5" />
+        <Bug className="w-4 h-4" />
       </button>
 
       {/* Overlay Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, x: -100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="fixed bottom-16 left-4 z-[200] w-72 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-14 right-4 z-[200] w-72 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-border bg-secondary/30">

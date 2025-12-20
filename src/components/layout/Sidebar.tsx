@@ -40,7 +40,7 @@ const mainNavItems: NavItem[] = [
   { icon: Video, label: "Videos", path: "/videos", settingKey: "nav_videos_visible" },
   { icon: Trophy, label: "Bonuses", path: "/bonuses", settingKey: "nav_bonuses_visible" },
   { icon: Newspaper, label: "News", path: "/news", settingKey: "nav_news_visible" },
-  { icon: Gift, label: "Giveaways", path: "/giveaways", badge: "LIVE", settingKey: "nav_giveaways_visible" },
+  { icon: Gift, label: "Giveaways", path: "/giveaways", settingKey: "nav_giveaways_visible" },
   { icon: Users, label: "Streamers", path: "/streamers", settingKey: "nav_streamers_visible" },
   { icon: Twitch, label: "Stream", path: "/stream", settingKey: "nav_stream_visible" },
 ];
@@ -64,49 +64,46 @@ const adminNavItems: NavItem[] = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [hasActiveGiveaway, setHasActiveGiveaway] = useState(false);
+  const [hasBonusHuntLive, setHasBonusHuntLive] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, isModerator, isWriter, signOut } = useAuth();
   const { settings } = useSiteSettings();
 
-  // Fetch and subscribe to live status
+  // Fetch and subscribe to live status, giveaways, and bonus hunt
   useEffect(() => {
-    const fetchLiveStatus = async () => {
-      const { data } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "is_live")
-        .maybeSingle();
+    const fetchStatuses = async () => {
+      // Live status
+      const { data: liveData } = await supabase.from("site_settings").select("value").eq("key", "is_live").maybeSingle();
+      if (liveData) setIsLive(liveData.value === true || liveData.value === "true" || liveData.value === 1);
       
-      if (data) {
-        setIsLive(data.value === true || data.value === "true" || data.value === 1);
-      }
+      // Active giveaways
+      const now = new Date().toISOString();
+      const { data: giveaways } = await supabase.from("giveaways").select("id").eq("status", "active").gte("end_date", now).limit(1);
+      setHasActiveGiveaway((giveaways?.length || 0) > 0);
+      
+      // Live bonus hunt
+      const { data: bonusHunts } = await supabase.from("bonus_hunts").select("id").eq("status", "live").limit(1);
+      setHasBonusHuntLive((bonusHunts?.length || 0) > 0);
     };
 
-    fetchLiveStatus();
+    fetchStatuses();
 
     // Subscribe to real-time updates
     const channel = supabase
-      .channel('sidebar-live-status')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'site_settings',
-        },
-        (payload: any) => {
-          if (payload.new?.key === 'is_live') {
-            const val = payload.new.value;
-            setIsLive(val === true || val === "true" || val === 1);
-          }
+      .channel('sidebar-statuses')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, (payload: any) => {
+        if (payload.new?.key === 'is_live') {
+          const val = payload.new.value;
+          setIsLive(val === true || val === "true" || val === 1);
         }
-      )
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'giveaways' }, () => fetchStatuses())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_hunts' }, () => fetchStatuses())
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const sidebarVariants = {
@@ -174,11 +171,13 @@ export function Sidebar() {
               {item.label}
             </span>
           )}
-          {/* Dynamic LIVE badge for Giveaways - only show when isLive is true */}
-          {item.badge === "LIVE" && isLive && !collapsed && (
-            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse">
-              {item.badge}
-            </span>
+          {/* Dynamic LIVE badge for Giveaways */}
+          {item.path === "/giveaways" && hasActiveGiveaway && !collapsed && (
+            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse">LIVE</span>
+          )}
+          {/* Dynamic LIVE badge for Bonus Hunt */}
+          {item.path === "/bonus-hunt" && hasBonusHuntLive && !collapsed && (
+            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-green-500 text-white rounded-full animate-pulse">LIVE</span>
           )}
         </motion.div>
       </NavLink>
