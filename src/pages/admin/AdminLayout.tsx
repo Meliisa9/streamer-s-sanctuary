@@ -86,6 +86,7 @@ const navSections: NavSection[] = [
     roles: ["admin", "moderator", "writer"],
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/admin", roles: ["admin", "moderator"] },
+      { icon: BarChart3, label: "Engagement", path: "/admin/engagement", roles: ["admin"] },
       { icon: BarChart3, label: "Analytics", path: "/admin/analytics", roles: ["admin"] },
       { icon: Activity, label: "Activity Log", path: "/admin/activity", roles: ["admin"] },
     ],
@@ -359,7 +360,7 @@ function AdminSidebar({
       )}
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border/50 hover:scrollbar-thumb-border">
         {filteredSections.map((section) => (
           <AdminNavSection
             key={section.title}
