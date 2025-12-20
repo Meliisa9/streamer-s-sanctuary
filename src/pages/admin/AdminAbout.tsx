@@ -630,20 +630,32 @@ export default function AdminAbout() {
                           <Users className="w-8 h-8 text-muted-foreground" />
                         </div>
                       )}
-                      <label className="cursor-pointer mt-2 block">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) uploadTeamMemberImage(member.id, file);
+                      <div className="flex gap-1 mt-2">
+                        <label className="cursor-pointer flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) uploadTeamMemberImage(member.id, file);
+                            }}
+                            className="hidden"
+                          />
+                          <Button variant="outline" type="button" asChild size="sm" className="w-full">
+                            <span><Upload className="w-3 h-3 mr-1" />File</span>
+                          </Button>
+                        </label>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            const url = prompt("Enter image URL:");
+                            if (url) updateTeamMember(member.id, "image", url);
                           }}
-                          className="hidden"
-                        />
-                        <Button variant="outline" type="button" asChild size="sm" className="w-full">
-                          <span><Upload className="w-3 h-3 mr-1" />Photo</span>
+                        >
+                          URL
                         </Button>
-                      </label>
+                      </div>
                     </div>
                     <div className="flex-1 space-y-3">
                       <div className="flex justify-between">

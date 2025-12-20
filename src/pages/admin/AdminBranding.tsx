@@ -524,6 +524,10 @@ export default function AdminBranding() {
                 <Wand2 className="w-5 h-5 text-primary" />
                 Theme Presets
               </h3>
+              <Button variant="outline" size="sm" onClick={() => setShowResetDialog(true)} className="gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Revert to Default
+              </Button>
             </div>
             <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
               {presetThemes.map((preset) => (
@@ -631,10 +635,28 @@ export default function AdminBranding() {
         {/* Fonts Tab */}
         <TabsContent value="fonts" className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
-            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
-              <Type className="w-5 h-5 text-primary" />
-              Typography
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Type className="w-5 h-5 text-primary" />
+                Typography
+              </h3>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setSettings({ ...settings, font_heading: "Space Grotesk", font_body: "Outfit" });
+                  loadGoogleFont("Space Grotesk");
+                  loadGoogleFont("Outfit");
+                  document.documentElement.style.setProperty("--font-heading", `"Space Grotesk", sans-serif`);
+                  document.documentElement.style.setProperty("--font-body", `"Outfit", sans-serif`);
+                  toast({ title: "Fonts reset to default" });
+                }} 
+                className="gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Revert to Default
+              </Button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label>Heading Font</Label>
