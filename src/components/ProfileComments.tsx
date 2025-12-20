@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Send, Trash2, Flag, Loader2, User, Heart } from "lucide-react";
+import { MessageSquare, Send, Trash2, Flag, Loader2, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { notifyComment, notifyMention } from "@/hooks/useSocialNotifications";
@@ -12,8 +12,14 @@ import { ReportDialog } from "@/components/ReportDialog";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { UserAvatarLink } from "@/components/UserAvatarLink";
 import { MentionInput, parseMentions } from "@/components/MentionInput";
+
 interface ProfileCommentsProps {
   profileUserId: string;
+}
+
+function getHashCommentId(hash: string): string | null {
+  const match = hash.match(/^#comment-([a-zA-Z0-9-]+)$/);
+  return match ? match[1] : null;
 }
 
 export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
@@ -23,6 +29,9 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   const [newComment, setNewComment] = useState("");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportingCommentId, setReportingCommentId] = useState<string | null>(null);
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
+
+  const requestedScrollCommentId = useMemo(() => getHashCommentId(window.location.hash), []);
 
   const { data: comments, isLoading } = useQuery({
     queryKey: ["profile-comments", profileUserId],
@@ -37,6 +46,19 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
       return data;
     },
   });
+
+  useEffect(() => {
+    if (!requestedScrollCommentId) return;
+    if (!comments || comments.length === 0) return;
+
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`comment-${requestedScrollCommentId}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightedCommentId(requestedScrollCommentId);
+      window.setTimeout(() => setHighlightedCommentId(null), 2500);
+    });
+  }, [requestedScrollCommentId, comments]);
 
   const { data: commentAuthors } = useQuery({
     queryKey: ["comment-authors", comments?.map((c) => c.author_id)],
@@ -56,25 +78,23 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
     enabled: !!comments && comments.length > 0,
   });
 
-  // Fetch user's likes
   const { data: userLikes = [] } = useQuery({
-    queryKey: ["profile-comment-likes", user?.id, comments?.map(c => c.id)],
+    queryKey: ["profile-comment-likes", user?.id, comments?.map((c) => c.id)],
     queryFn: async () => {
       if (!user || !comments || comments.length === 0) return [];
       const { data, error } = await supabase
         .from("profile_comment_likes")
         .select("comment_id")
         .eq("user_id", user.id)
-        .in("comment_id", comments.map(c => c.id));
+        .in("comment_id", comments.map((c) => c.id));
       if (error) throw error;
-      return data.map(l => l.comment_id);
+      return data.map((l) => l.comment_id);
     },
     enabled: !!user && !!comments && comments.length > 0,
   });
 
-  // Fetch like counts
   const { data: likeCounts = {} } = useQuery({
-    queryKey: ["profile-comment-like-counts", comments?.map(c => c.id)],
+    queryKey: ["profile-comment-like-counts", comments?.map((c) => c.id)],
     queryFn: async () => {
       if (!comments || comments.length === 0) return {};
       const counts: Record<string, number> = {};
@@ -93,54 +113,56 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   const addCommentMutation = useMutation({
     mutationFn: async (content: string) => {
       if (!user) throw new Error("Must be logged in");
-      const { data, error } = await supabase.from("profile_comments").insert({
-        profile_user_id: profileUserId,
-        author_id: user.id,
-        content,
-      }).select('id').single();
+
+      const { data, error } = await supabase
+        .from("profile_comments")
+        .insert({
+          profile_user_id: profileUserId,
+          author_id: user.id,
+          content,
+        })
+        .select("id")
+        .single();
+
       if (error) throw error;
-      
-      // Get commenter profile
+
       const { data: commenterProfile } = await supabase
         .from("profiles")
         .select("username, display_name")
         .eq("user_id", user.id)
         .maybeSingle();
-      
+
       const commenterName = commenterProfile?.display_name || commenterProfile?.username || "Someone";
-      
-      // Send notification if commenting on someone else's profile
+
       if (user.id !== profileUserId) {
         const { data: profileOwner } = await supabase
           .from("profiles")
           .select("username")
           .eq("user_id", profileUserId)
           .maybeSingle();
-        
+
         await notifyComment(profileUserId, commenterName, profileOwner?.username || profileUserId, data?.id);
       }
-      
-      // Handle @mentions - find all mentioned usernames and send notifications
+
       const mentionRegex = /@(\w+)/g;
       const mentions = content.match(mentionRegex);
       if (mentions) {
-        const uniqueUsernames = [...new Set(mentions.map(m => m.slice(1)))];
-        
+        const uniqueUsernames = [...new Set(mentions.map((m) => m.slice(1)))];
+
         for (const username of uniqueUsernames) {
           const { data: mentionedUser } = await supabase
             .from("profiles")
             .select("user_id")
             .eq("username", username)
             .maybeSingle();
-          
+
           if (mentionedUser && mentionedUser.user_id !== user.id && mentionedUser.user_id !== profileUserId) {
-            // Get profile owner's username to build proper link
             const { data: profileOwnerData } = await supabase
               .from("profiles")
               .select("username")
               .eq("user_id", profileUserId)
               .maybeSingle();
-            
+
             await notifyMention(
               mentionedUser.user_id,
               commenterName,
@@ -164,10 +186,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
 
   const deleteCommentMutation = useMutation({
     mutationFn: async (commentId: string) => {
-      const { error } = await supabase
-        .from("profile_comments")
-        .delete()
-        .eq("id", commentId);
+      const { error } = await supabase.from("profile_comments").delete().eq("id", commentId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -182,9 +201,8 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   const likeCommentMutation = useMutation({
     mutationFn: async ({ commentId, isLiked }: { commentId: string; isLiked: boolean }) => {
       if (!user) throw new Error("Must be logged in");
-      
+
       if (isLiked) {
-        // Unlike
         const { error } = await supabase
           .from("profile_comment_likes")
           .delete()
@@ -192,10 +210,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
           .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        // Like
-        const { error } = await supabase
-          .from("profile_comment_likes")
-          .insert({ comment_id: commentId, user_id: user.id });
+        const { error } = await supabase.from("profile_comment_likes").insert({ comment_id: commentId, user_id: user.id });
         if (error) throw error;
       }
     },
@@ -219,7 +234,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    setNewComment(prev => prev + emoji);
+    setNewComment((prev) => prev + emoji);
   };
 
   const handleReportClick = (commentId: string) => {
@@ -239,50 +254,27 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
       <h3 className="font-semibold flex items-center gap-2">
         <MessageSquare className="w-4 h-4" />
         Profile Comments
-        {comments && comments.length > 0 && (
-          <span className="text-sm text-muted-foreground">({comments.length})</span>
-        )}
+        {comments && comments.length > 0 && <span className="text-sm text-muted-foreground">({comments.length})</span>}
       </h3>
 
-      {/* Comment Form */}
       {user && (
         <form onSubmit={handleSubmit} className="space-y-2">
-          <MentionInput
-            value={newComment}
-            onChange={setNewComment}
-            placeholder="Leave a comment... Use @ to mention users"
-            rows={2}
-            maxLength={500}
-          />
+          <MentionInput value={newComment} onChange={setNewComment} placeholder="Leave a comment... Use @ to mention users" rows={2} maxLength={500} />
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <EmojiPicker onEmojiSelect={handleEmojiSelect} />
               <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
             </div>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!newComment.trim() || addCommentMutation.isPending}
-              className="gap-2"
-            >
-              {addCommentMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
+            <Button type="submit" size="sm" disabled={!newComment.trim() || addCommentMutation.isPending} className="gap-2">
+              {addCommentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Post
             </Button>
           </div>
         </form>
       )}
 
-      {!user && (
-        <p className="text-sm text-muted-foreground text-center py-2">
-          Sign in to leave a comment
-        </p>
-      )}
+      {!user && <p className="text-sm text-muted-foreground text-center py-2">Sign in to leave a comment</p>}
 
-      {/* Comments List */}
       {isLoading ? (
         <div className="flex justify-center py-4">
           <Loader2 className="w-5 h-5 animate-spin" />
@@ -293,7 +285,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
             const author = commentAuthors?.[comment.author_id];
             const liked = isLiked(comment.id);
             const likeCount = getLikeCount(comment.id);
-            
+
             return (
               <motion.div
                 key={comment.id}
@@ -301,15 +293,13 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20"
+                className={`flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20 transition-shadow ${
+                  highlightedCommentId === comment.id
+                    ? "ring-1 ring-primary/40 shadow-[0_0_0_1px_hsl(var(--primary)/0.15),0_0_24px_hsl(var(--primary)/0.20)]"
+                    : ""
+                }`}
               >
-                <UserAvatarLink
-                  userId={comment.author_id}
-                  username={author?.username}
-                  avatarUrl={author?.avatar_url}
-                  size="md"
-                  className="flex-shrink-0"
-                />
+                <UserAvatarLink userId={comment.author_id} username={author?.username} avatarUrl={author?.avatar_url} size="md" className="flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <UserAvatarLink
@@ -321,31 +311,32 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                     >
                       {author?.display_name || author?.username || "Anonymous"}
                     </UserAvatarLink>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">
-                      {format(new Date(comment.created_at), "MMM d")}
-                    </span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(comment.created_at), "MMM d")}</span>
                   </div>
+
                   <p className="text-sm text-muted-foreground break-words">{parseMentions(comment.content)}</p>
+
                   <div className="flex gap-2 mt-2">
-                    {/* Like Button */}
                     {user && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => likeCommentMutation.mutate({ commentId: comment.id, isLiked: liked })}
                         disabled={likeCommentMutation.isPending}
-                        className={`h-6 px-2 text-xs gap-1 ${liked ? "text-red-500" : "text-muted-foreground"}`}
+                        className={`h-6 px-2 text-xs gap-1 ${liked ? "text-destructive" : "text-muted-foreground"}`}
                       >
-                        <Heart className={`w-3 h-3 ${liked ? "fill-red-500" : ""}`} />
+                        <Heart className={`w-3 h-3 ${liked ? "fill-current" : ""}`} />
                         {likeCount > 0 && likeCount}
                       </Button>
                     )}
+
                     {!user && likeCount > 0 && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Heart className="w-3 h-3" />
                         {likeCount}
                       </span>
                     )}
+
                     {canDelete(comment) && (
                       <Button
                         variant="ghost"
@@ -358,6 +349,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                         Delete
                       </Button>
                     )}
+
                     {user && user.id !== comment.author_id && (
                       <Button
                         variant="ghost"
@@ -376,12 +368,9 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
           })}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No comments yet. Be the first!
-        </p>
+        <p className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first!</p>
       )}
 
-      {/* Report Dialog */}
       {reportingCommentId && (
         <ReportDialog
           open={reportDialogOpen}
