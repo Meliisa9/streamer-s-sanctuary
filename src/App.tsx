@@ -68,6 +68,8 @@ import AdminVideoCategories from "./pages/admin/AdminVideoCategories";
 import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
 import AdminRoleManagement from "./pages/admin/AdminRoleManagement";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
+import AdminEngagement from "./pages/admin/AdminEngagement";
+import AdminMonetization from "./pages/admin/AdminMonetization";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -163,6 +165,8 @@ const App = () => (
                     <Route path="settings/email-templates" element={<AdminEmailTemplates />} />
                     <Route path="roles" element={<AdminRoleManagement />} />
                     <Route path="webhooks" element={<AdminWebhooks />} />
+                    <Route path="engagement" element={<AdminEngagement />} />
+                    <Route path="monetization" element={<AdminMonetization />} />
                     <Route path="bonus-hunt" element={<AdminBonusHunt />} />
                     <Route path="audit" element={<AdminAuditLog />} />
                     <Route path="activity" element={<AdminActivityLog />} />
