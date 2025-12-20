@@ -57,3 +57,13 @@ export async function notifyArticleLike(articleAuthorId: string, likerName: stri
     link: `/news/${articleSlug}`,
   });
 }
+
+export async function notifyMention(mentionedUserId: string, mentionerName: string, context: string, link: string) {
+  await sendSocialNotification({
+    userId: mentionedUserId,
+    type: "mention",
+    title: "You were mentioned",
+    message: `${mentionerName} mentioned you in ${context}`,
+    link,
+  });
+}

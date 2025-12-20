@@ -4,16 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageSquare, Send, Trash2, Flag, Loader2, User, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
-import { notifyComment } from "@/hooks/useSocialNotifications";
+import { notifyComment, notifyMention } from "@/hooks/useSocialNotifications";
 import { ReportDialog } from "@/components/ReportDialog";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { UserAvatarLink } from "@/components/UserAvatarLink";
-
+import { MentionInput, parseMentions } from "@/components/MentionInput";
 interface ProfileCommentsProps {
   profileUserId: string;
 }
@@ -102,22 +100,48 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
       }).select('id').single();
       if (error) throw error;
       
+      // Get commenter profile
+      const { data: commenterProfile } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      const commenterName = commenterProfile?.display_name || commenterProfile?.username || "Someone";
+      
       // Send notification if commenting on someone else's profile
       if (user.id !== profileUserId) {
-        const { data: commenterProfile } = await supabase
-          .from("profiles")
-          .select("username, display_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        
         const { data: profileOwner } = await supabase
           .from("profiles")
           .select("username")
           .eq("user_id", profileUserId)
           .maybeSingle();
         
-        const commenterName = commenterProfile?.display_name || commenterProfile?.username || "Someone";
         await notifyComment(profileUserId, commenterName, profileOwner?.username || profileUserId, data?.id);
+      }
+      
+      // Handle @mentions - find all mentioned usernames and send notifications
+      const mentionRegex = /@(\w+)/g;
+      const mentions = content.match(mentionRegex);
+      if (mentions) {
+        const uniqueUsernames = [...new Set(mentions.map(m => m.slice(1)))];
+        
+        for (const username of uniqueUsernames) {
+          const { data: mentionedUser } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .eq("username", username)
+            .maybeSingle();
+          
+          if (mentionedUser && mentionedUser.user_id !== user.id && mentionedUser.user_id !== profileUserId) {
+            await notifyMention(
+              mentionedUser.user_id,
+              commenterName,
+              "a profile comment",
+              `/profile#comment-${data?.id}`
+            );
+          }
+        }
       }
     },
     onSuccess: () => {
@@ -215,10 +239,10 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
       {/* Comment Form */}
       {user && (
         <form onSubmit={handleSubmit} className="space-y-2">
-          <Textarea
+          <MentionInput
             value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Leave a comment..."
+            onChange={setNewComment}
+            placeholder="Leave a comment... Use @ to mention users"
             rows={2}
             maxLength={500}
           />
@@ -293,7 +317,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                       {format(new Date(comment.created_at), "MMM d")}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground break-words">{comment.content}</p>
+                  <p className="text-sm text-muted-foreground break-words">{parseMentions(comment.content)}</p>
                   <div className="flex gap-2 mt-2">
                     {/* Like Button */}
                     {user && (
