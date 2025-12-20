@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Shield, Lock, Eye, Database, UserCheck, Mail, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +16,8 @@ const quickLinks = [
 ];
 
 export default function PrivacyPolicy() {
+  const location = useLocation();
+  
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-privacy"],
     queryFn: async () => {
@@ -27,20 +31,27 @@ export default function PrivacyPolicy() {
     },
   });
 
-  const defaultContent = `
-    <h2>Privacy Policy</h2>
-    <p>Your privacy is important to us. This privacy policy explains how we collect, use, and protect your personal information.</p>
-    <h3 id="data-collection">Information We Collect</h3>
-    <p>We may collect information you provide directly to us, such as when you create an account, participate in giveaways, or contact us.</p>
-    <h3 id="data-usage">How We Use Your Information</h3>
-    <p>We use the information we collect to provide, maintain, and improve our services.</p>
-    <h3 id="security">Security</h3>
-    <p>We implement appropriate security measures to protect your personal information.</p>
-    <h3 id="your-rights">Your Rights</h3>
-    <p>You have the right to access, correct, or delete your personal data at any time.</p>
-    <h3 id="contact">Contact Us</h3>
-    <p>If you have any questions about this Privacy Policy, please contact us.</p>
-  `;
+  // Handle anchor scrolling after content loads
+  useEffect(() => {
+    if (!isLoading && location.hash) {
+      const id = location.hash.replace("#", "");
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    }
+  }, [isLoading, location.hash]);
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.history.pushState(null, "", `#${id}`);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -71,6 +82,7 @@ export default function PrivacyPolicy() {
             <a
               key={link.id}
               href={`#${link.id}`}
+              onClick={(e) => handleAnchorClick(e, link.id)}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-primary/50 hover:bg-primary/5 transition-all group"
             >
               <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -98,16 +110,63 @@ export default function PrivacyPolicy() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass rounded-2xl p-8 md:p-10 prose prose-invert max-w-none
-            prose-headings:text-foreground prose-headings:font-bold
-            prose-h2:text-3xl prose-h2:mb-6 prose-h2:mt-0 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-4
-            prose-h3:text-xl prose-h3:text-primary prose-h3:mt-8 prose-h3:mb-4
-            prose-p:text-muted-foreground prose-p:leading-relaxed
-            prose-ul:text-muted-foreground prose-li:marker:text-primary
-            prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-            prose-strong:text-foreground"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
-        />
+          className="glass rounded-2xl p-8 md:p-10"
+        >
+          {/* Static sections with proper IDs for anchor navigation */}
+          <div className="prose prose-invert max-w-none prose-headings:text-foreground prose-headings:font-bold prose-h2:text-3xl prose-h2:mb-6 prose-h2:mt-0 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-4 prose-h3:text-xl prose-h3:text-primary prose-h3:mt-8 prose-h3:mb-4 prose-p:text-muted-foreground prose-p:leading-relaxed prose-ul:text-muted-foreground prose-li:marker:text-primary prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground">
+            <h2>Privacy Policy</h2>
+            <p>Your privacy is important to us. This privacy policy explains how we collect, use, and protect your personal information.</p>
+            
+            <h3 id="data-collection" className="scroll-mt-24">Information We Collect</h3>
+            <p>We may collect information you provide directly to us, such as when you create an account, participate in giveaways, or contact us. This includes:</p>
+            <ul>
+              <li>Account information (username, email, avatar)</li>
+              <li>Profile information you choose to provide</li>
+              <li>Communications and interactions with our services</li>
+              <li>Usage data and preferences</li>
+            </ul>
+            
+            <h3 id="data-usage" className="scroll-mt-24">How We Use Your Information</h3>
+            <p>We use the information we collect to:</p>
+            <ul>
+              <li>Provide, maintain, and improve our services</li>
+              <li>Personalize your experience</li>
+              <li>Send you notifications about events, giveaways, and updates</li>
+              <li>Protect against fraudulent or unauthorized activity</li>
+              <li>Comply with legal obligations</li>
+            </ul>
+            
+            <h3 id="security" className="scroll-mt-24">Security</h3>
+            <p>We implement appropriate security measures to protect your personal information, including:</p>
+            <ul>
+              <li>Encryption of data in transit and at rest</li>
+              <li>Regular security assessments and updates</li>
+              <li>Access controls and authentication mechanisms</li>
+              <li>Secure data storage practices</li>
+            </ul>
+            
+            <h3 id="your-rights" className="scroll-mt-24">Your Rights</h3>
+            <p>You have the right to:</p>
+            <ul>
+              <li>Access your personal data at any time</li>
+              <li>Correct or update inaccurate information</li>
+              <li>Request deletion of your account and data</li>
+              <li>Opt out of marketing communications</li>
+              <li>Export your data in a portable format</li>
+            </ul>
+            
+            <h3 id="contact" className="scroll-mt-24">Contact Us</h3>
+            <p>If you have any questions about this Privacy Policy or our data practices, please reach out through our platform or contact our support team.</p>
+          </div>
+          
+          {/* If there's custom content from the database, show it below */}
+          {content && (
+            <div 
+              className="mt-8 pt-8 border-t border-border/50 prose prose-invert max-w-none prose-headings:text-foreground prose-headings:font-bold prose-h2:text-3xl prose-h2:mb-6 prose-h3:text-xl prose-h3:text-primary prose-h3:mt-8 prose-h3:mb-4 prose-p:text-muted-foreground prose-p:leading-relaxed prose-ul:text-muted-foreground prose-li:marker:text-primary prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground"
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
+            />
+          )}
+        </motion.div>
       )}
 
       {/* Footer Note */}
