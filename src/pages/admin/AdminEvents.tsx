@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,13 +26,6 @@ import {
   Users
 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -48,11 +40,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, isToday, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { EnhancedEventForm } from "@/components/admin/forms";
 
 interface Event {
   id: string;
@@ -385,178 +376,23 @@ export default function AdminEvents() {
           <Button variant="outline" size="icon" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add Event
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingEvent ? "Edit Event" : "Add New Event"}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Date</Label>
-                  <Input
-                    type="date"
-                    value={formData.event_date}
-                    onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Start Time</Label>
-                    <Select
-                      value={formData.event_time || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, event_time: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[200px]">
-                        <SelectItem value="none">No specific time</SelectItem>
-                        {timeOptions.map((time) => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>End Time</Label>
-                    <Select
-                      value={formData.end_time || "none"}
-                      onValueChange={(value) => setFormData({ ...formData, end_time: value === "none" ? "" : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[200px]">
-                        <SelectItem value="none">No end time</SelectItem>
-                        {timeOptions.map((time) => (
-                          <SelectItem key={time} value={time}>{time}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Timezone</Label>
-                  <Select
-                    value={formData.timezone}
-                    onValueChange={(value) => setFormData({ ...formData, timezone: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select timezone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {timezones.map((tz) => (
-                        <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Event Type</Label>
-                    <Select
-                      value={formData.event_type}
-                      onValueChange={(value) => setFormData({ ...formData, event_type: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {eventTypes.map((type) => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Platform</Label>
-                    <Select
-                      value={formData.platform}
-                      onValueChange={(value) => setFormData({ ...formData, platform: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {platforms.map((p) => (
-                          <SelectItem key={p} value={p}>{p}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Streamer</Label>
-                  <Select
-                    value={formData.streamer_id || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, streamer_id: value === "none" ? "" : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a streamer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No specific streamer</SelectItem>
-                      {streamers?.map((streamer) => (
-                        <SelectItem key={streamer.id} value={streamer.id}>{streamer.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="flex gap-6">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={formData.is_featured}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_featured: checked })}
-                    />
-                    <Label>Featured</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={formData.is_recurring}
-                      onCheckedChange={(checked) => setFormData({ ...formData, is_recurring: checked })}
-                    />
-                    <Label>Recurring</Label>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {editingEvent ? "Update Event" : "Create Event"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Event
+          </Button>
         </div>
       </div>
 
+      <EnhancedEventForm
+        open={isDialogOpen}
+        onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}
+        editingEvent={editingEvent}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["admin-events"] });
+          setIsDialogOpen(false);
+          resetForm();
+        }}
+      />
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="glass rounded-xl p-4">

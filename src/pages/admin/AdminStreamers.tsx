@@ -3,13 +3,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, Users, Upload } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Pencil, Trash2, Search, Users, RefreshCw, Star, Radio } from "lucide-react";
+import { EnhancedStreamerForm } from "@/components/admin/forms";
+import { Badge } from "@/components/ui/badge";
 
 interface Streamer {
   id: string;
@@ -206,122 +203,32 @@ export default function AdminStreamers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Streamers</h1>
           <p className="text-muted-foreground">Manage your streamers and team</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="w-4 h-4" />Add Streamer</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingStreamer ? "Edit Streamer" : "Add New Streamer"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Name</Label>
-                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Profile Image</Label>
-                <div className="flex items-center gap-4">
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="w-16 h-16 rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center"><Users className="w-6 h-6 text-muted-foreground" /></div>
-                  )}
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                    <Button variant="outline" type="button" asChild><span><Upload className="w-4 h-4 mr-2" />Upload</span></Button>
-                  </label>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={3} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Twitch URL</Label>
-                  <Input value={formData.twitch_url} onChange={(e) => setFormData({ ...formData, twitch_url: e.target.value })} placeholder="https://twitch.tv/..." />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kick URL</Label>
-                  <Input value={formData.kick_url} onChange={(e) => setFormData({ ...formData, kick_url: e.target.value })} placeholder="https://kick.com/..." />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>YouTube URL</Label>
-                  <Input value={formData.youtube_url} onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Twitter URL</Label>
-                  <Input value={formData.twitter_url} onChange={(e) => setFormData({ ...formData, twitter_url: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Instagram URL</Label>
-                  <Input value={formData.instagram_url} onChange={(e) => setFormData({ ...formData, instagram_url: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Discord URL</Label>
-                  <Input value={formData.discord_url} onChange={(e) => setFormData({ ...formData, discord_url: e.target.value })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Sort Order</Label>
-                <Input type="number" value={formData.sort_order} onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })} />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={formData.streamer_type} onValueChange={(v) => setFormData({ ...formData, streamer_type: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="streamer">Streamer</SelectItem>
-                    <SelectItem value="team_member">Team Member</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Link to User Profile</Label>
-                <Select 
-                  value={formData.linked_user_id} 
-                  onValueChange={(v) => setFormData({ ...formData, linked_user_id: v === "none" ? "" : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select user (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No linked user</SelectItem>
-                    {users?.map((user) => (
-                      <SelectItem key={user.user_id} value={user.user_id}>
-                        {user.username || user.display_name || user.user_id.slice(0, 8)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">When linked, clicking the avatar will redirect to the user profile.</p>
-              </div>
-
-              <div className="flex gap-6">
-                <div className="flex items-center gap-2">
-                  <Switch checked={formData.is_active} onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })} />
-                  <Label>Active</Label>
-                </div>
-              </div>
-              <Button type="submit" className="w-full">{editingStreamer ? "Update Streamer" : "Add Streamer"}</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => queryClient.invalidateQueries({ queryKey: ["admin-streamers"] })}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Streamer
+          </Button>
+        </div>
       </div>
+
+      <EnhancedStreamerForm
+        open={isDialogOpen}
+        onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}
+        editingStreamer={editingStreamer}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["admin-streamers"] });
+          setIsDialogOpen(false);
+          resetForm();
+        }}
+      />
 
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

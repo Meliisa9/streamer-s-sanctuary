@@ -2,19 +2,14 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, X, Loader2, BarChart, Eye, Trophy, Users, TrendingUp, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, BarChart, Eye, Trophy, Users, TrendingUp, CheckCircle, XCircle, Clock } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -23,6 +18,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { EnhancedPollForm } from "@/components/admin/forms";
 
 interface Poll {
   id: string;
@@ -389,88 +385,22 @@ export default function AdminPolls() {
           <h1 className="text-3xl font-bold">Polls</h1>
           <p className="text-muted-foreground">Create and manage community polls</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create Official Poll
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingPoll ? "Edit Poll" : "Create Official Poll"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Question/Title</Label>
-                <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="What's your favorite...?"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Description (Optional)</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Additional context for the poll..."
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Options</Label>
-                {formData.options.map((option, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      value={option}
-                      onChange={(e) => updateOption(index, e.target.value)}
-                      placeholder={`Option ${index + 1}`}
-                      required={index < 2}
-                    />
-                    {formData.options.length > 2 && (
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeOption(index)}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={addOption}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Option
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <Label>End Date (Optional)</Label>
-                <Input
-                  type="datetime-local"
-                  value={formData.ends_at}
-                  onChange={(e) => setFormData({ ...formData, ends_at: e.target.value })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Allow Multiple Choices</Label>
-                <Switch
-                  checked={formData.is_multiple_choice}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_multiple_choice: checked })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Active</Label>
-                <Switch
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
-                {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {editingPoll ? "Update Poll" : "Create Poll"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Create Official Poll
+        </Button>
       </div>
+
+      <EnhancedPollForm
+        open={isDialogOpen}
+        onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}
+        editingPoll={editingPoll}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ["admin-polls"] });
+          setIsDialogOpen(false);
+          resetForm();
+        }}
+      />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

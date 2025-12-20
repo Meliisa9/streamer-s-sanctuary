@@ -1,9 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { FileText } from "lucide-react";
+import { FileText, Scale, Users, AlertTriangle, Gavel, ChevronRight, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sanitizeHtml } from "@/lib/sanitize";
+
+const quickLinks = [
+  { icon: Users, label: "Eligibility", id: "eligibility" },
+  { icon: Scale, label: "User Conduct", id: "user-conduct" },
+  { icon: BookOpen, label: "Giveaways", id: "giveaways" },
+  { icon: AlertTriangle, label: "Disclaimers", id: "disclaimers" },
+  { icon: Gavel, label: "Liability", id: "liability" },
+];
 
 export default function TermsOfService() {
   const { data: content, isLoading } = useQuery({
@@ -13,8 +21,8 @@ export default function TermsOfService() {
         .from("site_settings")
         .select("value")
         .eq("key", "legal_terms_of_service")
-        .single();
-      if (error && error.code !== "PGRST116") throw error;
+        .maybeSingle();
+      if (error) throw error;
       return data?.value as string | null;
     },
   });
@@ -22,42 +30,112 @@ export default function TermsOfService() {
   const defaultContent = `
     <h2>Terms of Service</h2>
     <p>Welcome to our platform. By using our services, you agree to these terms.</p>
-    <h3>Use of Service</h3>
+    <h3 id="eligibility">Eligibility</h3>
     <p>You must be at least 18 years old to use this service.</p>
-    <h3>User Conduct</h3>
+    <h3 id="user-conduct">User Conduct</h3>
     <p>You agree to use our services only for lawful purposes.</p>
-    <h3>Limitation of Liability</h3>
+    <h3 id="giveaways">Giveaways & Promotions</h3>
+    <p>Giveaways are subject to specific rules stated at the time of entry.</p>
+    <h3 id="disclaimers">Disclaimers</h3>
+    <p>This platform showcases gambling entertainment. We do not operate a casino or accept bets.</p>
+    <h3 id="liability">Limitation of Liability</h3>
     <p>We are not liable for any damages arising from your use of our services.</p>
   `;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center">
-          <FileText className="w-7 h-7 text-primary" />
+    <div className="max-w-5xl mx-auto space-y-8">
+      {/* Hero Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-transparent p-8 md:p-12"
+      >
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+        
+        <div className="relative flex items-start gap-6">
+          <div className="w-20 h-20 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0">
+            <FileText className="w-10 h-10 text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-3">Terms of Service</h1>
+            <p className="text-lg text-muted-foreground max-w-2xl">
+              Please read these terms carefully before using our platform. By accessing our services, you agree to be bound by these conditions.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">Terms of Service</h1>
-          <p className="text-muted-foreground">Rules and guidelines for using our platform</p>
+
+        {/* Quick Links */}
+        <div className="relative mt-8 flex flex-wrap gap-3">
+          {quickLinks.map((link) => (
+            <a
+              key={link.id}
+              href={`#${link.id}`}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
+            >
+              <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-blue-400 transition-colors" />
+              <span className="text-sm font-medium">{link.label}</span>
+              <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+            </a>
+          ))}
         </div>
       </motion.div>
 
+      {/* Important Notice */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="flex items-start gap-4 p-5 rounded-xl bg-amber-500/10 border border-amber-500/20"
+      >
+        <AlertTriangle className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold text-amber-200">Age Requirement</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You must be at least 18 years old (or the legal age in your jurisdiction) to use this platform. Content may contain gambling-related material intended for adult audiences only.
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Content */}
       {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-3/4" />
+        <div className="space-y-6 px-2">
+          <Skeleton className="h-8 w-3/4" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-8 w-2/3 mt-8" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
         </div>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass rounded-2xl p-8 prose prose-invert max-w-none"
+          className="glass rounded-2xl p-8 md:p-10 prose prose-invert max-w-none
+            prose-headings:text-foreground prose-headings:font-bold
+            prose-h2:text-3xl prose-h2:mb-6 prose-h2:mt-0 prose-h2:border-b prose-h2:border-border/50 prose-h2:pb-4
+            prose-h3:text-xl prose-h3:text-blue-400 prose-h3:mt-8 prose-h3:mb-4
+            prose-p:text-muted-foreground prose-p:leading-relaxed
+            prose-ul:text-muted-foreground prose-li:marker:text-blue-400
+            prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
+            prose-strong:text-foreground"
           dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
         />
       )}
+
+      {/* Footer Note */}
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        transition={{ delay: 0.2 }}
+        className="text-center text-sm text-muted-foreground pb-8"
+      >
+        <p>Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        <p className="mt-2">These terms may be updated periodically. Continued use constitutes acceptance.</p>
+      </motion.div>
     </div>
   );
 }
