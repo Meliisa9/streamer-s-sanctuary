@@ -18,7 +18,7 @@ import {
   User, Trophy, Calendar, Users, MessageSquare, 
   Award, ArrowLeft, UserPlus, UserMinus, Loader2,
   TrendingUp, Target, Gift, Star, Shield, Zap,
-  ExternalLink, Heart, Share2, Flag, BarChart3
+  ExternalLink, Heart, Share2, Flag, BarChart3, Gamepad2, Flame, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6
 } from "lucide-react";
 import { LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
 import { ReportDialog } from "@/components/ReportDialog";
@@ -383,8 +383,15 @@ export default function UserProfile() {
           animate={{ opacity: 1, y: 0 }}
           className="relative glass rounded-3xl overflow-hidden mb-6"
         >
-          {/* Banner Gradient */}
-          <div className={`h-36 md:h-44 bg-gradient-to-br ${levelInfo.gradient} relative`}>
+          {/* Banner - use cover photo if available */}
+          <div 
+            className={`h-36 md:h-44 relative ${!(profile as any)?.cover_url ? `bg-gradient-to-br ${levelInfo.gradient}` : ''}`}
+            style={(profile as any)?.cover_url ? {
+              backgroundImage: `url(${(profile as any).cover_url})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            } : undefined}
+          >
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 to-transparent" />
             
             {/* Level Badge */}
@@ -573,11 +580,11 @@ export default function UserProfile() {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-6"
               >
-                {/* Profile Information */}
+                {/* Profile Information - unique info without duplicates */}
                 <div className="glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4 flex items-center gap-2">
                     <User className="w-4 h-4 text-primary" />
-                    Profile Information
+                    About
                   </h3>
                   {(() => {
                     const privacy = (profile as any)?.privacy_settings || {};
@@ -607,34 +614,67 @@ export default function UserProfile() {
                             <p className="font-medium">{(profile as any).city}</p>
                           </div>
                         )}
-                        {(profile as any)?.favorite_slot && privacy.show_favorites !== false && (
-                          <div className="p-4 bg-secondary/30 rounded-xl">
-                            <p className="text-sm text-muted-foreground mb-1">Favorite Slot</p>
-                            <p className="font-medium">{(profile as any).favorite_slot}</p>
-                          </div>
-                        )}
-                        {(profile as any)?.favorite_casino && privacy.show_favorites !== false && (
-                          <div className="p-4 bg-secondary/30 rounded-xl">
-                            <p className="text-sm text-muted-foreground mb-1">Favorite Casino</p>
-                            <p className="font-medium">{(profile as any).favorite_casino}</p>
-                          </div>
-                        )}
-                        {(profile as any)?.biggest_win && (
-                          <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
-                            <p className="text-sm text-yellow-500 mb-1">Biggest Win</p>
-                            <p className="font-medium">{(profile as any).biggest_win}</p>
-                          </div>
-                        )}
                       </div>
                     );
                   })()}
-                  {!profile.bio && !(profile as any)?.age && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
+                  {!profile.bio && !(profile as any)?.age && !(profile as any)?.country && (
                     <div className="text-center py-8 text-muted-foreground">
                       <User className="w-10 h-10 mx-auto mb-3 opacity-30" />
                       <p>No profile information available</p>
                     </div>
                   )}
                 </div>
+
+                {/* Casino Corner - show casino stats */}
+                {(() => {
+                  const privacy = (profile as any)?.privacy_settings || {};
+                  const hasCasinoStats = ((profile as any)?.favorite_slot && privacy.show_favorites !== false) || 
+                                         ((profile as any)?.favorite_casino && privacy.show_favorites !== false) || 
+                                         (profile as any)?.biggest_win;
+                  
+                  if (!hasCasinoStats) return null;
+                  
+                  const diceIcons = [Dice1, Dice2, Dice3, Dice4, Dice5, Dice6];
+                  const RandomDice = diceIcons[Math.floor(Math.random() * diceIcons.length)];
+                  
+                  return (
+                    <div className="glass rounded-2xl p-6">
+                      <h3 className="font-semibold mb-4 flex items-center gap-2">
+                        <RandomDice className="w-5 h-5 text-primary" />
+                        Casino Corner
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {(profile as any)?.favorite_slot && privacy.show_favorites !== false && (
+                          <div className="p-4 bg-gradient-to-br from-purple-500/10 to-purple-500/5 rounded-xl border border-purple-500/20">
+                            <div className="flex items-center gap-2 text-purple-400 mb-1">
+                              <Gamepad2 className="w-4 h-4" />
+                              <span className="text-sm">Favorite Slot</span>
+                            </div>
+                            <p className="font-medium">{(profile as any).favorite_slot}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.favorite_casino && privacy.show_favorites !== false && (
+                          <div className="p-4 bg-gradient-to-br from-blue-500/10 to-blue-500/5 rounded-xl border border-blue-500/20">
+                            <div className="flex items-center gap-2 text-blue-400 mb-1">
+                              <Star className="w-4 h-4" />
+                              <span className="text-sm">Favorite Casino</span>
+                            </div>
+                            <p className="font-medium">{(profile as any).favorite_casino}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.biggest_win && (
+                          <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
+                            <div className="flex items-center gap-2 text-yellow-500 mb-1">
+                              <Trophy className="w-4 h-4" />
+                              <span className="text-sm">Biggest Win</span>
+                            </div>
+                            <p className="font-medium">{(profile as any).biggest_win}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Connected Accounts */}
                 <div className="glass rounded-2xl p-6">

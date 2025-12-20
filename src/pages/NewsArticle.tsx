@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { MentionInput, parseMentions } from "@/components/MentionInput";
 import { processAndSanitizeContent } from "@/lib/sanitize";
 import { UserImageLink } from "@/components/UserAvatarLink";
 import type { Tables } from "@/integrations/supabase/types";
@@ -496,12 +497,11 @@ export default function NewsArticlePage() {
           {/* Comment Form */}
           {user ? (
             <div className="mb-6 p-4 bg-secondary/30 rounded-xl">
-              <textarea
+              <MentionInput
                 value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Write a comment... 😊"
+                onChange={setCommentText}
+                placeholder="Write a comment... Use @ to mention users 😊"
                 rows={3}
-                className="w-full px-4 py-3 bg-background/50 border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none transition-colors"
               />
               <div className="flex items-center justify-between mt-3">
                 <EmojiPicker onEmojiSelect={handleEmojiSelect} />
@@ -554,7 +554,7 @@ export default function NewsArticlePage() {
                         {new Date(comment.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{parseMentions(comment.content)}</p>
                     
                     {/* Comment Like Button */}
                     <div className="flex items-center gap-2 mt-3">

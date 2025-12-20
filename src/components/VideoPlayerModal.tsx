@@ -89,7 +89,7 @@ export function VideoPlayerModal({ isOpen, onClose, videoUrl, title, isExternal 
           </Button>
           
           <div className="aspect-video w-full bg-black">
-            {isExternal && isEmbeddable ? (
+            {isEmbeddable ? (
               <iframe
                 src={embedUrl}
                 title={title}

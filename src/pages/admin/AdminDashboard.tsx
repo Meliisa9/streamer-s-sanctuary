@@ -172,6 +172,8 @@ export default function AdminDashboard() {
       const { data, error } = await supabase
         .from("user_activities")
         .select("*")
+        .not("action", "ilike", "%login%")
+        .not("action", "ilike", "%signup%")
         .order("created_at", { ascending: false })
         .limit(8);
 
