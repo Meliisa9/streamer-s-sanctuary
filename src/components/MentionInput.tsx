@@ -99,18 +99,25 @@ export function MentionInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Only intercept keyboard when suggestions are visible with users
     if (!showSuggestions || users.length === 0) return;
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
+      e.stopPropagation();
       setSelectedIndex((prev) => (prev + 1) % users.length);
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
+      e.stopPropagation();
       setSelectedIndex((prev) => (prev - 1 + users.length) % users.length);
     } else if (e.key === "Enter" && !e.shiftKey) {
+      // Only prevent default and insert mention when suggestions are showing
       e.preventDefault();
+      e.stopPropagation();
       insertMention(users[selectedIndex]);
     } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
       setShowSuggestions(false);
     }
   };

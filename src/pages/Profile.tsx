@@ -27,6 +27,7 @@ import { useBookmarks } from "@/hooks/useBookmarks";
 import { FollowersModal } from "@/components/FollowersModal";
 import { UserImageLink } from "@/components/UserAvatarLink";
 import { PrivacyControls } from "@/components/PrivacyControls";
+import { GamblingStatsBox } from "@/components/profile/GamblingStatsBox";
 import {
   Select,
   SelectContent,
@@ -35,12 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const COUNTRIES = [
-  "United States", "Canada", "United Kingdom", "Australia", "Germany", 
-  "France", "Sweden", "Norway", "Finland", "Denmark", "Netherlands",
-  "Spain", "Italy", "Brazil", "Mexico", "Japan", "South Korea",
-  "Other"
-];
+import { COUNTRIES } from "@/lib/countries";
 
 export default function Profile() {
   const { user, profile, signOut, refreshProfile } = useAuth();
@@ -579,63 +575,68 @@ export default function Profile() {
                       </div>
                     )}
                     
-                    {/* Profile Details Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {displayAge && (
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Cake className="w-4 h-4" />
-                            <span className="text-sm">Age</span>
-                          </div>
-                          <p className="font-medium">{displayAge} years old</p>
+                    {/* Profile Details Grid - respect privacy settings */}
+                    {(() => {
+                      const privacy = (profile as any)?.privacy_settings || {};
+                      return (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                          {displayAge && privacy.show_age !== false && (
+                            <div className="p-4 bg-secondary/30 rounded-xl">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <Cake className="w-4 h-4" />
+                                <span className="text-sm">Age</span>
+                              </div>
+                              <p className="font-medium">{displayAge} years old</p>
+                            </div>
+                          )}
+                          {(profile as any)?.country && privacy.show_country !== false && (
+                            <div className="p-4 bg-secondary/30 rounded-xl">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <MapPin className="w-4 h-4" />
+                                <span className="text-sm">Country</span>
+                              </div>
+                              <p className="font-medium">{(profile as any).country}</p>
+                            </div>
+                          )}
+                          {(profile as any)?.city && privacy.show_city !== false && (
+                            <div className="p-4 bg-secondary/30 rounded-xl">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <MapPin className="w-4 h-4" />
+                                <span className="text-sm">City</span>
+                              </div>
+                              <p className="font-medium">{(profile as any).city}</p>
+                            </div>
+                          )}
+                          {(profile as any)?.favorite_slot && privacy.show_favorites !== false && (
+                            <div className="p-4 bg-secondary/30 rounded-xl">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <Gamepad2 className="w-4 h-4" />
+                                <span className="text-sm">Favorite Slot</span>
+                              </div>
+                              <p className="font-medium">{(profile as any).favorite_slot}</p>
+                            </div>
+                          )}
+                          {(profile as any)?.favorite_casino && privacy.show_favorites !== false && (
+                            <div className="p-4 bg-secondary/30 rounded-xl">
+                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                                <Star className="w-4 h-4" />
+                                <span className="text-sm">Favorite Casino</span>
+                              </div>
+                              <p className="font-medium">{(profile as any).favorite_casino}</p>
+                            </div>
+                          )}
+                          {(profile as any)?.biggest_win && (
+                            <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
+                              <div className="flex items-center gap-2 text-yellow-500 mb-1">
+                                <Trophy className="w-4 h-4" />
+                                <span className="text-sm">Biggest Win</span>
+                              </div>
+                              <p className="font-medium">{(profile as any).biggest_win}</p>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {(profile as any)?.country && (
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <MapPin className="w-4 h-4" />
-                            <span className="text-sm">Country</span>
-                          </div>
-                          <p className="font-medium">{(profile as any).country}</p>
-                        </div>
-                      )}
-                      {(profile as any)?.city && (
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <MapPin className="w-4 h-4" />
-                            <span className="text-sm">City</span>
-                          </div>
-                          <p className="font-medium">{(profile as any).city}</p>
-                        </div>
-                      )}
-                      {(profile as any)?.favorite_slot && (
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Gamepad2 className="w-4 h-4" />
-                            <span className="text-sm">Favorite Slot</span>
-                          </div>
-                          <p className="font-medium">{(profile as any).favorite_slot}</p>
-                        </div>
-                      )}
-                      {(profile as any)?.favorite_casino && (
-                        <div className="p-4 bg-secondary/30 rounded-xl">
-                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                            <Star className="w-4 h-4" />
-                            <span className="text-sm">Favorite Casino</span>
-                          </div>
-                          <p className="font-medium">{(profile as any).favorite_casino}</p>
-                        </div>
-                      )}
-                      {(profile as any)?.biggest_win && (
-                        <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
-                          <div className="flex items-center gap-2 text-yellow-500 mb-1">
-                            <Trophy className="w-4 h-4" />
-                            <span className="text-sm">Biggest Win</span>
-                          </div>
-                          <p className="font-medium">{(profile as any).biggest_win}</p>
-                        </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                     
                     {!profile?.bio && !displayAge && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
                       <div className="text-center py-8 text-muted-foreground">
@@ -665,6 +666,13 @@ export default function Profile() {
                       </Link>
                     </div>
                   </div>
+                  
+                  {/* Casino Corner Box */}
+                  <GamblingStatsBox 
+                    favoriteSlot={(profile as any)?.favorite_slot}
+                    favoriteCasino={(profile as any)?.favorite_casino}
+                    biggestWin={(profile as any)?.biggest_win}
+                  />
                 </div>
               </div>
 
