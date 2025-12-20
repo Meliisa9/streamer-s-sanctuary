@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useRef } from "react";
 import { FileText, Scale, Users, AlertTriangle, Gavel, ChevronRight, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { useAnchorHighlight } from "@/hooks/useAnchorHighlight";
 
 const quickLinks = [
   { icon: Users, label: "Eligibility", id: "eligibility" },
@@ -16,8 +16,8 @@ const quickLinks = [
 ];
 
 export default function TermsOfService() {
-  const location = useLocation();
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const { handleAnchorClick } = useAnchorHighlight();
   
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-terms"],
@@ -31,42 +31,6 @@ export default function TermsOfService() {
       return data?.value as string | null;
     },
   });
-
-  // Handle anchor scrolling after content loads
-  useEffect(() => {
-    if (!isLoading && location.hash) {
-      const id = location.hash.replace("#", "");
-      setTimeout(() => {
-        const element = sectionRefs.current[id] || document.getElementById(id);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 100);
-    }
-  }, [isLoading, location.hash]);
-
-  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault();
-    // Try refs first, then fall back to getElementById for content loaded via dangerouslySetInnerHTML
-    const element = sectionRefs.current[id] || document.getElementById(id) || document.querySelector(`[id="${id}"]`);
-    
-    // If still not found, try to find by text content in headings
-    if (!element) {
-      const headings = document.querySelectorAll('h2, h3');
-      for (const heading of headings) {
-        if (heading.textContent?.toLowerCase().includes(id.replace(/-/g, ' '))) {
-          heading.scrollIntoView({ behavior: "smooth", block: "start" });
-          window.history.pushState(null, "", `#${id}`);
-          return;
-        }
-      }
-    }
-    
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", `#${id}`);
-    }
-  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
