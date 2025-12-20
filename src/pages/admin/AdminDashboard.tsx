@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { LiveStreamStatus } from "@/components/admin/LiveStreamStatus";
 import { SystemMonitor } from "@/components/admin/SystemMonitor";
+import { AdminDiagnosticsPanel } from "@/components/admin/AdminDiagnosticsPanel";
+import { StreamHealthWidget } from "@/components/admin/StreamHealthWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -173,7 +175,6 @@ export default function AdminDashboard() {
         .from("user_activities")
         .select("*")
         .not("action", "ilike", "%login%")
-        .not("action", "ilike", "%signup%")
         .order("created_at", { ascending: false })
         .limit(8);
 
@@ -362,10 +363,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stream Status & System Monitor Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <LiveStreamStatus />
+        <StreamHealthWidget />
         <SystemMonitor />
       </div>
+
+      {/* Diagnostics Panel */}
+      <AdminDiagnosticsPanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick Actions */}

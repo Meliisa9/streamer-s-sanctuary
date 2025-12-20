@@ -76,11 +76,14 @@ const queryClient = new QueryClient({
   },
 });
 
+import { DevDiagnosticsOverlay } from "@/components/DevDiagnosticsOverlay";
+
 const App = () => (
   <ErrorBoundary>
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
+          <DevDiagnosticsOverlay />
           <OnlinePresenceProvider>
             <SiteSettingsProvider>
               <TooltipProvider>
