@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Search, Shield, User as UserIcon, Loader2, UserPlus, Trash2, Users, Crown, PenTool, MoreVertical, Eye, Ban, Award, TrendingUp, Calendar, Plus, X, Save, Pencil } from "lucide-react";
+import { Search, Shield, User as UserIcon, Loader2, UserPlus, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -16,9 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { EnhancedAddUserModal, EnhancedEditUserModal } from "@/components/admin/EnhancedUserModal";
-import { format } from "date-fns";
 
 interface UserProfile {
   id: string;
@@ -44,30 +41,11 @@ export default function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
-  const [editingEmail, setEditingEmail] = useState<{ userId: string; email: string } | null>(null);
-  const [editForm, setEditForm] = useState({
-    username: "",
-    display_name: "",
-    bio: "",
-    discord_tag: "",
-    twitch_username: "",
-    points: 0,
-  });
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newUserForm, setNewUserForm] = useState({
-    email: "",
-    password: "",
-    username: "",
-    display_name: "",
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
   const [isDeletingUser, setIsDeletingUser] = useState(false);
-  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
   const { toast } = useToast();
   const { isAdmin, user: currentUser } = useAuth();
-  const [userEmails, setUserEmails] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchUsers();
@@ -121,76 +99,6 @@ export default function AdminUsers() {
 
   const startEditing = (user: UserProfile) => {
     setEditingUser(user);
-    setEditForm({
-      username: user.username || "",
-      display_name: user.display_name || "",
-      bio: user.bio || "",
-      discord_tag: user.discord_tag || "",
-      twitch_username: user.twitch_username || "",
-      points: user.points || 0,
-    });
-  };
-
-  const saveUserChanges = async () => {
-    if (!editingUser || !isAdmin) return;
-    setIsSaving(true);
-
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          username: editForm.username || null,
-          display_name: editForm.display_name || null,
-          bio: editForm.bio || null,
-          discord_tag: editForm.discord_tag || null,
-          twitch_username: editForm.twitch_username || null,
-          points: editForm.points,
-        })
-        .eq("user_id", editingUser.user_id);
-
-      if (error) throw error;
-
-      toast({ title: "User updated successfully" });
-      setEditingUser(null);
-      fetchUsers();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const updateUserEmail = async () => {
-    if (!isAdmin || !editingEmail) return;
-    
-    setIsUpdatingEmail(true);
-
-    try {
-      const response = await supabase.functions.invoke("create-user", {
-        body: {
-          action: "update_email",
-          user_id: editingEmail.userId,
-          new_email: editingEmail.email,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to update email");
-      }
-
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-
-      toast({ title: "Email updated successfully" });
-      setEditingEmail(null);
-      // Update local state
-      setUserEmails(prev => ({ ...prev, [editingEmail.userId]: editingEmail.email }));
-    } catch (error: any) {
-      toast({ title: "Error updating email", description: error.message, variant: "destructive" });
-    } finally {
-      setIsUpdatingEmail(false);
-    }
   };
 
   const addPoints = async (userId: string, amount: number) => {
@@ -206,61 +114,10 @@ export default function AdminUsers() {
         .eq("user_id", userId);
 
       if (error) throw error;
-      toast({ title: `Added ${amount} points` });
+      toast({ title: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} points` });
       fetchUsers();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  const createManualUser = async () => {
-    if (!isAdmin) return;
-    
-    if (!newUserForm.email || !newUserForm.password) {
-      toast({ title: "Email and password are required", variant: "destructive" });
-      return;
-    }
-
-    if (newUserForm.password.length < 6) {
-      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
-      return;
-    }
-
-    setIsCreatingUser(true);
-
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-
-      if (!token) {
-        throw new Error("No authentication token available");
-      }
-
-      const response = await supabase.functions.invoke("create-user", {
-        body: {
-          email: newUserForm.email,
-          password: newUserForm.password,
-          username: newUserForm.username,
-          display_name: newUserForm.display_name,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to create user");
-      }
-
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-
-      toast({ title: "User created successfully" });
-      setShowAddModal(false);
-      setNewUserForm({ email: "", password: "", username: "", display_name: "" });
-      fetchUsers();
-    } catch (error: any) {
-      toast({ title: "Error creating user", description: error.message, variant: "destructive" });
-    } finally {
-      setIsCreatingUser(false);
     }
   };
 
@@ -330,162 +187,29 @@ export default function AdminUsers() {
               className="pl-9 pr-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary w-64"
             />
           </div>
-          <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <UserPlus className="w-4 h-4" />
-                Add User
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Email *</Label>
-                  <Input
-                    type="email"
-                    value={newUserForm.email}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                    placeholder="user@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Password *</Label>
-                  <Input
-                    type="password"
-                    value={newUserForm.password}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                    placeholder="Minimum 6 characters"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Username</Label>
-                  <Input
-                    value={newUserForm.username}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })}
-                    placeholder="username"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Display Name</Label>
-                  <Input
-                    value={newUserForm.display_name}
-                    onChange={(e) => setNewUserForm({ ...newUserForm, display_name: e.target.value })}
-                    placeholder="Display Name"
-                  />
-                </div>
-                <Button onClick={createManualUser} disabled={isCreatingUser} className="w-full gap-2">
-                  {isCreatingUser ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  Create User
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <Button className="gap-2" onClick={() => setShowAddModal(true)}>
+            <UserPlus className="w-4 h-4" />
+            Add User
+          </Button>
         </div>
       </div>
 
-      {/* Edit User Modal */}
-      {editingUser && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-2xl p-6"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold">Edit User</h3>
-            <Button variant="ghost" size="sm" onClick={() => setEditingUser(null)}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Username</label>
-              <input
-                type="text"
-                value={editForm.username}
-                onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Display Name</label>
-              <input
-                type="text"
-                value={editForm.display_name}
-                onChange={(e) => setEditForm({ ...editForm, display_name: e.target.value })}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Discord Tag</label>
-              <input
-                type="text"
-                value={editForm.discord_tag}
-                onChange={(e) => setEditForm({ ...editForm, discord_tag: e.target.value })}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Twitch Username</label>
-              <input
-                type="text"
-                value={editForm.twitch_username}
-                onChange={(e) => setEditForm({ ...editForm, twitch_username: e.target.value })}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Points</label>
-              <input
-                type="number"
-                value={editForm.points}
-                onChange={(e) => setEditForm({ ...editForm, points: parseInt(e.target.value) || 0 })}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Email Address</label>
-              <div className="flex gap-2 mt-1">
-                <input
-                  type="email"
-                  value={editingEmail?.userId === editingUser.user_id ? editingEmail.email : (userEmails[editingUser.user_id] || "")}
-                  onChange={(e) => setEditingEmail({ userId: editingUser.user_id, email: e.target.value })}
-                  placeholder="Enter new email address"
-                  className="flex-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-                <Button 
-                  onClick={updateUserEmail} 
-                  disabled={isUpdatingEmail || !editingEmail || editingEmail.userId !== editingUser.user_id || !editingEmail.email}
-                  size="sm"
-                  className="gap-2"
-                >
-                  {isUpdatingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Update
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Email changes require confirmation</p>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium">Bio</label>
-              <textarea
-                value={editForm.bio}
-                onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                rows={3}
-                className="w-full mt-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary resize-none"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3 mt-4">
-            <Button onClick={saveUserChanges} disabled={isSaving} className="gap-2">
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save Changes
-            </Button>
-            <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
-          </div>
-        </motion.div>
-      )}
+      {/* Enhanced Add User Modal */}
+      <EnhancedAddUserModal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        onSuccess={fetchUsers}
+      />
+
+      {/* Enhanced Edit User Modal */}
+      <EnhancedEditUserModal
+        open={!!editingUser}
+        onOpenChange={(open) => !open && setEditingUser(null)}
+        user={editingUser}
+        userRoles={editingUser ? (roles[editingUser.user_id] || ["user"]) : []}
+        onSuccess={fetchUsers}
+        onUpdateRole={updateUserRole}
+      />
 
       {/* Delete User Confirmation */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>

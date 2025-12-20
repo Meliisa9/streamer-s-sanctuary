@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Save, Loader2, FileText, Shield, Cookie, AlertTriangle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 interface LegalSettings {
   legal_privacy_policy: string;
@@ -406,14 +406,13 @@ export default function AdminLegal() {
                   {page.label}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  You can use HTML tags like &lt;h2&gt;, &lt;h3&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;a&gt; etc.
+                  Use the rich text editor below to format your content. Click on the toolbar buttons to apply formatting.
                 </p>
-                <Textarea
-                  value={settings[page.key as keyof LegalSettings]}
-                  onChange={(e) => setSettings({ ...settings, [page.key]: e.target.value })}
-                  rows={20}
-                  className="font-mono text-sm"
-                  placeholder={`<h2>${page.label}</h2>\n<p>Your content here...</p>`}
+                <RichTextEditor
+                  content={settings[page.key as keyof LegalSettings]}
+                  onChange={(html) => setSettings({ ...settings, [page.key]: html })}
+                  placeholder={`Start writing your ${page.label} content...`}
+                  minHeight="400px"
                 />
               </div>
             </TabsContent>
