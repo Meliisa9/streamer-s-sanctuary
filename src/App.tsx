@@ -63,6 +63,9 @@ import BonusHunt from "./pages/BonusHunt";
 import UserProfile from "./pages/UserProfile";
 import AdminBonusHunt from "./pages/admin/AdminBonusHunt";
 import AdminAuthHealth from "./pages/admin/AdminAuthHealth";
+import AdminVideoCategories from "./pages/admin/AdminVideoCategories";
+import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
+import AdminRoles from "./pages/admin/AdminRoles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -149,6 +152,9 @@ const App = () => (
                     <Route path="settings/moderation" element={<AdminModerationQueue />} />
                     <Route path="settings/bulk-actions" element={<AdminBulkActions />} />
                     <Route path="settings/auth-health" element={<AdminAuthHealth />} />
+                    <Route path="settings/video-categories" element={<AdminVideoCategories />} />
+                    <Route path="settings/email-templates" element={<AdminEmailTemplates />} />
+                    <Route path="settings/roles" element={<AdminRoles />} />
                     <Route path="bonus-hunt" element={<AdminBonusHunt />} />
                     <Route path="audit" element={<AdminAuditLog />} />
                     <Route path="activity" element={<AdminActivityLog />} />
