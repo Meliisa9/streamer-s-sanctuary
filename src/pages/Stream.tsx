@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { StreamPredictions } from "@/components/StreamPredictions";
 
 type StreamSize = "compact" | "theater" | "fullscreen";
 type NonFullscreenSize = "compact" | "theater";
@@ -275,6 +276,9 @@ export default function Stream() {
                   </div>
                 )}
               </motion.div>
+
+              {/* Stream Predictions */}
+              <StreamPredictions />
 
               {/* Info Cards */}
               <motion.div

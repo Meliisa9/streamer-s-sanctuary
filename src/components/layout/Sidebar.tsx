@@ -52,7 +52,6 @@ const communityNavItems: NavItem[] = [
   { icon: Crosshair, label: "Bonus Hunt", path: "/bonus-hunt", settingKey: "nav_bonus_hunt_visible" },
   { icon: Target, label: "Guess The Win", path: "/bonus-hunt?tab=gtw", settingKey: "nav_gtw_visible" },
   { icon: BarChart, label: "Average X", path: "/bonus-hunt?tab=avgx", settingKey: "nav_gtw_visible" },
-  { icon: Target, label: "Predictions", path: "/predictions", settingKey: "nav_predictions_visible" },
   { icon: Trophy, label: "Win Gallery", path: "/wins", settingKey: "nav_wins_visible" },
   { icon: BarChart, label: "Streamer Stats", path: "/streamer-stats", settingKey: "nav_streamer_stats_visible" },
   { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },

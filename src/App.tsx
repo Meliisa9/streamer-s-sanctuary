@@ -75,7 +75,6 @@ import AdminPredictions from "./pages/admin/AdminPredictions";
 import AdminWinGallery from "./pages/admin/AdminWinGallery";
 import AdminStreamerStats from "./pages/admin/AdminStreamerStats";
 import AdminLanguage from "./pages/admin/AdminLanguage";
-import Predictions from "./pages/Predictions";
 import WinGallery from "./pages/WinGallery";
 import StreamerStats from "./pages/StreamerStats";
 import NotFound from "./pages/NotFound";
@@ -135,7 +134,6 @@ const App = () => (
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/achievements" element={<Achievements />} />
                     <Route path="/bonus-hunt" element={<BonusHunt />} />
-                    <Route path="/predictions" element={<Predictions />} />
                     <Route path="/wins" element={<WinGallery />} />
                     <Route path="/streamer-stats" element={<StreamerStats />} />
                     <Route path="/user/:usernameOrId" element={<UserProfile />} />
