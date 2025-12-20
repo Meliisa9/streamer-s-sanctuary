@@ -1,4 +1,4 @@
-project_id = "tuoovpieeejapujaujam"
+project_id = "mdckorxfleckrwjmcigw"
 
 [functions.create-user]
 verify_jwt = false
@@ -10,4 +10,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.admin-code]
+verify_jwt = false
+
+[functions.check-stream-status]
 verify_jwt = false
