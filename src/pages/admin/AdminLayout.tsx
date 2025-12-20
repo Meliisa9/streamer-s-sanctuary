@@ -71,6 +71,7 @@ interface NavItem {
 // Define which items are sub-items of settings
 const settingsSubPaths = [
   "/admin/settings/branding",
+  "/admin/settings/white-label",
   "/admin/settings/navigation", 
   "/admin/settings/video-categories",
   "/admin/settings/notifications",
@@ -140,6 +141,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: Settings, label: "General Settings", path: "/admin/settings", roles: ["admin"] },
       { icon: Palette, label: "Branding", path: "/admin/settings/branding", roles: ["admin"] },
+      { icon: Palette, label: "White Label", path: "/admin/settings/white-label", roles: ["admin"] },
       { icon: Navigation, label: "Navigation", path: "/admin/settings/navigation", roles: ["admin"] },
       { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin"] },
       { icon: Send, label: "Send Notifications", path: "/admin/settings/notifications", roles: ["admin"] },
