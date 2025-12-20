@@ -176,7 +176,7 @@ export default function News() {
                 Recent Posts
               </h2>
               {regularArticles && regularArticles.length > 0 ? (
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-4">
                   {regularArticles.map((article, index) => (
                     <Link to={`/news/${article.slug}`} key={article.id}>
                       <motion.div
@@ -185,8 +185,8 @@ export default function News() {
                         transition={{ delay: 0.1 * index }}
                         className="glass rounded-2xl overflow-hidden card-hover group cursor-pointer"
                       >
-                        <div className="flex flex-col md:flex-row">
-                          <div className="md:w-64 h-48 md:h-auto overflow-hidden flex-shrink-0">
+                        <div className="flex flex-col sm:flex-row">
+                          <div className="sm:w-48 md:w-64 h-40 sm:h-auto overflow-hidden flex-shrink-0">
                             {article.image_url ? (
                               <img
                                 src={article.image_url}
@@ -197,8 +197,8 @@ export default function News() {
                               <div className="w-full h-full bg-secondary" />
                             )}
                           </div>
-                          <div className="flex-1 p-6">
-                            <div className="flex items-center gap-3 mb-3">
+                          <div className="flex-1 p-4 sm:p-5">
+                            <div className="flex items-center gap-3 mb-2">
                               <span className="px-3 py-1 bg-secondary text-xs font-medium rounded-full">
                                 {article.category}
                               </span>
@@ -207,10 +207,10 @@ export default function News() {
                                 {getReadTime(article.content)}
                               </span>
                             </div>
-                            <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                            <h3 className="text-lg font-bold mb-2 group-hover:text-primary transition-colors line-clamp-2">
                               {article.title}
                             </h3>
-                            <p className="text-muted-foreground mb-4 line-clamp-2">{article.excerpt}</p>
+                            <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{article.excerpt}</p>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                 <span>{new Date(article.created_at).toLocaleDateString()}</span>

@@ -291,11 +291,17 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                 key={comment.id}
                 id={`comment-${comment.id}`}
                 initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20 transition-shadow ${
+                animate={{ 
+                  opacity: 1, 
+                  y: 0,
+                  boxShadow: highlightedCommentId === comment.id 
+                    ? "0 0 0 2px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.25)"
+                    : "none"
+                }}
+                transition={{ delay: index * 0.05, duration: 0.3 }}
+                className={`flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20 transition-all duration-500 ${
                   highlightedCommentId === comment.id
-                    ? "ring-1 ring-primary/40 shadow-[0_0_0_1px_hsl(var(--primary)/0.15),0_0_24px_hsl(var(--primary)/0.20)]"
+                    ? "ring-2 ring-primary bg-primary/10 scale-[1.02]"
                     : ""
                 }`}
               >

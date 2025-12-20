@@ -563,9 +563,9 @@ export default function Profile() {
               </div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Profile Info Display */}
+                {/* Profile Info Display - Unique info not shown in Casino Corner */}
                 <div className="lg:col-span-2 glass rounded-2xl p-6">
-                  <h3 className="font-semibold mb-4">Profile Information</h3>
+                  <h3 className="font-semibold mb-4">About Me</h3>
                   <div className="space-y-4">
                     {/* Bio */}
                     {profile?.bio && (
@@ -575,7 +575,7 @@ export default function Profile() {
                       </div>
                     )}
                     
-                    {/* Profile Details Grid - respect privacy settings */}
+                    {/* Profile Details Grid - respect privacy settings, exclude casino stats shown in Casino Corner */}
                     {(() => {
                       const privacy = (profile as any)?.privacy_settings || {};
                       return (
@@ -607,38 +607,33 @@ export default function Profile() {
                               <p className="font-medium">{(profile as any).city}</p>
                             </div>
                           )}
-                          {(profile as any)?.favorite_slot && privacy.show_favorites !== false && (
-                            <div className="p-4 bg-secondary/30 rounded-xl">
-                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                                <Gamepad2 className="w-4 h-4" />
-                                <span className="text-sm">Favorite Slot</span>
-                              </div>
-                              <p className="font-medium">{(profile as any).favorite_slot}</p>
+                          {/* Member Stats */}
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <TrendingUp className="w-4 h-4" />
+                              <span className="text-sm">Total Activity</span>
                             </div>
-                          )}
-                          {(profile as any)?.favorite_casino && privacy.show_favorites !== false && (
-                            <div className="p-4 bg-secondary/30 rounded-xl">
-                              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                                <Star className="w-4 h-4" />
-                                <span className="text-sm">Favorite Casino</span>
-                              </div>
-                              <p className="font-medium">{(profile as any).favorite_casino}</p>
+                            <p className="font-medium">{totalActivity} actions</p>
+                          </div>
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <Target className="w-4 h-4" />
+                              <span className="text-sm">Giveaway Entries</span>
                             </div>
-                          )}
-                          {(profile as any)?.biggest_win && (
-                            <div className="p-4 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20">
-                              <div className="flex items-center gap-2 text-yellow-500 mb-1">
-                                <Trophy className="w-4 h-4" />
-                                <span className="text-sm">Biggest Win</span>
-                              </div>
-                              <p className="font-medium">{(profile as any).biggest_win}</p>
+                            <p className="font-medium">{stats.giveawayEntries}</p>
+                          </div>
+                          <div className="p-4 bg-secondary/30 rounded-xl">
+                            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                              <MessageSquare className="w-4 h-4" />
+                              <span className="text-sm">Comments</span>
                             </div>
-                          )}
+                            <p className="font-medium">{stats.comments}</p>
+                          </div>
                         </div>
                       );
                     })()}
                     
-                    {!profile?.bio && !displayAge && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
+                    {!profile?.bio && !displayAge && !(profile as any)?.country && (
                       <div className="text-center py-8 text-muted-foreground">
                         <User className="w-12 h-12 mx-auto mb-4 opacity-30" />
                         <p>No profile information set yet.</p>
@@ -768,14 +763,8 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Profile Wall */}
+              {/* Profile Comments */}
               <div className="glass rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-primary" />
-                    Profile Wall
-                  </h3>
-                </div>
                 <ProfileComments profileUserId={user.id} />
               </div>
             </TabsContent>
@@ -795,10 +784,21 @@ export default function Profile() {
                       <Video className="w-4 h-4" />
                       Videos ({bookmarkedVideos.length})
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {bookmarkedVideos.map((video) => (
-                        <Link key={video.id} to="/videos" className="glass rounded-lg p-3 hover:bg-secondary/50 transition-colors">
-                          <p className="font-medium text-sm line-clamp-2">{video.title}</p>
+                        <Link key={video.id} to="/videos" className="glass rounded-lg overflow-hidden hover:ring-1 hover:ring-primary/30 transition-all group">
+                          {video.thumbnail_url ? (
+                            <div className="aspect-video w-full overflow-hidden">
+                              <img src={video.thumbnail_url} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            </div>
+                          ) : (
+                            <div className="aspect-video w-full bg-secondary flex items-center justify-center">
+                              <Video className="w-8 h-8 text-muted-foreground/40" />
+                            </div>
+                          )}
+                          <div className="p-2">
+                            <p className="font-medium text-sm line-clamp-1">{video.title}</p>
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -812,10 +812,21 @@ export default function Profile() {
                       <Newspaper className="w-4 h-4" />
                       Articles ({bookmarkedArticles.length})
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {bookmarkedArticles.map((article) => (
-                        <Link key={article.id} to={`/news/${article.slug}`} className="glass rounded-lg p-3 hover:bg-secondary/50 transition-colors">
-                          <p className="font-medium text-sm line-clamp-2">{article.title}</p>
+                        <Link key={article.id} to={`/news/${article.slug}`} className="glass rounded-lg overflow-hidden hover:ring-1 hover:ring-primary/30 transition-all group">
+                          {article.image_url ? (
+                            <div className="aspect-video w-full overflow-hidden">
+                              <img src={article.image_url} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            </div>
+                          ) : (
+                            <div className="aspect-video w-full bg-secondary flex items-center justify-center">
+                              <Newspaper className="w-8 h-8 text-muted-foreground/40" />
+                            </div>
+                          )}
+                          <div className="p-2">
+                            <p className="font-medium text-sm line-clamp-1">{article.title}</p>
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -829,11 +840,22 @@ export default function Profile() {
                       <Gift className="w-4 h-4" />
                       Giveaways ({bookmarkedGiveaways.length})
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {bookmarkedGiveaways.map((giveaway) => (
-                        <Link key={giveaway.id} to="/giveaways" className="glass rounded-lg p-3 hover:bg-secondary/50 transition-colors">
-                          <p className="font-medium text-sm line-clamp-2">{giveaway.title}</p>
-                          <p className="text-xs text-primary mt-1">{giveaway.prize}</p>
+                        <Link key={giveaway.id} to="/giveaways" className="glass rounded-lg overflow-hidden hover:ring-1 hover:ring-primary/30 transition-all group">
+                          {giveaway.image_url ? (
+                            <div className="aspect-video w-full overflow-hidden">
+                              <img src={giveaway.image_url} alt={giveaway.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            </div>
+                          ) : (
+                            <div className="aspect-video w-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                              <Gift className="w-8 h-8 text-primary/60" />
+                            </div>
+                          )}
+                          <div className="p-2">
+                            <p className="font-medium text-sm line-clamp-1">{giveaway.title}</p>
+                            <p className="text-xs text-primary">{giveaway.prize}</p>
+                          </div>
                         </Link>
                       ))}
                     </div>
