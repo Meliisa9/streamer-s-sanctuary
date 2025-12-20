@@ -163,6 +163,7 @@ export function MentionInput({
           >
             {users.map((user, index) => (
               <button
+                type="button"
                 key={user.user_id}
                 onClick={() => insertMention(user)}
                 className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${

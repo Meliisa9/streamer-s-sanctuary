@@ -625,6 +625,7 @@ export default function Videos() {
             onClose={() => setSelectedVideo(null)}
             videoUrl={selectedVideo.video_file_url || selectedVideo.video_url}
             title={selectedVideo.title}
+            isExternal={!!selectedVideo.is_external}
           />
         )}
       </div>
