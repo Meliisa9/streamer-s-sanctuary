@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { AdminCodeGate } from "@/components/admin/AdminCodeGate";
 import { AdminNotifications } from "@/components/admin/AdminNotifications";
 import { AdminSidebarLogo } from "@/components/admin/AdminSidebarLogo";
+import { AdminBreadcrumbs } from "@/components/admin/AdminBreadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -523,6 +524,7 @@ function AdminLayoutContent() {
 
           {/* Page Content */}
           <div className="p-4 lg:p-8">
+            <AdminBreadcrumbs />
             <Outlet />
           </div>
         </main>
