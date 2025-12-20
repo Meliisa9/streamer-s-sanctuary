@@ -42,7 +42,6 @@ export function EnhancedAddUserModal({ open, onOpenChange, onSuccess }: AddUserM
     email: "",
     password: "",
     username: "",
-    display_name: "",
   });
 
   const generatePassword = () => {
@@ -61,7 +60,7 @@ export function EnhancedAddUserModal({ open, onOpenChange, onSuccess }: AddUserM
   };
 
   const resetForm = () => {
-    setFormData({ email: "", password: "", username: "", display_name: "" });
+    setFormData({ email: "", password: "", username: "" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,7 +84,6 @@ export function EnhancedAddUserModal({ open, onOpenChange, onSuccess }: AddUserM
           email: formData.email,
           password: formData.password,
           username: formData.username,
-          display_name: formData.display_name,
         },
       });
 
@@ -199,32 +197,17 @@ export function EnhancedAddUserModal({ open, onOpenChange, onSuccess }: AddUserM
               <span>Profile Information</span>
             </div>
             
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <AtSign className="w-4 h-4 text-muted-foreground" />
-                  Username
-                </label>
-                <Input
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  placeholder="username"
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  Display Name
-                </label>
-                <Input
-                  value={formData.display_name}
-                  onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                  placeholder="Display Name"
-                  className="h-11"
-                />
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium flex items-center gap-2">
+                <AtSign className="w-4 h-4 text-muted-foreground" />
+                Username
+              </label>
+              <Input
+                value={formData.username}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                placeholder="username"
+                className="h-11"
+              />
             </div>
           </div>
 
@@ -268,7 +251,6 @@ export function EnhancedEditUserModal({
 
   const [formData, setFormData] = useState({
     username: "",
-    display_name: "",
     bio: "",
     discord_tag: "",
     twitch_username: "",
@@ -281,7 +263,6 @@ export function EnhancedEditUserModal({
     if (user) {
       setFormData({
         username: user.username || "",
-        display_name: user.display_name || "",
         bio: user.bio || "",
         discord_tag: user.discord_tag || "",
         twitch_username: user.twitch_username || "",
@@ -303,7 +284,6 @@ export function EnhancedEditUserModal({
         .from("profiles")
         .update({
           username: formData.username || null,
-          display_name: formData.display_name || null,
           bio: formData.bio || null,
           discord_tag: formData.discord_tag || null,
           twitch_username: formData.twitch_username || null,
@@ -430,29 +410,16 @@ export function EnhancedEditUserModal({
           <form onSubmit={handleSubmit} className="p-6">
             {/* Profile Tab */}
             <TabsContent value="profile" className="mt-0 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <AtSign className="w-4 h-4 text-muted-foreground" />
-                    Username
-                  </label>
-                  <Input
-                    value={formData.username}
-                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    placeholder="username"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground" />
-                    Display Name
-                  </label>
-                  <Input
-                    value={formData.display_name}
-                    onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                    placeholder="Display Name"
-                  />
-                </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <AtSign className="w-4 h-4 text-muted-foreground" />
+                  Username
+                </label>
+                <Input
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  placeholder="username"
+                />
               </div>
 
               <div className="space-y-2">
