@@ -1,578 +1,441 @@
-# API Documentation
+# API Documentation - StreamerX
 
-## Overview
+## What is This Document?
 
-This document provides comprehensive documentation for all backend API endpoints (Edge Functions) available in the SlotSquad platform. All endpoints are served via Lovable Cloud and follow REST conventions.
+This document explains how the **backend** (server-side) of StreamerX works. The backend handles things like:
+- Checking if a user is logged in
+- Saving data to the database
+- Running scheduled tasks
+- Connecting to external services (like Twitch or Kick)
 
-**Base URL:** `https://mdckorxfleckrwjmcigw.supabase.co/functions/v1`
+**Do you need to read this?**
+- 🟢 **Developers** who want to modify or extend StreamerX - YES
+- 🟡 **Site Administrators** - Maybe, for troubleshooting
+- 🔴 **Regular Users** - No, this is technical documentation
 
 ---
 
 ## Table of Contents
 
-1. [Authentication](#authentication)
-2. [Admin Code Management](#admin-code-management)
-3. [Stream Status Detection](#stream-status-detection)
-4. [User Management](#user-management)
-5. [Event Notifications](#event-notifications)
-6. [Kick OAuth Integration](#kick-oauth-integration)
-7. [Error Handling](#error-handling)
-8. [Rate Limiting](#rate-limiting)
+1. [Understanding the Basics](#understanding-the-basics)
+2. [How Authentication Works](#how-authentication-works)
+3. [Available API Endpoints](#available-api-endpoints)
+   - [Admin Code Management](#1-admin-code-management)
+   - [Stream Status Detection](#2-stream-status-detection)
+   - [User Management](#3-user-management)
+   - [Event Notifications](#4-event-notifications)
+   - [Kick OAuth Integration](#5-kick-oauth-integration)
+4. [Error Messages Explained](#error-messages-explained)
+5. [Testing the API](#testing-the-api)
+6. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Authentication
+## Understanding the Basics
 
-Most endpoints require authentication via JWT token. Include the token in the `Authorization` header:
+### What is an API?
 
-```http
-Authorization: Bearer <your-jwt-token>
-```
+Think of an API like a waiter in a restaurant:
+- **You** (the website) tell the waiter what you want
+- **The waiter** (API) goes to the kitchen (database/server)
+- **The kitchen** prepares your order
+- **The waiter** brings back your food (data)
 
-### Getting a Token
+In StreamerX, when you click "Login" or "Enter Giveaway," the website sends a request to the API, and the API sends back a response.
 
-Tokens are automatically provided when users authenticate through the Supabase Auth system. Use the Supabase client to obtain tokens:
+### What is an Endpoint?
 
-```typescript
-import { supabase } from "@/integrations/supabase/client";
+An **endpoint** is a specific URL that does a specific thing. For example:
+- `/admin-code` - Handles admin access codes
+- `/check-stream-status` - Checks if a streamer is live
 
-const { data: { session } } = await supabase.auth.getSession();
-const token = session?.access_token;
+### What is a Request?
+
+A **request** is a message you send to an endpoint. It usually includes:
+- **Method**: What you want to do (GET = read, POST = create/update)
+- **Headers**: Extra information (like who you are)
+- **Body**: The actual data you're sending
+
+### What is a Response?
+
+A **response** is what the server sends back. It includes:
+- **Status Code**: A number indicating success or failure (200 = OK, 400 = Error)
+- **Data**: The information you asked for (usually in JSON format)
+
+---
+
+## How Authentication Works
+
+Many API endpoints require you to be logged in. Here's how it works:
+
+### Step 1: User Logs In
+
+When a user enters their email and password, they get a **token** (a long string of random characters). Think of it like a wristband at a concert - it proves you're allowed to be there.
+
+### Step 2: Token is Sent with Requests
+
+Every time the website needs something from the API, it sends this token along. It's like showing your wristband to the security guard.
+
+### Step 3: Server Verifies Token
+
+The server checks if the token is valid and not expired. If it is, the request goes through. If not, you get an error.
+
+### In Code (For Developers)
+
+```javascript
+// This happens automatically in StreamerX
+// You don't need to write this yourself
+
+// Getting the token
+const session = await supabase.auth.getSession();
+const token = session.data.session?.access_token;
+
+// Sending a request with the token
+const response = await fetch('/api/some-endpoint', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
 ```
 
 ---
 
-## Admin Code Management
+## Available API Endpoints
 
-Manages secure 2FA-style access codes for admin panel entry.
+### 1. Admin Code Management
 
-### Endpoint
+**What it does:** Handles the special access codes that admins use to access the admin panel.
 
-```
-POST /admin-code
-```
+**Why it exists:** Adds an extra layer of security. Even if someone gets admin role, they still need to know the access code.
 
-### Authentication
+#### Checking if You Have a Code
 
-Required - JWT token with admin role
+**When to use:** When an admin first opens the admin panel, to see if they need to set a code.
 
-### Actions
-
-#### Check if Code Exists
-
-Checks if the authenticated user has an access code configured.
-
-**Request:**
-```json
-{
-  "action": "check"
-}
-```
-
-**Response:**
-```json
-{
-  "hasCode": true
-}
-```
-
-#### Set Access Code
-
-Creates or updates the user's admin access code. Codes are securely hashed with SHA-256 and salted.
-
-**Request:**
-```json
-{
-  "action": "set",
-  "code": "your-secure-code"
-}
-```
-
-**Validation:**
-- Code must be at least 6 characters
-
-**Response:**
-```json
-{
-  "success": true
-}
-```
-
-#### Verify Access Code
-
-Verifies a provided code against the stored hash.
-
-**Request:**
-```json
-{
-  "action": "verify",
-  "code": "your-secure-code"
-}
-```
-
-**Response:**
-```json
-{
-  "verified": true
-}
-```
-
-### Error Responses
-
-| Status | Error | Description |
-|--------|-------|-------------|
-| 401 | No authorization header | Missing JWT token |
-| 401 | Unauthorized | Invalid JWT token |
-| 400 | Code must be at least 6 characters | Code too short |
-| 400 | Invalid action | Unknown action parameter |
-| 404 | No access code found | Code not set for user |
-
-### Example Usage
-
-```typescript
-import { supabase } from "@/integrations/supabase/client";
-
-// Check if code exists
-const { data } = await supabase.functions.invoke('admin-code', {
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('admin-code', {
   body: { action: 'check' }
 });
-console.log(data.hasCode); // true or false
 
-// Set a new code
-await supabase.functions.invoke('admin-code', {
-  body: { action: 'set', code: 'my-secure-code-123' }
-});
-
-// Verify code
-const { data: verifyResult } = await supabase.functions.invoke('admin-code', {
-  body: { action: 'verify', code: 'my-secure-code-123' }
-});
-console.log(verifyResult.verified); // true or false
+// Result looks like:
+// { hasCode: true }  - Admin has set a code
+// { hasCode: false } - Admin needs to set a code
 ```
+
+#### Setting a New Code
+
+**When to use:** When an admin sets their code for the first time, or wants to change it.
+
+**Requirements:**
+- ✅ Must be logged in as admin
+- ✅ Code must be at least 6 characters
+
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('admin-code', {
+  body: { 
+    action: 'set', 
+    code: 'my-secret-code-123'  // At least 6 characters
+  }
+});
+
+// Result: { success: true }
+```
+
+**Security note:** The code is encrypted before saving. Nobody can see it, not even in the database.
+
+#### Verifying a Code
+
+**When to use:** When an admin enters their code to access the admin panel.
+
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('admin-code', {
+  body: { 
+    action: 'verify', 
+    code: 'my-secret-code-123'
+  }
+});
+
+// Result:
+// { verified: true } - Correct code, let them in!
+// { verified: false } - Wrong code, deny access
+```
+
+#### Common Errors
+
+| Error Message | What It Means | How to Fix |
+|---------------|---------------|------------|
+| "No authorization header" | You're not logged in | Log in first |
+| "Unauthorized" | Your login expired | Log in again |
+| "Code must be at least 6 characters" | Code is too short | Use a longer code |
+| "No access code found" | Admin hasn't set a code yet | Set a code first |
 
 ---
 
-## Stream Status Detection
+### 2. Stream Status Detection
 
-Automatically checks if configured Twitch or Kick channels are currently live streaming.
+**What it does:** Automatically checks if your Twitch or Kick channel is currently live streaming.
 
-### Endpoint
+**Why it exists:** So your website can show a "LIVE NOW" banner or redirect users to your stream when you go live.
 
-```
-POST /check-stream-status
-```
+#### How It Works (Automatic)
 
-### Authentication
+1. A scheduled task runs every few minutes
+2. It checks your configured streaming platform
+3. If you're live, it updates the website
+4. Visitors see a "Live Now" indicator!
 
-Not required - Uses service role internally
+#### Checking Manually
 
-### Description
+**When to use:** Usually you don't need to - it runs automatically. But you can trigger it manually for testing.
 
-This function:
-1. Reads stream configuration from `site_settings`
-2. Checks the configured platform (Twitch or Kick) for live status
-3. Updates `site_settings` with current live status
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('check-stream-status');
 
-### Request
+// Result when live:
+// { is_live: true, platform: "twitch", checked_at: "2024-01-15T10:30:00Z" }
 
-No body required - function reads configuration from database.
+// Result when offline:
+// { is_live: false, platform: "twitch", checked_at: "2024-01-15T10:30:00Z" }
 
-```http
-POST /check-stream-status
-Content-Type: application/json
-```
-
-### Response
-
-```json
-{
-  "is_live": true,
-  "platform": "twitch",
-  "checked_at": "2024-01-15T10:30:00.000Z"
-}
+// Result when auto-detect is disabled:
+// { message: "Auto-detection is disabled", is_live: false }
 ```
 
-### Response When Disabled
+#### Configuring Stream Detection
 
-```json
-{
-  "message": "Auto-detection is disabled",
-  "is_live": false
-}
-```
+In the Admin Panel → Settings → Stream Settings:
 
-### Configuration
-
-Set these values in `site_settings` table:
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `auto_detect_enabled` | boolean | Enable/disable auto-detection |
-| `stream_platform` | string | "twitch" or "kick" |
-| `twitch_channel` | string | Twitch channel username |
-| `kick_channel` | string | Kick channel username |
-
-### Database Updates
-
-The function automatically updates these `site_settings` keys:
-- `is_live` - Current live status
-- `live_platform` - Which platform is live
-- `last_check` - Timestamp of last check
-
-### Cron Schedule
-
-This function is designed to be called via scheduled cron job (every 1-5 minutes) for real-time stream detection.
-
-### Example Usage
-
-```typescript
-// Manual trigger
-const { data } = await supabase.functions.invoke('check-stream-status');
-console.log(`Stream is ${data.is_live ? 'LIVE' : 'offline'} on ${data.platform}`);
-```
+| Setting | What to Enter |
+|---------|---------------|
+| **Platform** | "twitch" or "kick" |
+| **Twitch Channel** | Your Twitch username (e.g., "xqc") |
+| **Kick Channel** | Your Kick username (e.g., "trainwreckstv") |
+| **Auto-detect Enabled** | Turn on/off automatic checking |
 
 ---
 
-## User Management
+### 3. User Management
 
-Admin-only endpoints for creating, updating, and deleting user accounts.
+**What it does:** Allows admins to create, update, and delete user accounts.
 
-### Endpoint
+**Why it exists:** For managing your community - creating accounts for team members, removing problematic users, etc.
 
-```
-POST /create-user
-```
+**Who can use it:** Only users with the **admin** role.
 
-### Authentication
+#### Creating a New User
 
-Required - JWT token with **admin** role only
+**When to use:** When you want to add a team member or manually create an account.
 
-### Actions
-
-#### Create User
-
-Creates a new user account with email confirmation.
-
-**Request:**
-```json
-{
-  "email": "newuser@example.com",
-  "password": "securePassword123",
-  "username": "newuser",
-  "display_name": "New User"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "user": {
-    "id": "uuid-here",
-    "email": "newuser@example.com"
-  }
-}
-```
-
-#### Update User Email
-
-Changes a user's email address.
-
-**Request:**
-```json
-{
-  "action": "update_email",
-  "user_id": "target-user-uuid",
-  "new_email": "newemail@example.com"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "user": {
-    "id": "uuid-here",
-    "email": "newemail@example.com"
-  }
-}
-```
-
-#### Delete User
-
-Permanently deletes a user and all associated data.
-
-**Request:**
-```json
-{
-  "action": "delete",
-  "user_id": "target-user-uuid"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true
-}
-```
-
-**Cascade Deletions:**
-The following data is automatically removed:
-- User roles
-- Profile
-- Notification preferences
-- Giveaway entries
-- Poll votes
-- GTW guesses
-- User notifications
-- User achievements
-- Article likes
-- Comment likes
-- Video likes
-- News comments
-
-### Error Responses
-
-| Status | Error | Description |
-|--------|-------|-------------|
-| 401 | Missing authorization header | No JWT provided |
-| 401 | Invalid token | JWT verification failed |
-| 403 | Only admins can manage users | Insufficient permissions |
-| 400 | user_id is required | Missing required field |
-| 400 | Cannot delete yourself | Self-deletion prevention |
-| 400 | Email and password are required | Missing create fields |
-
-### Example Usage
-
-```typescript
-// Create new user
-const { data } = await supabase.functions.invoke('create-user', {
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('create-user', {
   body: {
-    email: 'newuser@example.com',
-    password: 'SecurePass123!',
-    username: 'newuser',
-    display_name: 'New User'
+    email: 'newteammember@example.com',
+    password: 'SecurePassword123!',
+    username: 'teammember',
+    display_name: 'Team Member'
   }
 });
 
-// Delete user
-await supabase.functions.invoke('create-user', {
+// Result: { success: true, user: { id: "...", email: "..." } }
+```
+
+**Requirements:**
+- ✅ Must be logged in as admin
+- ✅ Email must be valid
+- ✅ Password must be provided
+
+#### Updating a User's Email
+
+**When to use:** If a user needs to change their email and can't do it themselves.
+
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('create-user', {
+  body: {
+    action: 'update_email',
+    user_id: 'the-users-id',
+    new_email: 'newemail@example.com'
+  }
+});
+
+// Result: { success: true, user: { id: "...", email: "newemail@example.com" } }
+```
+
+#### Deleting a User
+
+**When to use:** When you need to completely remove a user and all their data.
+
+**⚠️ Warning:** This cannot be undone! All user data is permanently deleted.
+
+**How to call it:**
+```javascript
+const result = await supabase.functions.invoke('create-user', {
   body: {
     action: 'delete',
-    user_id: 'user-uuid-to-delete'
+    user_id: 'the-users-id'
   }
 });
+
+// Result: { success: true }
+```
+
+**What gets deleted:**
+- User account
+- Profile information
+- Giveaway entries
+- Poll votes
+- Comments and likes
+- Achievements
+- Notifications
+- And all other user-related data
+
+#### Common Errors
+
+| Error Message | What It Means | How to Fix |
+|---------------|---------------|------------|
+| "Only admins can manage users" | You're not an admin | Ask an admin to do this |
+| "user_id is required" | You forgot to specify which user | Add the user_id to your request |
+| "Cannot delete yourself" | You're trying to delete your own account | Use the profile page instead, or ask another admin |
+| "Email and password are required" | Missing info when creating user | Provide both email and password |
+
+---
+
+### 4. Event Notifications
+
+**What it does:** Automatically sends notifications to users who subscribed to an event when it's about to start.
+
+**Why it exists:** So your community doesn't miss important events! Users click "Remind Me" on an event, and they get notified when it starts.
+
+#### How It Works (Automatic)
+
+1. A scheduled task runs every minute
+2. It finds events starting in the next 5 minutes
+3. It sends notifications to all subscribed users
+4. The subscription is removed (one-time notification)
+
+**The notification says:**
+> 🎬 **[Event Name] is starting soon!**
+> The event "[Event Name]" on [Platform] starts at [Time]. Don't miss it!
+
+#### Manual Trigger (For Testing)
+
+You can trigger this manually to test:
+
+```javascript
+const result = await supabase.functions.invoke('event-notifications');
+
+// Result:
+// { message: "Event notifications processed", events_processed: 2, notifications_sent: 15 }
+
+// Or if no events:
+// { message: "No events starting soon", processed: 0 }
 ```
 
 ---
 
-## Event Notifications
+### 5. Kick OAuth Integration
 
-Sends notifications to users subscribed to upcoming events.
+**What it does:** Allows users to connect their Kick.com account to their StreamerX profile.
 
-### Endpoint
+**Why it exists:** Users can link their Kick account to show their Kick username on their profile, and potentially for future features like subscriber verification.
 
-```
-POST /event-notifications
-```
+#### How the Connection Process Works
 
-### Authentication
+**Step 1: User clicks "Connect Kick"**
 
-Not required - Uses service role internally (designed for cron jobs)
+Your code requests an authorization URL:
 
-### Description
-
-This function:
-1. Finds events starting within the next 5 minutes
-2. Sends in-app notifications to all subscribed users
-3. Removes subscriptions after notification (one-time alert)
-
-### Request
-
-No body required.
-
-```http
-POST /event-notifications
-Content-Type: application/json
-```
-
-### Response
-
-```json
-{
-  "message": "Event notifications processed",
-  "events_processed": 2,
-  "notifications_sent": 15
-}
-```
-
-### Response When No Events
-
-```json
-{
-  "message": "No events starting soon",
-  "processed": 0
-}
-```
-
-### Notification Format
-
-Users receive notifications with:
-- **Title:** `🎬 {Event Title} is starting soon!`
-- **Message:** `The event "{title}" on {platform} starts at {time}. Don't miss it!`
-- **Type:** `event`
-- **Link:** `/events`
-
-### Cron Schedule
-
-Recommended: Run every 1 minute to ensure timely notifications.
-
-```sql
--- Example cron setup (via pg_cron)
-SELECT cron.schedule('event-notifications', '* * * * *', 'SELECT net.http_post(...)');
-```
-
----
-
-## Kick OAuth Integration
-
-Handles OAuth 2.0 authentication flow with Kick.com for profile linking.
-
-### Endpoint
-
-```
-GET/POST /kick-oauth
-```
-
-### Authentication
-
-Varies by action (see below)
-
-### Actions
-
-#### Generate Authorization URL
-
-Initiates the OAuth flow by generating a Kick authorization URL.
-
-**Endpoint:** `GET /kick-oauth?action=authorize`
-
-**Query Parameters:**
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `action` | Yes | Must be "authorize" |
-| `frontend_url` | No | Callback destination (default: localhost:8080) |
-| `callback_base` | No | HTTPS base URL for OAuth callback |
-
-**Response:**
-```json
-{
-  "authorize_url": "https://id.kick.com/oauth/authorize?...",
-  "state": "base64-encoded-state",
-  "callback_url": "https://your-domain/functions/v1/kick-oauth?action=callback"
-}
-```
-
-**Usage:**
-Redirect the user to `authorize_url` to begin OAuth flow.
-
-#### OAuth Callback
-
-Handles the OAuth callback from Kick. **Not called directly by frontend.**
-
-**Endpoint:** `GET /kick-oauth?action=callback`
-
-**Query Parameters:**
-| Parameter | Description |
-|-----------|-------------|
-| `code` | Authorization code from Kick |
-| `state` | State parameter for CSRF protection |
-| `error` | Error message if authorization failed |
-
-**Behavior:**
-1. Exchanges code for access token
-2. Fetches Kick user profile
-3. Redirects to frontend with username or error
-
-**Success Redirect:**
-```
-{frontend_url}/profile?kick_username={username}&kick_success=true
-```
-
-**Error Redirect:**
-```
-{frontend_url}/profile?kick_error={error_code}
-```
-
-#### Link Kick Account
-
-Directly links a Kick username to a user's profile.
-
-**Endpoint:** `POST /kick-oauth?action=link`
-
-**Authentication:** Required
-
-**Request:**
-```json
-{
-  "kick_username": "kickuser123",
-  "user_id": "supabase-user-uuid"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "kick_username": "kickuser123"
-}
-```
-
-### Environment Variables Required
-
-| Variable | Description |
-|----------|-------------|
-| `KICK_CLIENT_ID` | Kick OAuth application client ID |
-| `KICK_CLIENT_SECRET` | Kick OAuth application client secret |
-
-### Error Responses
-
-| Error Code | Description |
-|------------|-------------|
-| `token_exchange_failed` | Failed to exchange code for token |
-| `user_fetch_failed` | Failed to fetch Kick user info |
-| `no_username` | Kick API didn't return username |
-| `no_code` | No authorization code received |
-
-### Example Usage
-
-```typescript
-// Step 1: Get authorization URL
+```javascript
+// This gets the URL to redirect the user to
 const response = await fetch(
   `${SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${window.location.origin}`
 );
 const { authorize_url } = await response.json();
 
-// Step 2: Redirect user
+// Now redirect the user to Kick's login page
 window.location.href = authorize_url;
+```
 
-// Step 3: Handle callback (automatic redirect back to /profile)
-// The kick_username will be in URL params
+**Step 2: User logs into Kick**
 
-// Alternative: Direct link (if username obtained elsewhere)
-await supabase.functions.invoke('kick-oauth?action=link', {
+The user sees Kick's login page and approves the connection.
+
+**Step 3: Kick redirects back**
+
+Kick sends the user back to your website with their username.
+
+The URL will look like:
+```
+https://yoursite.com/profile?kick_username=theirusername&kick_success=true
+```
+
+**Step 4: Save the username**
+
+Your code reads the URL parameters and saves the username to the user's profile.
+
+#### Alternative: Direct Link
+
+If you already know the Kick username (maybe they typed it in), you can link directly:
+
+```javascript
+const result = await supabase.functions.invoke('kick-oauth', {
   body: {
-    kick_username: 'myKickUsername',
-    user_id: session.user.id
+    action: 'link',
+    kick_username: 'theirusername',
+    user_id: currentUser.id
   }
 });
+
+// Result: { success: true, kick_username: "theirusername" }
 ```
+
+#### Setting Up Kick OAuth (Admin Setup Required)
+
+To enable Kick login, you need to create an app on Kick's developer portal:
+
+1. Go to Kick's developer settings (when available)
+2. Create a new OAuth application
+3. Set the redirect URL to: `https://YOUR-SUPABASE-PROJECT.supabase.co/functions/v1/kick-oauth?action=callback`
+4. Copy the Client ID and Client Secret
+5. Add them as secrets in your Supabase project:
+   - `KICK_CLIENT_ID`
+   - `KICK_CLIENT_SECRET`
+
+#### Common Errors
+
+| Error Message | What It Means | How to Fix |
+|---------------|---------------|------------|
+| "token_exchange_failed" | Couldn't get token from Kick | Try again, or check Kick credentials |
+| "user_fetch_failed" | Got token but couldn't get user info | Kick API might be down |
+| "no_username" | Kick didn't return a username | User might not have a username set |
+| "no_code" | Authorization was cancelled | User closed the Kick login window |
 
 ---
 
-## Error Handling
+## Error Messages Explained
 
-All endpoints follow a consistent error response format:
+### HTTP Status Codes
+
+Every response has a number code. Here's what they mean:
+
+| Code | What It Means | Example |
+|------|---------------|---------|
+| **200** | ✅ Success! Everything worked. | Request completed successfully |
+| **302** | ↪️ Redirect. Go to a different URL. | OAuth flow redirecting to Kick |
+| **400** | ❌ Bad Request. You sent something wrong. | Missing required field |
+| **401** | 🔒 Unauthorized. Not logged in. | Token expired or missing |
+| **403** | 🚫 Forbidden. Logged in but not allowed. | Non-admin trying to delete user |
+| **404** | 🔍 Not Found. Resource doesn't exist. | User ID doesn't exist |
+| **500** | 💥 Server Error. Something broke. | Database connection failed |
+
+### Error Response Format
+
+When something goes wrong, you'll get a response like this:
 
 ```json
 {
@@ -580,147 +443,132 @@ All endpoints follow a consistent error response format:
 }
 ```
 
-### HTTP Status Codes
-
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 302 | Redirect (OAuth flows) |
-| 400 | Bad Request - Invalid parameters |
-| 401 | Unauthorized - Missing or invalid token |
-| 403 | Forbidden - Insufficient permissions |
-| 404 | Not Found - Resource doesn't exist |
-| 500 | Internal Server Error |
-
-### Error Handling Best Practices
-
-```typescript
-try {
-  const { data, error } = await supabase.functions.invoke('endpoint-name', {
-    body: { ... }
-  });
-  
-  if (error) {
-    console.error('Function error:', error.message);
-    // Handle error appropriately
-    return;
-  }
-  
-  // Process successful response
-  console.log(data);
-} catch (e) {
-  console.error('Network error:', e);
-}
-```
-
 ---
 
-## Rate Limiting
+## Testing the API
 
-Currently, no explicit rate limiting is enforced on edge functions. However:
+### Using the Browser Console
 
-- Supabase applies default rate limits at the infrastructure level
-- Abuse detection may temporarily block excessive requests
-- Consider implementing client-side debouncing for user-triggered actions
+You can test API calls right from your browser:
 
-### Recommended Client-Side Patterns
-
-```typescript
-// Debounce rapid requests
-import { debounce } from 'lodash';
-
-const checkStreamStatus = debounce(async () => {
-  await supabase.functions.invoke('check-stream-status');
-}, 5000);
-
-// Prevent duplicate submissions
-let isSubmitting = false;
-async function submitAction() {
-  if (isSubmitting) return;
-  isSubmitting = true;
-  try {
-    await supabase.functions.invoke('endpoint');
-  } finally {
-    isSubmitting = false;
-  }
-}
-```
-
----
-
-## CORS Configuration
-
-All endpoints include CORS headers for cross-origin requests:
+1. Open your website in the browser
+2. Press **F12** to open Developer Tools
+3. Click the **Console** tab
+4. Paste this code and press Enter:
 
 ```javascript
-{
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-}
+// Check if stream is live
+const { data, error } = await window.supabase.functions.invoke('check-stream-status');
+console.log(data);
 ```
 
-All endpoints handle `OPTIONS` preflight requests automatically.
+### Using cURL (Command Line)
+
+If you prefer terminal commands:
+
+```bash
+# Check stream status (no auth required)
+curl -X POST "https://YOUR-PROJECT.supabase.co/functions/v1/check-stream-status" \
+  -H "Content-Type: application/json"
+
+# With authentication (get token from browser first)
+curl -X POST "https://YOUR-PROJECT.supabase.co/functions/v1/admin-code" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR-TOKEN-HERE" \
+  -d '{"action": "check"}'
+```
+
+### Using Postman or Insomnia
+
+These are free apps for testing APIs with a nice interface:
+
+1. Download [Postman](https://www.postman.com/downloads/) or [Insomnia](https://insomnia.rest/download)
+2. Create a new request
+3. Set the URL (e.g., `https://YOUR-PROJECT.supabase.co/functions/v1/check-stream-status`)
+4. Set the method (GET or POST)
+5. Add headers if needed
+6. Click Send!
 
 ---
 
-## SDK Reference
+## Troubleshooting
 
-### Using the Supabase Client
+### "Unauthorized" or "No authorization header"
 
-The recommended way to call edge functions:
+**Meaning:** You need to be logged in, or your login expired.
 
-```typescript
-import { supabase } from "@/integrations/supabase/client";
+**Fix:**
+1. Make sure you're logged in to the website
+2. Try logging out and back in
+3. Check that your code is including the authorization header
 
-// Simple POST request
-const { data, error } = await supabase.functions.invoke('function-name', {
-  body: { key: 'value' }
-});
+### "Only admins can manage users"
 
-// With custom headers
-const { data, error } = await supabase.functions.invoke('function-name', {
-  body: { key: 'value' },
-  headers: {
-    'X-Custom-Header': 'value'
-  }
-});
-```
+**Meaning:** The logged-in user doesn't have admin role.
 
-### Direct HTTP Calls
+**Fix:**
+1. Verify the user has `admin` role in the `user_roles` table
+2. Log out and back in to refresh permissions
 
-If not using the Supabase client:
+### Function not responding
 
-```typescript
-const response = await fetch(
-  'https://mdckorxfleckrwjmcigw.supabase.co/functions/v1/function-name',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-      'apikey': SUPABASE_ANON_KEY
-    },
-    body: JSON.stringify({ key: 'value' })
-  }
-);
+**Meaning:** The edge function might be having issues.
 
-const data = await response.json();
-```
+**Fix:**
+1. Check if your Supabase project is running (check dashboard)
+2. Look at the function logs in Supabase Dashboard → Edge Functions → Logs
+3. Make sure all required environment variables are set
 
----
+### CORS Errors
 
-## Changelog
+**Meaning:** The request is being blocked by browser security.
 
-| Date | Version | Changes |
-|------|---------|---------|
-| 2024-12-20 | 1.0.0 | Initial API documentation |
+**Fix:** All StreamerX endpoints are configured to allow cross-origin requests. If you're seeing CORS errors:
+1. Make sure you're using the correct URL
+2. Check that your environment variables are correct
+3. Try accessing from the actual domain instead of localhost
+
+### "Function invocation failed"
+
+**Meaning:** Something went wrong inside the function.
+
+**Fix:**
+1. Check the function logs in Supabase Dashboard
+2. Make sure you're sending the correct data format
+3. Verify all required secrets are configured
 
 ---
 
-## Support
+## Quick Reference
 
-For API issues or questions:
-1. Check the console logs in browser developer tools
-2. Review edge function logs in the backend dashboard
-3. Ensure all required environment variables are configured
-4. Verify JWT tokens are valid and not expired
+### All Endpoints Summary
+
+| Endpoint | Method | Auth Required | Purpose |
+|----------|--------|---------------|---------|
+| `/admin-code` | POST | Yes (Admin) | Manage admin access codes |
+| `/check-stream-status` | POST | No | Check if streamer is live |
+| `/create-user` | POST | Yes (Admin) | Create/update/delete users |
+| `/event-notifications` | POST | No | Send event reminders |
+| `/kick-oauth` | GET/POST | Varies | Kick account linking |
+
+### Required Environment Variables
+
+| Variable | Where to Get It | Used By |
+|----------|-----------------|---------|
+| `SUPABASE_URL` | Supabase Dashboard → Settings → API | All functions |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard → Settings → API | All functions |
+| `KICK_CLIENT_ID` | Kick Developer Portal | kick-oauth |
+| `KICK_CLIENT_SECRET` | Kick Developer Portal | kick-oauth |
+
+---
+
+## Need More Help?
+
+- 📖 **README** - General project setup: [README.md](../README.md)
+- 📚 **Project Docs** - Technical architecture: [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)
+- 🐛 **Found a bug?** - Open an issue on GitHub
+- 💬 **Questions?** - Start a discussion on GitHub
+
+---
+
+*Last updated: December 2024*
