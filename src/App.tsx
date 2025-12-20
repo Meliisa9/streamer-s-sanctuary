@@ -69,6 +69,7 @@ import AdminEmailTemplates from "./pages/admin/AdminEmailTemplates";
 import AdminRoleManagement from "./pages/admin/AdminRoleManagement";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
 import AdminEngagement from "./pages/admin/AdminEngagement";
+import AdminWhiteLabel from "./pages/admin/AdminWhiteLabel";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -162,6 +163,7 @@ const App = () => (
                     <Route path="settings/auth-health" element={<AdminAuthHealth />} />
                     <Route path="settings/video-categories" element={<AdminVideoCategories />} />
                     <Route path="settings/email-templates" element={<AdminEmailTemplates />} />
+                    <Route path="settings/white-label" element={<AdminWhiteLabel />} />
                     <Route path="roles" element={<AdminRoleManagement />} />
                     <Route path="webhooks" element={<AdminWebhooks />} />
                     <Route path="engagement" element={<AdminEngagement />} />
