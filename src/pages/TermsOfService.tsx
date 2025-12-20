@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { FileText, Scale, Users, AlertTriangle, Gavel, ChevronRight, BookOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ const quickLinks = [
 
 export default function TermsOfService() {
   const location = useLocation();
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-terms"],
@@ -31,49 +32,12 @@ export default function TermsOfService() {
     },
   });
 
-  const defaultContent = `
-    <h2 id="terms-of-service" class="scroll-mt-24">Terms of Service</h2>
-    <p>Welcome to our platform. By using our services, you agree to these terms.</p>
-    
-    <h3 id="eligibility" class="scroll-mt-24">Eligibility</h3>
-    <p>You must be at least 18 years old to use this service. By accessing our platform, you confirm that you meet this age requirement and that gambling is legal in your jurisdiction.</p>
-    
-    <h3 id="user-conduct" class="scroll-mt-24">User Conduct</h3>
-    <p>You agree to use our services only for lawful purposes. Prohibited activities include:</p>
-    <ul>
-      <li>Harassment or abuse of other users</li>
-      <li>Attempting to manipulate giveaways or votes</li>
-      <li>Creating multiple accounts for fraudulent purposes</li>
-      <li>Sharing inappropriate or illegal content</li>
-    </ul>
-    
-    <h3 id="giveaways" class="scroll-mt-24">Giveaways & Promotions</h3>
-    <p>Giveaways are subject to specific rules stated at the time of entry. Key points include:</p>
-    <ul>
-      <li>Only one entry per person unless otherwise stated</li>
-      <li>Winners must claim prizes within the specified timeframe</li>
-      <li>We reserve the right to disqualify fraudulent entries</li>
-      <li>Prizes are non-transferable unless otherwise specified</li>
-    </ul>
-    
-    <h3 id="disclaimers" class="scroll-mt-24">Disclaimers</h3>
-    <p>This platform showcases gambling entertainment. We do not operate a casino or accept bets. Important disclaimers:</p>
-    <ul>
-      <li>Content shown represents rare outcomes and is not typical</li>
-      <li>We are not responsible for any gambling losses you incur</li>
-      <li>Always gamble responsibly and within your means</li>
-    </ul>
-    
-    <h3 id="liability" class="scroll-mt-24">Limitation of Liability</h3>
-    <p>We are not liable for any damages arising from your use of our services, including but not limited to direct, indirect, incidental, or consequential damages. Use our platform at your own risk.</p>
-  `;
-
   // Handle anchor scrolling after content loads
   useEffect(() => {
     if (!isLoading && location.hash) {
       const id = location.hash.replace("#", "");
       setTimeout(() => {
-        const element = document.getElementById(id);
+        const element = sectionRefs.current[id] || document.getElementById(id);
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
         }
@@ -83,7 +47,7 @@ export default function TermsOfService() {
 
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
-    const element = document.getElementById(id);
+    const element = sectionRefs.current[id] || document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       window.history.pushState(null, "", `#${id}`);
@@ -120,7 +84,7 @@ export default function TermsOfService() {
               key={link.id}
               href={`#${link.id}`}
               onClick={(e) => handleAnchorClick(e, link.id)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group cursor-pointer"
             >
               <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-blue-400 transition-colors" />
               <span className="text-sm font-medium">{link.label}</span>
@@ -158,7 +122,7 @@ export default function TermsOfService() {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-4/5" />
         </div>
-      ) : (
+      ) : content ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -173,8 +137,74 @@ export default function TermsOfService() {
             prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
             prose-strong:text-foreground
             [&_h3]:scroll-mt-24"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
         />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass rounded-2xl p-8 md:p-12 space-y-10"
+        >
+          <div>
+            <h2 className="text-3xl font-bold mb-6 border-b border-border/50 pb-4">Terms of Service</h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Welcome to our platform. By using our services, you agree to these terms.
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["eligibility"] = el)} id="eligibility" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-blue-400 mb-5">Eligibility</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              You must be at least 18 years old to use this service. By accessing our platform, you confirm that you meet this age requirement and that gambling is legal in your jurisdiction.
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["user-conduct"] = el)} id="user-conduct" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-blue-400 mb-5">User Conduct</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              You agree to use our services only for lawful purposes. Prohibited activities include:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Harassment or abuse of other users</li>
+              <li>Attempting to manipulate giveaways or votes</li>
+              <li>Creating multiple accounts for fraudulent purposes</li>
+              <li>Sharing inappropriate or illegal content</li>
+            </ul>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["giveaways"] = el)} id="giveaways" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-blue-400 mb-5">Giveaways & Promotions</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              Giveaways are subject to specific rules stated at the time of entry. Key points include:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Only one entry per person unless otherwise stated</li>
+              <li>Winners must claim prizes within the specified timeframe</li>
+              <li>We reserve the right to disqualify fraudulent entries</li>
+              <li>Prizes are non-transferable unless otherwise specified</li>
+            </ul>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["disclaimers"] = el)} id="disclaimers" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-blue-400 mb-5">Disclaimers</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              This platform showcases gambling entertainment. We do not operate a casino or accept bets. Important disclaimers:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Content shown represents rare outcomes and is not typical</li>
+              <li>We are not responsible for any gambling losses you incur</li>
+              <li>Always gamble responsibly and within your means</li>
+            </ul>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["liability"] = el)} id="liability" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-blue-400 mb-5">Limitation of Liability</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              We are not liable for any damages arising from your use of our services, including but not limited to direct, indirect, incidental, or consequential damages. Use our platform at your own risk.
+            </p>
+          </div>
+        </motion.div>
       )}
 
       {/* Footer Note */}
