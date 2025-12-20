@@ -125,16 +125,31 @@ export default function AdminEvents() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      // Ensure required fields are present
+      if (!data.title || !data.event_date) {
+        throw new Error("Title and date are required");
+      }
+      
       const cleanData = {
-        ...data,
-        streamer_id: data.streamer_id || null,
-        end_time: data.end_time || null,
-        event_time: data.event_time || null,
-        description: data.description || null,
+        title: data.title,
+        event_date: data.event_date,
+        event_type: data.event_type || "Stream",
+        platform: data.platform || "Twitch",
+        is_featured: data.is_featured || false,
+        is_recurring: data.is_recurring || false,
+        streamer_id: data.streamer_id && data.streamer_id.trim() !== "" ? data.streamer_id : null,
+        end_time: data.end_time && data.end_time.trim() !== "" ? data.end_time : null,
+        event_time: data.event_time && data.event_time.trim() !== "" ? data.event_time : null,
+        description: data.description && data.description.trim() !== "" ? data.description : null,
         timezone: data.timezone || "UTC",
       };
-      const { error } = await supabase.from("events").insert([cleanData]);
-      if (error) throw error;
+      
+      const { data: result, error } = await supabase.from("events").insert([cleanData]).select();
+      if (error) {
+        console.error("Event creation error:", error);
+        throw error;
+      }
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-events"] });
@@ -143,6 +158,7 @@ export default function AdminEvents() {
       resetForm();
     },
     onError: (error: any) => {
+      console.error("Event mutation error:", error);
       toast({ title: "Error creating event", description: error.message, variant: "destructive" });
     },
   });

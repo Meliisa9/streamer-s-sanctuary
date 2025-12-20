@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,10 +28,35 @@ export default function UserProfile() {
   const { user } = useAuth();
   const { onlineUserIds } = useOnlinePresence();
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("activity");
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
   const [reportOpen, setReportOpen] = useState(false);
+
+  // Handle hash-based navigation for comments
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash) {
+      // If hash contains 'comment' or 'wall', switch to wall tab
+      if (hash.includes('comment') || hash === '#wall') {
+        setActiveTab("wall");
+        
+        // Wait for tab to render then scroll to element
+        setTimeout(() => {
+          const element = document.getElementById(hash.slice(1));
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight the comment briefly
+            element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+            setTimeout(() => {
+              element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+            }, 3000);
+          }
+        }, 500);
+      }
+    }
+  }, [location.hash]);
 
   // Resolve username to user_id and redirect if accessing by UUID
   const { data: resolvedUserId, isLoading: resolvingUser } = useQuery({
