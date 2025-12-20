@@ -147,11 +147,11 @@ export default function Streamers() {
             <div className="flex items-center gap-6">
               <div className="text-center px-6 py-3 bg-background/50 backdrop-blur-sm rounded-2xl border border-border/50">
                 <p className="text-3xl font-bold text-primary">{mainStreamers.length}</p>
-                <p className="text-xs text-muted-foreground">Streamers</p>
+                <p className="text-xs text-muted-foreground">{mainStreamers.length === 1 ? 'Streamer' : 'Streamers'}</p>
               </div>
               <div className="text-center px-6 py-3 bg-background/50 backdrop-blur-sm rounded-2xl border border-border/50">
                 <p className="text-3xl font-bold">{otherStreamers.length}</p>
-                <p className="text-xs text-muted-foreground">Team</p>
+                <p className="text-xs text-muted-foreground">{otherStreamers.length === 1 ? 'Team Member' : 'Team Members'}</p>
               </div>
             </div>
           </div>
