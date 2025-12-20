@@ -41,6 +41,7 @@ function Auth() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string }>({});
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const navigate = useNavigate();
@@ -582,6 +583,22 @@ function Auth() {
                       </p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Remember Me - for login only */}
+              {mode === "login" && (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded border-border bg-secondary accent-primary"
+                  />
+                  <label htmlFor="rememberMe" className="text-sm text-muted-foreground">
+                    Remember me
+                  </label>
                 </div>
               )}
 
