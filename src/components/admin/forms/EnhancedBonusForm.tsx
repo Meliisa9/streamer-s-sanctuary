@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { DollarSign, Star, Eye, Upload, Link2, Percent, Gift, Globe, Tag, Award, Loader2 } from "lucide-react";
+import { DollarSign, Star, Eye, Upload, Link2, Percent, Gift, Globe, Tag, Award, Loader2, Shield, Crown, Undo2, BadgePercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,10 @@ export function EnhancedBonusForm({ open, onOpenChange, editingBonus, onSuccess 
     is_published: true,
     sort_order: 0,
     countries: [] as string[],
+    is_non_sticky: false,
+    has_cashback: false,
+    license: "",
+    is_vip_friendly: false,
   });
 
   useEffect(() => {
@@ -58,6 +62,10 @@ export function EnhancedBonusForm({ open, onOpenChange, editingBonus, onSuccess 
         is_published: editingBonus.is_published ?? true,
         sort_order: editingBonus.sort_order || 0,
         countries: editingBonus.countries || [],
+        is_non_sticky: editingBonus.is_non_sticky ?? false,
+        has_cashback: editingBonus.has_cashback ?? false,
+        license: editingBonus.license || "",
+        is_vip_friendly: editingBonus.is_vip_friendly ?? false,
       });
     } else {
       resetForm();
@@ -81,6 +89,10 @@ export function EnhancedBonusForm({ open, onOpenChange, editingBonus, onSuccess 
       is_published: true,
       sort_order: 0,
       countries: [],
+      is_non_sticky: false,
+      has_cashback: false,
+      license: "",
+      is_vip_friendly: false,
     });
   };
 
@@ -244,6 +256,18 @@ export function EnhancedBonusForm({ open, onOpenChange, editingBonus, onSuccess 
             </div>
           </FormField>
         </FormRow>
+
+        <FormField label="License" hint="e.g., MGA, Curacao, UKGC">
+          <div className="relative">
+            <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={formData.license}
+              onChange={(e) => setFormData({ ...formData, license: e.target.value })}
+              placeholder="MGA, Curacao, UKGC..."
+              className="pl-10"
+            />
+          </div>
+        </FormField>
       </FormSection>
 
       {/* Region Availability */}
@@ -269,9 +293,33 @@ export function EnhancedBonusForm({ open, onOpenChange, editingBonus, onSuccess 
         </p>
       </FormSection>
 
-      {/* Visibility */}
-      <FormSection title="Visibility Options" icon={<Eye className="w-4 h-4" />}>
-        <div className="grid grid-cols-3 gap-3">
+      {/* Bonus Features */}
+      <FormSection title="Bonus Features" icon={<Gift className="w-4 h-4" />}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <ToggleOption
+            checked={formData.is_non_sticky}
+            onChange={(checked) => setFormData({ ...formData, is_non_sticky: checked })}
+            icon={<Undo2 className="w-4 h-4" />}
+            label="Non-Sticky"
+            description="Withdrawable"
+            color="blue"
+          />
+          <ToggleOption
+            checked={formData.has_cashback}
+            onChange={(checked) => setFormData({ ...formData, has_cashback: checked })}
+            icon={<BadgePercent className="w-4 h-4" />}
+            label="Cashback"
+            description="Offers cashback"
+            color="green"
+          />
+          <ToggleOption
+            checked={formData.is_vip_friendly}
+            onChange={(checked) => setFormData({ ...formData, is_vip_friendly: checked })}
+            icon={<Crown className="w-4 h-4" />}
+            label="VIP Friendly"
+            description="High roller"
+            color="amber"
+          />
           <ToggleOption
             checked={formData.is_exclusive}
             onChange={(checked) => setFormData({ ...formData, is_exclusive: checked })}
@@ -280,6 +328,12 @@ export function EnhancedBonusForm({ open, onOpenChange, editingBonus, onSuccess 
             description="Special offer"
             color="purple"
           />
+        </div>
+      </FormSection>
+
+      {/* Visibility */}
+      <FormSection title="Visibility Options" icon={<Eye className="w-4 h-4" />}>
+        <div className="grid grid-cols-2 gap-3">
           <ToggleOption
             checked={formData.is_featured}
             onChange={(checked) => setFormData({ ...formData, is_featured: checked })}

@@ -420,10 +420,14 @@ export type Database = {
           created_at: string
           features: string[] | null
           free_spins: number | null
+          has_cashback: boolean | null
           id: string
           is_exclusive: boolean | null
           is_featured: boolean | null
+          is_non_sticky: boolean | null
           is_published: boolean | null
+          is_vip_friendly: boolean | null
+          license: string | null
           logo_url: string | null
           min_deposit: string | null
           name: string
@@ -441,10 +445,14 @@ export type Database = {
           created_at?: string
           features?: string[] | null
           free_spins?: number | null
+          has_cashback?: boolean | null
           id?: string
           is_exclusive?: boolean | null
           is_featured?: boolean | null
+          is_non_sticky?: boolean | null
           is_published?: boolean | null
+          is_vip_friendly?: boolean | null
+          license?: string | null
           logo_url?: string | null
           min_deposit?: string | null
           name: string
@@ -462,10 +470,14 @@ export type Database = {
           created_at?: string
           features?: string[] | null
           free_spins?: number | null
+          has_cashback?: boolean | null
           id?: string
           is_exclusive?: boolean | null
           is_featured?: boolean | null
+          is_non_sticky?: boolean | null
           is_published?: boolean | null
+          is_vip_friendly?: boolean | null
+          license?: string | null
           logo_url?: string | null
           min_deposit?: string | null
           name?: string
