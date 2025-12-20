@@ -1,27 +1,29 @@
 -- ============================================
--- Stream Status Auto-Check Cron Job
+-- Cron Jobs Setup
 -- ============================================
--- This script sets up a cron job to automatically check stream status every 2 minutes.
+-- Sets up automated background tasks
 -- 
--- PREREQUISITES:
--- 1. pg_cron and pg_net extensions must be enabled
--- 2. Replace YOUR_SUPABASE_URL with your Supabase project URL
--- 3. Replace YOUR_ANON_KEY with your Supabase anon/public key
---
--- Run this script in your Supabase SQL Editor or via psql
+-- IMPORTANT: Update the URL and API key below!
 -- ============================================
 
--- Enable required extensions
+-- Ensure extensions are enabled
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Remove existing job if it exists (to allow re-running this script)
-SELECT cron.unschedule('check-stream-status-auto') 
-WHERE EXISTS (
-  SELECT 1 FROM cron.job WHERE jobname = 'check-stream-status-auto'
-);
+-- ============================================
+-- Stream Status Auto-Check (every 2 minutes)
+-- ============================================
 
--- Create the stream auto-check cron job (every 2 minutes)
+-- Remove existing job if present (allows re-running)
+DO $$
+BEGIN
+  PERFORM cron.unschedule('check-stream-status-auto');
+EXCEPTION WHEN OTHERS THEN
+  -- Job doesn't exist, continue
+END $$;
+
+-- Create the stream auto-check cron job
+-- UPDATE THESE VALUES FOR YOUR ENVIRONMENT:
 SELECT cron.schedule(
   'check-stream-status-auto',
   '*/2 * * * *',
@@ -37,7 +39,9 @@ SELECT cron.schedule(
   $$
 );
 
--- Verify the job was created
-SELECT jobid, jobname, schedule, command 
+-- ============================================
+-- Verify all cron jobs
+-- ============================================
+SELECT jobid, jobname, schedule, active 
 FROM cron.job 
-WHERE jobname = 'check-stream-status-auto';
+ORDER BY jobname;
