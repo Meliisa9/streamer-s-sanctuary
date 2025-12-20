@@ -395,46 +395,23 @@ export default function Profile() {
           {/* Profile Header Banner with Cover Photo */}
           <div 
             className="h-36 md:h-44 relative bg-gradient-to-r from-primary/30 via-primary/20 to-accent/30"
-            style={formData.cover_url ? { 
-              backgroundImage: `url(${formData.cover_url})`,
+            style={(profile as any)?.cover_url ? { 
+              backgroundImage: `url(${(profile as any).cover_url})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             } : undefined}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
             
-            {/* Cover Photo Upload Button - positioned left of Edit button */}
-            {isEditing && (
-              <div className="absolute top-4 right-32">
+            {/* Cover Photo Upload and Edit buttons - positioned together */}
+            <div className="absolute top-4 right-4 flex gap-2 z-10">
+              {isEditing && (
                 <CoverPhotoUpload
-                  currentCoverUrl={formData.cover_url}
+                  currentCoverUrl={(profile as any)?.cover_url}
                   userId={user.id}
                   onCoverChange={(url) => setFormData({ ...formData, cover_url: url })}
                 />
-              </div>
-            )}
-            
-            <div className="absolute -bottom-12 left-6">
-              <div className="relative">
-                <div className="w-28 h-28 rounded-2xl bg-background border-4 border-background overflow-hidden shadow-xl">
-                  {formData.avatar_url ? (
-                    <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-secondary flex items-center justify-center">
-                      <User className="w-12 h-12 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-                {isEditing && (
-                  <AvatarUpload
-                    currentAvatarUrl={formData.avatar_url}
-                    userId={user.id}
-                    onAvatarChange={(url) => setFormData({ ...formData, avatar_url: url })}
-                  />
-                )}
-              </div>
-            </div>
-            <div className="absolute top-4 right-4 flex gap-2">
+              )}
               <Button
                 variant={isEditing ? "outline" : "secondary"}
                 size="sm"
@@ -451,6 +428,27 @@ export default function Profile() {
               >
                 <LogOut className="w-4 h-4" />
               </Button>
+            </div>
+            
+            <div className="absolute -bottom-12 left-6">
+              <div className="relative">
+                <div className="w-28 h-28 rounded-2xl bg-background border-4 border-background overflow-hidden shadow-xl">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-secondary flex items-center justify-center">
+                      <User className="w-12 h-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                {isEditing && (
+                  <AvatarUpload
+                    currentAvatarUrl={formData.avatar_url}
+                    userId={user.id}
+                    onAvatarChange={(url) => setFormData({ ...formData, avatar_url: url })}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -558,16 +556,22 @@ export default function Profile() {
 
             {/* Profile Tab - Now includes display-only profile info, connected accounts, and wall */}
             <TabsContent value="profile" className="space-y-6">
+              {/* Member Since - Separate */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                Member since {memberSince}
+              </div>
+              
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Profile Info Display */}
                 <div className="lg:col-span-2 glass rounded-2xl p-6">
                   <h3 className="font-semibold mb-4">Profile Information</h3>
                   <div className="space-y-4">
                     {/* Bio */}
-                    {formData.bio && (
+                    {profile?.bio && (
                       <div className="p-4 bg-secondary/30 rounded-xl">
                         <p className="text-sm text-muted-foreground mb-1">Bio</p>
-                        <p>{formData.bio}</p>
+                        <p>{profile.bio}</p>
                       </div>
                     )}
                     
@@ -618,16 +622,9 @@ export default function Profile() {
                           <p className="font-medium">{(profile as any).favorite_casino}</p>
                         </div>
                       )}
-                      <div className="p-4 bg-secondary/30 rounded-xl">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                          <Calendar className="w-4 h-4" />
-                          <span className="text-sm">Member Since</span>
-                        </div>
-                        <p className="font-medium">{memberSince}</p>
-                      </div>
                     </div>
                     
-                    {!formData.bio && !displayAge && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
+                    {!profile?.bio && !displayAge && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
                       <div className="text-center py-8 text-muted-foreground">
                         <User className="w-12 h-12 mx-auto mb-4 opacity-30" />
                         <p>No profile information set yet.</p>

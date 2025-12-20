@@ -94,9 +94,9 @@ export function CoverPhotoUpload({ currentCoverUrl, userId, onCoverChange }: Cov
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
-          className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm gap-2 hover:bg-background"
+          className="gap-2 shadow-lg"
         >
           <Camera className="w-4 h-4" />
           Change Cover

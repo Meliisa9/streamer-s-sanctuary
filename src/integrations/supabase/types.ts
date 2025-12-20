@@ -1099,6 +1099,7 @@ export type Database = {
           is_private: boolean | null
           kick_username: string | null
           points: number | null
+          privacy_settings: Json | null
           twitch_username: string | null
           updated_at: string
           user_id: string
@@ -1125,6 +1126,7 @@ export type Database = {
           is_private?: boolean | null
           kick_username?: string | null
           points?: number | null
+          privacy_settings?: Json | null
           twitch_username?: string | null
           updated_at?: string
           user_id: string
@@ -1151,6 +1153,7 @@ export type Database = {
           is_private?: boolean | null
           kick_username?: string | null
           points?: number | null
+          privacy_settings?: Json | null
           twitch_username?: string | null
           updated_at?: string
           user_id?: string

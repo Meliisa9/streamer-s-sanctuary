@@ -31,14 +31,31 @@ export default function UserProfile() {
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
   const [reportOpen, setReportOpen] = useState(false);
 
-  // Resolve username to user_id
+  // Resolve username to user_id and redirect if accessing by UUID
   const { data: resolvedUserId, isLoading: resolvingUser } = useQuery({
     queryKey: ["resolve-user", usernameOrId],
     queryFn: async () => {
       if (!usernameOrId) return null;
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId);
-      if (isUUID) return usernameOrId;
       
+      if (isUUID) {
+        // If accessed by UUID, get username and redirect
+        const { data: profileData, error } = await supabase
+          .from("profiles")
+          .select("user_id, username")
+          .eq("user_id", usernameOrId)
+          .maybeSingle();
+        
+        if (error || !profileData) return null;
+        
+        // Redirect to username URL if we have a username
+        if (profileData.username && profileData.username !== usernameOrId) {
+          navigate(`/user/${profileData.username}`, { replace: true });
+        }
+        return profileData.user_id;
+      }
+      
+      // Look up by username
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id")
@@ -466,29 +483,41 @@ export default function UserProfile() {
                 <p className="text-sm md:text-base max-w-2xl mb-4">{profile.bio}</p>
               )}
 
-              {/* Stats Row */}
-              <div className="flex flex-wrap items-center gap-4 md:gap-8 mt-4">
-                <div className="text-center px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
-                  <p className="text-xl md:text-2xl font-bold text-primary">{profile.points?.toLocaleString() || 0}</p>
-                  <p className="text-xs text-muted-foreground">Points</p>
+              {/* Enhanced Stats Row */}
+              <div className="flex flex-wrap items-center gap-3 mt-4">
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/20 shadow-sm">
+                  <Trophy className="w-4 h-4 text-primary" />
+                  <div>
+                    <p className="text-lg font-bold text-primary">{profile.points?.toLocaleString() || 0}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Points</p>
+                  </div>
                 </div>
                 <button 
                   onClick={() => { setFollowersModalTab("followers"); setFollowersModalOpen(true); }}
-                  className="text-center px-4 py-2 rounded-xl hover:bg-secondary/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-blue-500/20 to-blue-500/5 rounded-xl border border-blue-500/20 shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
-                  <p className="text-xl md:text-2xl font-bold">{followersCount || 0}</p>
-                  <p className="text-xs text-muted-foreground">Followers</p>
+                  <Users className="w-4 h-4 text-blue-500" />
+                  <div>
+                    <p className="text-lg font-bold">{followersCount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Followers</p>
+                  </div>
                 </button>
                 <button 
                   onClick={() => { setFollowersModalTab("following"); setFollowersModalOpen(true); }}
-                  className="text-center px-4 py-2 rounded-xl hover:bg-secondary/50 transition-colors cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-purple-500/20 to-purple-500/5 rounded-xl border border-purple-500/20 shadow-sm hover:shadow-md transition-all cursor-pointer"
                 >
-                  <p className="text-xl md:text-2xl font-bold">{followingCount || 0}</p>
-                  <p className="text-xs text-muted-foreground">Following</p>
+                  <Heart className="w-4 h-4 text-purple-500" />
+                  <div>
+                    <p className="text-lg font-bold">{followingCount || 0}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Following</p>
+                  </div>
                 </button>
-                <div className="text-center px-4 py-2 rounded-xl">
-                  <p className="text-xl md:text-2xl font-bold">{achievementsCount}</p>
-                  <p className="text-xs text-muted-foreground">Achievements</p>
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 rounded-xl border border-yellow-500/20 shadow-sm">
+                  <Award className="w-4 h-4 text-yellow-500" />
+                  <div>
+                    <p className="text-lg font-bold">{achievementsCount}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Achievements</p>
+                  </div>
                 </div>
               </div>
 
@@ -515,8 +544,8 @@ export default function UserProfile() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start mb-6 bg-secondary/30 p-1.5 rounded-xl flex-wrap">
             <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <TrendingUp className="w-4 h-4" />
-              Activity
+              <User className="w-4 h-4" />
+              About
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Target className="w-4 h-4" />
@@ -538,42 +567,103 @@ export default function UserProfile() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="space-y-4"
+                className="space-y-6"
               >
-                {/* Activity Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Link to="/bonus-hunt?tab=gtw" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
-                    <Target className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                    <p className="text-2xl font-bold">{activityStats?.gtwGuesses || 0}</p>
-                    <p className="text-xs text-muted-foreground">GTW Guesses</p>
-                    {(activityStats?.gtwWins || 0) > 0 && (
-                      <Badge className="mt-2" variant="outline">🏆 {activityStats?.gtwWins} Wins</Badge>
+                {/* Profile Information */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    Profile Information
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {profile.bio && (
+                      <div className="col-span-full p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">Bio</p>
+                        <p>{profile.bio}</p>
+                      </div>
                     )}
-                  </Link>
-                  <Link to="/bonus-hunt" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
-                    <TrendingUp className="w-8 h-8 mx-auto mb-2 text-blue-500" />
-                    <p className="text-2xl font-bold">{activityStats?.bonusHuntGuesses || 0}</p>
-                    <p className="text-xs text-muted-foreground">Bonus Hunt Guesses</p>
-                    {(activityStats?.bonusHuntWins || 0) > 0 && (
-                      <Badge className="mt-2" variant="outline">🏆 {activityStats?.bonusHuntWins} Wins</Badge>
+                    {(profile as any)?.age && (
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">Age</p>
+                        <p className="font-medium">{(profile as any).age} years old</p>
+                      </div>
                     )}
-                  </Link>
-                  <Link to="/giveaways" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
-                    <Gift className="w-8 h-8 mx-auto mb-2 text-primary" />
-                    <p className="text-2xl font-bold">{activityStats?.giveawayEntries || 0}</p>
-                    <p className="text-xs text-muted-foreground">Giveaway Entries</p>
-                    {(activityStats?.giveawayWins || 0) > 0 && (
-                      <Badge className="mt-2" variant="outline">🏆 {activityStats?.giveawayWins} Wins</Badge>
+                    {(profile as any)?.country && (
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">Country</p>
+                        <p className="font-medium">{(profile as any).country}</p>
+                      </div>
                     )}
-                  </Link>
-                  <Link to="/polls" className="glass rounded-2xl p-4 text-center hover:bg-secondary/50 transition-colors">
-                    <BarChart3 className="w-8 h-8 mx-auto mb-2 text-purple-500" />
-                    <p className="text-2xl font-bold">{activityStats?.pollVotes || 0}</p>
-                    <p className="text-xs text-muted-foreground">Poll Votes</p>
-                    {(activityStats?.pollsCreated || 0) > 0 && (
-                      <Badge className="mt-2" variant="outline">📝 {activityStats?.pollsCreated} Created</Badge>
+                    {(profile as any)?.city && (
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">City</p>
+                        <p className="font-medium">{(profile as any).city}</p>
+                      </div>
                     )}
-                  </Link>
+                    {(profile as any)?.favorite_slot && (
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">Favorite Slot</p>
+                        <p className="font-medium">{(profile as any).favorite_slot}</p>
+                      </div>
+                    )}
+                    {(profile as any)?.favorite_casino && (
+                      <div className="p-4 bg-secondary/30 rounded-xl">
+                        <p className="text-sm text-muted-foreground mb-1">Favorite Casino</p>
+                        <p className="font-medium">{(profile as any).favorite_casino}</p>
+                      </div>
+                    )}
+                  </div>
+                  {!profile.bio && !(profile as any)?.age && !(profile as any)?.country && !(profile as any)?.favorite_slot && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <User className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                      <p>No profile information available</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Connected Accounts */}
+                <div className="glass rounded-2xl p-6">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <ExternalLink className="w-4 h-4 text-primary" />
+                    Connected Accounts
+                  </h3>
+                  <div className="flex flex-wrap gap-4">
+                    {profile.twitch_username && (
+                      <a 
+                        href={`https://twitch.tv/${profile.twitch_username}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 rounded-xl hover:bg-purple-600/30 transition-colors"
+                      >
+                        <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                        </svg>
+                        <span className="text-sm font-medium">@{profile.twitch_username}</span>
+                      </a>
+                    )}
+                    {profile.discord_tag && (
+                      <div className="flex items-center gap-2 px-4 py-2 bg-indigo-600/20 rounded-xl">
+                        <svg className="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418Z"/>
+                        </svg>
+                        <span className="text-sm font-medium">{profile.discord_tag}</span>
+                      </div>
+                    )}
+                    {profile.kick_username && (
+                      <a 
+                        href={`https://kick.com/${profile.kick_username}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600/20 rounded-xl hover:bg-green-600/30 transition-colors"
+                      >
+                        <span className="text-green-400 font-bold text-sm">K</span>
+                        <span className="text-sm font-medium">@{profile.kick_username}</span>
+                      </a>
+                    )}
+                    {!profile.twitch_username && !profile.discord_tag && !profile.kick_username && (
+                      <p className="text-muted-foreground text-sm">No connected accounts</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Recent Activity */}
@@ -769,10 +859,6 @@ export default function UserProfile() {
                 exit={{ opacity: 0, y: -10 }}
                 className="glass rounded-2xl p-6"
               >
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-primary" />
-                  Profile Wall
-                </h3>
                 <ProfileComments profileUserId={resolvedUserId!} />
               </motion.div>
             </TabsContent>
