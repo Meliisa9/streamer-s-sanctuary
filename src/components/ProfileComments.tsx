@@ -349,7 +349,7 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                     username={author?.username} 
                     avatarUrl={author?.avatar_url} 
                     size="md" 
-                    className="flex-shrink-0 ring-2 ring-background shadow-sm" 
+                    className="flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-2">
