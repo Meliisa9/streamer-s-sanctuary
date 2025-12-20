@@ -211,7 +211,7 @@ export function ToggleOption({
   icon?: ReactNode;
   label: string;
   description?: string;
-  color?: "primary" | "green" | "amber" | "red" | "purple";
+  color?: "primary" | "green" | "amber" | "red" | "purple" | "blue" | "cyan";
 }) {
   const colorClasses = {
     primary: checked ? "bg-primary/10 border-primary/30 shadow-primary/10" : "",
@@ -219,6 +219,8 @@ export function ToggleOption({
     amber: checked ? "bg-amber-500/10 border-amber-500/30 shadow-amber-500/10" : "",
     red: checked ? "bg-red-500/10 border-red-500/30 shadow-red-500/10" : "",
     purple: checked ? "bg-purple-500/10 border-purple-500/30 shadow-purple-500/10" : "",
+    blue: checked ? "bg-blue-500/10 border-blue-500/30 shadow-blue-500/10" : "",
+    cyan: checked ? "bg-cyan-500/10 border-cyan-500/30 shadow-cyan-500/10" : "",
   };
 
   return (

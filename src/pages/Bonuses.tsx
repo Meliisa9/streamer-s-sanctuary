@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Star, ExternalLink, Search, Filter, Shield, Globe, Percent, Gift, Loader2 } from "lucide-react";
+import { Star, ExternalLink, Search, Filter, Shield, Globe, Percent, Gift, Loader2, Crown, Undo2, BadgePercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,9 +20,13 @@ interface Casino {
   is_exclusive: boolean | null;
   promo_code: string | null;
   affiliate_url: string | null;
+  is_non_sticky: boolean | null;
+  has_cashback: boolean | null;
+  license: string | null;
+  is_vip_friendly: boolean | null;
 }
 
-const filters = ["All", "Top Rated", "No Deposit", "Free Spins", "Crypto"];
+const filters = ["All", "Top Rated", "No Deposit", "Free Spins", "Non-Sticky", "Cashback", "VIP"];
 
 export default function Bonuses() {
   const [selectedFilter, setSelectedFilter] = useState("All");
@@ -59,7 +63,9 @@ export default function Bonuses() {
     if (selectedFilter === "Top Rated") return matchesSearch && (casino.rating || 0) >= 4.5;
     if (selectedFilter === "No Deposit") return matchesSearch && casino.bonus_type?.toLowerCase().includes("no deposit");
     if (selectedFilter === "Free Spins") return matchesSearch && (casino.free_spins || 0) > 0;
-    if (selectedFilter === "Crypto") return matchesSearch && casino.features?.some(f => f.toLowerCase().includes("crypto"));
+    if (selectedFilter === "Non-Sticky") return matchesSearch && casino.is_non_sticky;
+    if (selectedFilter === "Cashback") return matchesSearch && casino.has_cashback;
+    if (selectedFilter === "VIP") return matchesSearch && casino.is_vip_friendly;
     
     return matchesSearch;
   });
@@ -249,6 +255,30 @@ export default function Bonuses() {
 
                   {/* Features */}
                   <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
+                    {casino.license && (
+                      <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-medium rounded-full flex items-center gap-1">
+                        <Shield className="w-3 h-3" />
+                        {casino.license}
+                      </span>
+                    )}
+                    {casino.is_non_sticky && (
+                      <span className="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-xs font-medium rounded-full flex items-center gap-1">
+                        <Undo2 className="w-3 h-3" />
+                        Non-Sticky
+                      </span>
+                    )}
+                    {casino.has_cashback && (
+                      <span className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full flex items-center gap-1">
+                        <BadgePercent className="w-3 h-3" />
+                        Cashback
+                      </span>
+                    )}
+                    {casino.is_vip_friendly && (
+                      <span className="px-3 py-1 bg-amber-500/20 text-amber-400 text-xs font-medium rounded-full flex items-center gap-1">
+                        <Crown className="w-3 h-3" />
+                        VIP Friendly
+                      </span>
+                    )}
                     {casino.features?.map((feature) => (
                       <span
                         key={feature}
