@@ -9,7 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { MainLayout } from "@/components/layout/MainLayout";
 
 interface Prediction {
   id: string;
@@ -200,8 +199,7 @@ export default function Predictions() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -403,7 +401,6 @@ export default function Predictions() {
             </div>
           )}
         </motion.div>
-      </div>
-    </MainLayout>
+    </div>
   );
 }

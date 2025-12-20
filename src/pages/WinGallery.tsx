@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { MainLayout } from "@/components/layout/MainLayout";
 
 interface BigWin {
   id: string;
@@ -34,7 +33,7 @@ interface BigWin {
     username: string | null;
     display_name: string | null;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 export default function WinGallery() {
@@ -64,9 +63,10 @@ export default function WinGallery() {
   }, [user, sortBy]);
 
   const fetchWins = async () => {
+    // First, get the wins
     let query = supabase
       .from("big_wins")
-      .select("*, profile:profiles!big_wins_user_id_fkey(username, display_name, avatar_url)")
+      .select("*")
       .eq("status", "approved");
 
     switch (sortBy) {
@@ -86,7 +86,21 @@ export default function WinGallery() {
     const { data, error } = await query.limit(50);
     
     if (!error && data) {
-      setWins(data as BigWin[]);
+      // Fetch profiles for each win
+      const userIds = [...new Set(data.map(w => w.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", userIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      
+      const winsWithProfiles = data.map(win => ({
+        ...win,
+        profile: profileMap.get(win.user_id) || null
+      }));
+      
+      setWins(winsWithProfiles as BigWin[]);
     }
     setIsLoading(false);
   };
@@ -195,8 +209,7 @@ export default function WinGallery() {
   };
 
   return (
-    <MainLayout>
-      <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -452,7 +465,6 @@ export default function WinGallery() {
             </div>
           )}
         </motion.div>
-      </div>
-    </MainLayout>
+    </div>
   );
 }
