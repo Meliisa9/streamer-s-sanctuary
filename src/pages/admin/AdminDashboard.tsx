@@ -27,7 +27,6 @@ import {
 import { LiveStreamStatus } from "@/components/admin/LiveStreamStatus";
 import { SystemMonitor } from "@/components/admin/SystemMonitor";
 import { AdminDiagnosticsPanel } from "@/components/admin/AdminDiagnosticsPanel";
-import { StreamHealthWidget } from "@/components/admin/StreamHealthWidget";
 import { QuickActionsWidget } from "@/components/admin/QuickActionsWidget";
 import { formatDistanceToNow, format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -364,9 +363,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stream Status & System Monitor Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <LiveStreamStatus />
-        <StreamHealthWidget />
         <SystemMonitor />
       </div>
 

@@ -67,6 +67,16 @@ interface NavItem {
   badge?: number;
 }
 
+// Define which items are sub-items of settings
+const settingsSubPaths = [
+  "/admin/settings/branding",
+  "/admin/settings/navigation", 
+  "/admin/settings/video-categories",
+  "/admin/settings/notifications",
+  "/admin/settings/bans",
+  "/admin/settings/auth-health",
+];
+
 // Reorganized navigation with smart grouping
 const navSections: NavSection[] = [
   {
@@ -176,23 +186,32 @@ function isNavItemActive(itemPath: string, currentPath: string): boolean {
   return currentPath.startsWith(itemPath);
 }
 
-function AdminNavItem({ item, isActive, collapsed }: { item: NavItem; isActive: boolean; collapsed: boolean }) {
+function AdminNavItem({ item, isActive, collapsed, isSubItem = false }: { item: NavItem; isActive: boolean; collapsed: boolean; isSubItem?: boolean }) {
   const Icon = item.icon;
   
   return (
     <NavLink to={item.path}>
       <div
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
+          "flex items-center gap-3 rounded-xl transition-all duration-200 group",
+          isSubItem ? "px-3 py-2 ml-2 border-l-2" : "px-3 py-2.5",
           isActive
-            ? "bg-primary/15 text-primary shadow-sm"
-            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            ? isSubItem 
+              ? "bg-primary/10 text-primary border-l-primary"
+              : "bg-primary/15 text-primary shadow-sm"
+            : isSubItem
+              ? "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border-l-border"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
         )}
       >
-        <Icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-primary")} />
+        <Icon className={cn(
+          "flex-shrink-0", 
+          isSubItem ? "w-4 h-4" : "w-5 h-5",
+          isActive && "text-primary"
+        )} />
         {!collapsed && (
           <>
-            <span className="font-medium text-sm flex-1">{item.label}</span>
+            <span className={cn("font-medium flex-1", isSubItem ? "text-xs" : "text-sm")}>{item.label}</span>
             {item.badge && item.badge > 0 && (
               <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                 {item.badge}
@@ -241,7 +260,8 @@ function AdminNavSection({
       <div className="space-y-1">
         {visibleItems.map((item) => {
           const isActive = isNavItemActive(item.path, location.pathname);
-          return <AdminNavItem key={item.path} item={item} isActive={isActive} collapsed={collapsed} />;
+          const isSubItem = settingsSubPaths.includes(item.path);
+          return <AdminNavItem key={item.path} item={item} isActive={isActive} collapsed={collapsed} isSubItem={isSubItem} />;
         })}
       </div>
     );
@@ -268,7 +288,8 @@ function AdminNavSection({
             <div className="space-y-0.5 pl-1">
               {visibleItems.map((item) => {
                 const isActive = isNavItemActive(item.path, location.pathname);
-                return <AdminNavItem key={item.path} item={item} isActive={isActive} collapsed={collapsed} />;
+                const isSubItem = settingsSubPaths.includes(item.path);
+                return <AdminNavItem key={item.path} item={item} isActive={isActive} collapsed={collapsed} isSubItem={isSubItem} />;
               })}
             </div>
           </motion.div>
