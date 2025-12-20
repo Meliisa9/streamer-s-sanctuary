@@ -201,7 +201,7 @@ export function Sidebar() {
       >
         {settings.logo_url ? (
           <motion.div
-            className="flex-1 min-w-0 flex items-center justify-center"
+            className="flex-1 min-w-0 flex flex-col items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
@@ -210,6 +210,9 @@ export function Sidebar() {
               alt={settings.site_name || "Logo"}
               className={`${collapsed ? "w-10 h-10 rounded-xl object-cover" : "h-12 max-w-full object-contain object-center mx-auto"}`}
             />
+            {!collapsed && settings.site_tagline && (
+              <p className="text-xs text-muted-foreground truncate mt-1">{settings.site_tagline}</p>
+            )}
           </motion.div>
         ) : (
           <div className="overflow-hidden min-w-0 w-full">
