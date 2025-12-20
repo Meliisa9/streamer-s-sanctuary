@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { Cookie, Settings, BarChart3, Shield, Zap, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ const cookieTypes = [
 
 export default function CookiePolicy() {
   const location = useLocation();
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-cookies"],
@@ -61,46 +62,12 @@ export default function CookiePolicy() {
     },
   });
 
-  const defaultContent = `
-    <h2 id="cookie-policy" class="scroll-mt-24">Cookie Policy</h2>
-    <p>This website uses cookies to enhance your browsing experience. This policy explains what cookies are, how we use them, and how you can manage your preferences.</p>
-    
-    <h3 id="what-are-cookies" class="scroll-mt-24">What Are Cookies?</h3>
-    <p>Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and provide a better user experience. Cookies can be "session cookies" (deleted when you close your browser) or "persistent cookies" (remain until they expire or you delete them).</p>
-    
-    <h3 id="essential" class="scroll-mt-24">Essential Cookies</h3>
-    <p>These cookies are necessary for the website to function properly. They include:</p>
-    <ul>
-      <li>Authentication cookies to keep you logged in</li>
-      <li>Security cookies to protect against fraudulent activity</li>
-      <li>Session cookies to remember your preferences during a visit</li>
-    </ul>
-    <p>You cannot opt out of essential cookies as they are required for the website to work.</p>
-    
-    <h3 id="analytics" class="scroll-mt-24">Analytics Cookies</h3>
-    <p>We use analytics to understand how visitors interact with our site. This helps us improve our services. Analytics cookies may collect:</p>
-    <ul>
-      <li>Pages you visit and time spent on each page</li>
-      <li>How you arrived at our website</li>
-      <li>Technical information about your device and browser</li>
-    </ul>
-    
-    <h3 id="managing" class="scroll-mt-24">Managing Cookies</h3>
-    <p>You can manage cookie preferences through your browser settings. Most browsers allow you to:</p>
-    <ul>
-      <li>View and delete existing cookies</li>
-      <li>Block cookies from specific or all websites</li>
-      <li>Set preferences for different types of cookies</li>
-    </ul>
-    <p>Note that blocking certain cookies may impact website functionality.</p>
-  `;
-
   // Handle anchor scrolling after content loads
   useEffect(() => {
     if (!isLoading && location.hash) {
       const id = location.hash.replace("#", "");
       setTimeout(() => {
-        const element = document.getElementById(id);
+        const element = sectionRefs.current[id] || document.getElementById(id);
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
         }
@@ -110,7 +77,7 @@ export default function CookiePolicy() {
 
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
-    const element = document.getElementById(id);
+    const element = sectionRefs.current[id] || document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       window.history.pushState(null, "", `#${id}`);
@@ -147,7 +114,7 @@ export default function CookiePolicy() {
               key={link.id}
               href={`#${link.id}`}
               onClick={(e) => handleAnchorClick(e, link.id)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group cursor-pointer"
             >
               <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-amber-400 transition-colors" />
               <span className="text-sm font-medium">{link.label}</span>
@@ -187,7 +154,7 @@ export default function CookiePolicy() {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
         </div>
-      ) : (
+      ) : content ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -202,8 +169,71 @@ export default function CookiePolicy() {
             prose-a:text-amber-400 prose-a:no-underline hover:prose-a:underline
             prose-strong:text-foreground
             [&_h3]:scroll-mt-24"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
         />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="glass rounded-2xl p-8 md:p-12 space-y-10"
+        >
+          <div>
+            <h2 className="text-3xl font-bold mb-6 border-b border-border/50 pb-4">Cookie Policy</h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              This website uses cookies to enhance your browsing experience. This policy explains what cookies are, how we use them, and how you can manage your preferences.
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["what-are-cookies"] = el)} id="what-are-cookies" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-amber-400 mb-5">What Are Cookies?</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Cookies are small text files stored on your device when you visit a website. They help websites remember your preferences and provide a better user experience. Cookies can be "session cookies" (deleted when you close your browser) or "persistent cookies" (remain until they expire or you delete them).
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["essential"] = el)} id="essential" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-amber-400 mb-5">Essential Cookies</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              These cookies are necessary for the website to function properly. They include:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Authentication cookies to keep you logged in</li>
+              <li>Security cookies to protect against fraudulent activity</li>
+              <li>Session cookies to remember your preferences during a visit</li>
+            </ul>
+            <p className="text-muted-foreground text-lg leading-relaxed mt-4">
+              You cannot opt out of essential cookies as they are required for the website to work.
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["analytics"] = el)} id="analytics" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-amber-400 mb-5">Analytics Cookies</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              We use analytics to understand how visitors interact with our site. This helps us improve our services. Analytics cookies may collect:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Pages you visit and time spent on each page</li>
+              <li>How you arrived at our website</li>
+              <li>Technical information about your device and browser</li>
+            </ul>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["managing"] = el)} id="managing" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-amber-400 mb-5">Managing Cookies</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              You can manage cookie preferences through your browser settings. Most browsers allow you to:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>View and delete existing cookies</li>
+              <li>Block cookies from specific or all websites</li>
+              <li>Set preferences for different types of cookies</li>
+            </ul>
+            <p className="text-muted-foreground text-lg leading-relaxed mt-4">
+              Note that blocking certain cookies may impact website functionality.
+            </p>
+          </div>
+        </motion.div>
       )}
 
       {/* Footer Note */}

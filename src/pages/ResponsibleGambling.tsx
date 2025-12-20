@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { AlertTriangle, Heart, Phone, Clock, DollarSign, HelpCircle, ChevronRight, ExternalLink, ShieldAlert, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +44,7 @@ const helpResources = [
 
 export default function ResponsibleGambling() {
   const location = useLocation();
+  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-gambling"],
@@ -58,44 +59,12 @@ export default function ResponsibleGambling() {
     },
   });
 
-  const defaultContent = `
-    <h2 id="responsible-gambling" class="scroll-mt-24">Responsible Gambling</h2>
-    <p>Gambling should be fun and entertaining, not a way to make money. This page provides important information and resources to help you gamble responsibly.</p>
-    
-    <h3 id="set-limits" class="scroll-mt-24">Set Limits</h3>
-    <p>Always set a budget before you start and stick to it. Here are some tips:</p>
-    <ul>
-      <li>Decide how much money you can afford to lose before you start</li>
-      <li>Set a time limit for your gambling sessions</li>
-      <li>Never gamble with money you need for essential expenses</li>
-      <li>Don't chase your losses - accept them as part of the entertainment cost</li>
-      <li>Take regular breaks and step away from the screen</li>
-    </ul>
-    
-    <h3 id="warning-signs" class="scroll-mt-24">Know the Warning Signs</h3>
-    <p>If gambling is affecting your relationships, finances, or mental health, it may be time to seek help. Warning signs include:</p>
-    <ul>
-      <li>Spending more money or time gambling than you intended</li>
-      <li>Feeling restless or irritable when trying to stop gambling</li>
-      <li>Lying to family members about your gambling habits</li>
-      <li>Borrowing money or selling possessions to fund gambling</li>
-      <li>Neglecting work, family, or other responsibilities</li>
-      <li>Gambling to escape problems or relieve feelings of helplessness</li>
-    </ul>
-    
-    <h3 id="get-help" class="scroll-mt-24">Get Help</h3>
-    <p>If you or someone you know has a gambling problem, please reach out to a professional helpline in your country. Help is available 24/7, and all calls are confidential. Remember, seeking help is a sign of strength, not weakness.</p>
-    
-    <h3 id="age-restriction" class="scroll-mt-24">Age Restriction</h3>
-    <p>You must be 18 years or older (or the legal gambling age in your jurisdiction) to participate in gambling activities. Always play responsibly and verify that online gambling is legal in your area before participating.</p>
-  `;
-
   // Handle anchor scrolling after content loads
   useEffect(() => {
     if (!isLoading && location.hash) {
       const id = location.hash.replace("#", "");
       setTimeout(() => {
-        const element = document.getElementById(id);
+        const element = sectionRefs.current[id] || document.getElementById(id);
         if (element) {
           element.scrollIntoView({ behavior: "smooth", block: "start" });
         }
@@ -105,7 +74,7 @@ export default function ResponsibleGambling() {
 
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
-    const element = document.getElementById(id);
+    const element = sectionRefs.current[id] || document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       window.history.pushState(null, "", `#${id}`);
@@ -142,7 +111,7 @@ export default function ResponsibleGambling() {
               key={link.id}
               href={`#${link.id}`}
               onClick={(e) => handleAnchorClick(e, link.id)}
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-red-500/50 hover:bg-red-500/5 transition-all group"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/50 backdrop-blur-sm border border-border/50 hover:border-red-500/50 hover:bg-red-500/5 transition-all group cursor-pointer"
             >
               <link.icon className="w-4 h-4 text-muted-foreground group-hover:text-red-400 transition-colors" />
               <span className="text-sm font-medium">{link.label}</span>
@@ -243,7 +212,7 @@ export default function ResponsibleGambling() {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
         </div>
-      ) : (
+      ) : content ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -258,8 +227,65 @@ export default function ResponsibleGambling() {
             prose-a:text-red-400 prose-a:no-underline hover:prose-a:underline
             prose-strong:text-foreground
             [&_h3]:scroll-mt-24"
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content || defaultContent) }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
         />
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="glass rounded-2xl p-8 md:p-12 space-y-10"
+        >
+          <div>
+            <h2 className="text-3xl font-bold mb-6 border-b border-border/50 pb-4">Responsible Gambling</h2>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              Gambling should be fun and entertaining, not a way to make money. This page provides important information and resources to help you gamble responsibly.
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["set-limits"] = el)} id="set-limits" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-red-400 mb-5">Set Limits</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              Always set a budget before you start and stick to it. Here are some tips:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Decide how much money you can afford to lose before you start</li>
+              <li>Set a time limit for your gambling sessions</li>
+              <li>Never gamble with money you need for essential expenses</li>
+              <li>Don't chase your losses - accept them as part of the entertainment cost</li>
+              <li>Take regular breaks and step away from the screen</li>
+            </ul>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["warning-signs"] = el)} id="warning-signs" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-red-400 mb-5">Know the Warning Signs</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed mb-4">
+              If gambling is affecting your relationships, finances, or mental health, it may be time to seek help. Warning signs include:
+            </p>
+            <ul className="text-muted-foreground text-lg space-y-2 list-disc list-inside">
+              <li>Spending more money or time gambling than you intended</li>
+              <li>Feeling restless or irritable when trying to stop gambling</li>
+              <li>Lying to family members about your gambling habits</li>
+              <li>Borrowing money or selling possessions to fund gambling</li>
+              <li>Neglecting work, family, or other responsibilities</li>
+              <li>Gambling to escape problems or relieve feelings of helplessness</li>
+            </ul>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["get-help"] = el)} id="get-help" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-red-400 mb-5">Get Help</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              If you or someone you know has a gambling problem, please reach out to a professional helpline in your country. Help is available 24/7, and all calls are confidential. Remember, seeking help is a sign of strength, not weakness.
+            </p>
+          </div>
+
+          <div ref={(el) => (sectionRefs.current["age-restriction"] = el)} id="age-restriction" className="scroll-mt-24">
+            <h3 className="text-2xl font-bold text-red-400 mb-5">Age Restriction</h3>
+            <p className="text-muted-foreground text-lg leading-relaxed">
+              You must be 18 years or older (or the legal gambling age in your jurisdiction) to participate in gambling activities. Always play responsibly and verify that online gambling is legal in your area before participating.
+            </p>
+          </div>
+        </motion.div>
       )}
 
       {/* CTA */}
