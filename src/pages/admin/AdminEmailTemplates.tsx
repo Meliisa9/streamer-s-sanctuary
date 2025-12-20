@@ -63,70 +63,156 @@ const typeColors: Record<string, string> = {
   notification: "bg-gray-500/10 text-gray-500 border-gray-500/20",
 };
 
-// Premium pre-made templates
+// Premium pre-made templates with modern, high-end designs
 const premadeTemplates = [
   {
     name: "welcome_user",
-    subject: "Welcome to {{site_name}} - Your Casino Streaming Journey Begins! 🎰",
+    subject: "🎰 Welcome to {{site_name}} - Your Journey to Epic Wins Begins!",
     template_type: "system",
-    variables: "username, site_name",
+    variables: "username, site_name, site_url",
     body_html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(145deg, #16213e 0%, #1a1a2e 100%); border-radius: 24px; padding: 40px; border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-      <div style="text-align: center; margin-bottom: 32px;">
-        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); border-radius: 20px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
-          <span style="font-size: 40px;">🎰</span>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to {{site_name}}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 0;">
+    <!-- Header Banner -->
+    <div style="background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #f97316 100%); padding: 4px;">
+      <div style="background: linear-gradient(180deg, #12121a 0%, #1a1a2e 100%); padding: 48px 40px;">
+        <!-- Logo Area -->
+        <div style="text-align: center; margin-bottom: 32px;">
+          <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); width: 90px; height: 90px; border-radius: 24px; box-shadow: 0 20px 60px rgba(139, 92, 246, 0.4);">
+            <div style="padding: 20px;">
+              <span style="font-size: 48px; line-height: 1;">🎰</span>
+            </div>
+          </div>
         </div>
-        <h1 style="color: #fff; font-size: 28px; margin: 0; font-weight: 700;">Welcome, {{username}}!</h1>
-        <p style="color: #a78bfa; font-size: 16px; margin-top: 8px;">Your journey to epic wins starts here</p>
+        
+        <!-- Welcome Text -->
+        <h1 style="color: #ffffff; font-size: 32px; font-weight: 800; text-align: center; margin: 0 0 8px 0; letter-spacing: -0.5px;">Welcome, {{username}}!</h1>
+        <p style="color: #a78bfa; font-size: 18px; text-align: center; margin: 0 0 40px 0; font-weight: 500;">Your journey to epic wins starts now</p>
+        
+        <!-- Feature Cards -->
+        <div style="margin-bottom: 32px;">
+          <div style="background: linear-gradient(145deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.05) 100%); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 12px;">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td width="50" valign="top">
+                  <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #8b5cf6, #a78bfa); border-radius: 12px; text-align: center; line-height: 44px;">
+                    <span style="font-size: 22px;">🎁</span>
+                  </div>
+                </td>
+                <td style="padding-left: 16px;">
+                  <h3 style="color: #fff; font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">Exclusive Giveaways</h3>
+                  <p style="color: #94a3b8; font-size: 14px; margin: 0; line-height: 1.5;">Win cash, crypto & gaming prizes daily</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+          <div style="background: linear-gradient(145deg, rgba(236, 72, 153, 0.15) 0%, rgba(236, 72, 153, 0.05) 100%); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 12px;">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td width="50" valign="top">
+                  <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #ec4899, #f472b6); border-radius: 12px; text-align: center; line-height: 44px;">
+                    <span style="font-size: 22px;">🎯</span>
+                  </div>
+                </td>
+                <td style="padding-left: 16px;">
+                  <h3 style="color: #fff; font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">Bonus Hunt Predictions</h3>
+                  <p style="color: #94a3b8; font-size: 14px; margin: 0; line-height: 1.5;">Guess the total & climb the leaderboard</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+          <div style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px;">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td width="50" valign="top">
+                  <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #10b981, #34d399); border-radius: 12px; text-align: center; line-height: 44px;">
+                    <span style="font-size: 22px;">🏆</span>
+                  </div>
+                </td>
+                <td style="padding-left: 16px;">
+                  <h3 style="color: #fff; font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">Earn Points & Rewards</h3>
+                  <p style="color: #94a3b8; font-size: 14px; margin: 0; line-height: 1.5;">Level up your profile with every interaction</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        
+        <!-- CTA Button -->
+        <div style="text-align: center;">
+          <a href="{{site_url}}" style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); color: #fff; text-decoration: none; padding: 18px 48px; border-radius: 14px; font-weight: 700; font-size: 16px; letter-spacing: 0.3px; box-shadow: 0 12px 40px rgba(139, 92, 246, 0.4);">Start Exploring →</a>
+        </div>
       </div>
-      <div style="background: rgba(139, 92, 246, 0.1); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-        <p style="color: #e2e8f0; font-size: 16px; line-height: 1.7; margin: 0;">You've just joined the most exciting casino streaming community. Get ready for exclusive giveaways, bonus hunts, and unforgettable moments!</p>
-      </div>
-      <div style="display: grid; gap: 12px; margin-bottom: 32px;">
-        <div style="background: rgba(16, 185, 129, 0.1); border-radius: 12px; padding: 16px; border-left: 4px solid #10b981;">
-          <p style="color: #10b981; font-size: 14px; font-weight: 600; margin: 0;">✓ Access to exclusive giveaways</p>
-        </div>
-        <div style="background: rgba(59, 130, 246, 0.1); border-radius: 12px; padding: 16px; border-left: 4px solid #3b82f6;">
-          <p style="color: #3b82f6; font-size: 14px; font-weight: 600; margin: 0;">✓ Participate in bonus hunt predictions</p>
-        </div>
-        <div style="background: rgba(236, 72, 153, 0.1); border-radius: 12px; padding: 16px; border-left: 4px solid #ec4899;">
-          <p style="color: #ec4899; font-size: 14px; font-weight: 600; margin: 0;">✓ Earn points & climb the leaderboard</p>
-        </div>
-      </div>
-      <a href="{{site_url}}" style="display: block; background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%); color: #fff; text-decoration: none; text-align: center; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">Start Exploring</a>
     </div>
-    <p style="text-align: center; color: #64748b; font-size: 12px; margin-top: 24px;">© {{site_name}} - The Ultimate Casino Streaming Experience</p>
+    
+    <!-- Footer -->
+    <div style="background: #0a0a0f; padding: 32px 40px; text-align: center;">
+      <p style="color: #64748b; font-size: 13px; margin: 0;">© {{site_name}} • The Ultimate Casino Streaming Experience</p>
+      <p style="color: #475569; font-size: 11px; margin-top: 8px;">You received this email because you created an account on {{site_name}}</p>
+    </div>
   </div>
 </body>
 </html>`,
   },
   {
     name: "giveaway_winner",
-    subject: "🎉 CONGRATULATIONS! You Won the {{giveaway_name}} Giveaway!",
+    subject: "🏆 WINNER! You Won the {{giveaway_name}} Giveaway!",
     template_type: "giveaway",
     variables: "username, giveaway_name, prize, claim_link, site_name",
     body_html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(145deg, #16213e 0%, #1a1a2e 100%); border-radius: 24px; padding: 40px; border: 1px solid rgba(250, 204, 21, 0.4); box-shadow: 0 25px 50px -12px rgba(250, 204, 21, 0.2);">
-      <div style="text-align: center; margin-bottom: 32px;">
-        <div style="font-size: 64px; margin-bottom: 16px;">🏆</div>
-        <h1 style="color: #facc15; font-size: 32px; margin: 0; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">YOU WON!</h1>
-        <p style="color: #fef08a; font-size: 18px; margin-top: 8px;">{{username}}, you're a winner!</p>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>You're a Winner!</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 0;">
+    <!-- Header Banner with Gold Theme -->
+    <div style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%); padding: 4px;">
+      <div style="background: linear-gradient(180deg, #12121a 0%, #1a1a2e 100%); padding: 48px 40px;">
+        <!-- Confetti & Trophy -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="font-size: 72px; line-height: 1; margin-bottom: 16px;">🎉🏆🎉</div>
+        </div>
+        
+        <!-- Winner Announcement -->
+        <div style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(251, 191, 36, 0.05) 100%); border: 2px solid rgba(251, 191, 36, 0.5); border-radius: 24px; padding: 40px; margin-bottom: 32px; text-align: center;">
+          <p style="color: #fbbf24; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; margin: 0 0 8px 0;">Congratulations</p>
+          <h1 style="color: #fff; font-size: 36px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px;">YOU WON!</h1>
+          <p style="color: #fde68a; font-size: 18px; margin: 0;">{{username}}, you're a winner!</p>
+        </div>
+        
+        <!-- Prize Box -->
+        <div style="background: linear-gradient(180deg, #1e1e2f 0%, #16162a 100%); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 20px; padding: 32px; margin-bottom: 32px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; margin: 0 0 12px 0;">Your Prize</p>
+          <h2 style="color: #fbbf24; font-size: 32px; font-weight: 800; margin: 0 0 8px 0; text-shadow: 0 0 40px rgba(251, 191, 36, 0.5);">{{prize}}</h2>
+          <p style="color: #64748b; font-size: 14px; margin: 0;">from <strong style="color: #94a3b8;">{{giveaway_name}}</strong></p>
+        </div>
+        
+        <!-- CTA Button -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <a href="{{claim_link}}" style="display: inline-block; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #0a0a0f; text-decoration: none; padding: 20px 56px; border-radius: 14px; font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 12px 40px rgba(251, 191, 36, 0.4);">Claim Your Prize</a>
+        </div>
+        
+        <!-- Urgency Notice -->
+        <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
+          <p style="color: #ef4444; font-size: 13px; font-weight: 600; margin: 0;">⚠️ Please claim within 48 hours or the prize may be forfeited</p>
+        </div>
       </div>
-      <div style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.2) 0%, rgba(234, 179, 8, 0.1) 100%); border-radius: 20px; padding: 32px; margin-bottom: 24px; text-align: center; border: 2px solid rgba(250, 204, 21, 0.3);">
-        <p style="color: #94a3b8; font-size: 14px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 1px;">Your Prize</p>
-        <p style="color: #fff; font-size: 28px; font-weight: 700; margin: 0;">{{prize}}</p>
-        <p style="color: #64748b; font-size: 14px; margin-top: 12px;">from {{giveaway_name}}</p>
-      </div>
-      <a href="{{claim_link}}" style="display: block; background: linear-gradient(135deg, #facc15 0%, #eab308 100%); color: #1a1a2e; text-decoration: none; text-align: center; padding: 18px 32px; border-radius: 12px; font-weight: 700; font-size: 18px; text-transform: uppercase; letter-spacing: 1px;">Claim Your Prize</a>
-      <p style="color: #64748b; font-size: 13px; text-align: center; margin-top: 24px;">Please claim within 48 hours or the prize may be forfeited.</p>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background: #0a0a0f; padding: 32px 40px; text-align: center;">
+      <p style="color: #64748b; font-size: 13px; margin: 0;">© {{site_name}} • Giveaway Notification</p>
     </div>
   </div>
 </body>
@@ -138,28 +224,64 @@ const premadeTemplates = [
     template_type: "event",
     variables: "username, event_name, event_time, event_description, watch_link, site_name",
     body_html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(145deg, #16213e 0%, #1a1a2e 100%); border-radius: 24px; padding: 40px; border: 1px solid rgba(59, 130, 246, 0.3);">
-      <div style="text-align: center; margin-bottom: 32px;">
-        <div style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 16px 32px; border-radius: 50px; margin-bottom: 20px;">
-          <span style="color: #fff; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">⏰ STARTING SOON</span>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 0;">
+    <!-- Header Banner with Blue Theme -->
+    <div style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 4px;">
+      <div style="background: linear-gradient(180deg, #12121a 0%, #1a1a2e 100%); padding: 48px 40px;">
+        <!-- Live Badge -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="display: inline-block; background: linear-gradient(135deg, #ef4444, #dc2626); color: #fff; font-size: 12px; font-weight: 700; padding: 8px 20px; border-radius: 50px; text-transform: uppercase; letter-spacing: 2px; animation: pulse 2s infinite;">
+            🔴 Starting Soon
+          </span>
         </div>
-        <h1 style="color: #fff; font-size: 26px; margin: 0;">{{event_name}}</h1>
-      </div>
-      <div style="background: rgba(59, 130, 246, 0.1); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-          <span style="font-size: 24px;">🕐</span>
-          <div>
-            <p style="color: #94a3b8; font-size: 12px; margin: 0; text-transform: uppercase;">When</p>
-            <p style="color: #3b82f6; font-size: 18px; font-weight: 600; margin: 0;">{{event_time}}</p>
+        
+        <!-- Event Title -->
+        <h1 style="color: #fff; font-size: 28px; font-weight: 800; text-align: center; margin: 0 0 8px 0; letter-spacing: -0.5px;">{{event_name}}</h1>
+        <p style="color: #94a3b8; font-size: 16px; text-align: center; margin: 0 0 32px 0;">Hey {{username}}, the event you're waiting for is about to begin!</p>
+        
+        <!-- Event Details Card -->
+        <div style="background: linear-gradient(145deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 20px; padding: 32px; margin-bottom: 32px;">
+          <!-- Time -->
+          <div style="display: flex; margin-bottom: 24px;">
+            <table cellpadding="0" cellspacing="0" border="0" width="100%">
+              <tr>
+                <td width="56" valign="top">
+                  <div style="width: 52px; height: 52px; background: linear-gradient(135deg, #3b82f6, #60a5fa); border-radius: 14px; text-align: center; line-height: 52px;">
+                    <span style="font-size: 26px;">🕐</span>
+                  </div>
+                </td>
+                <td style="padding-left: 16px;">
+                  <p style="color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 4px 0;">When</p>
+                  <p style="color: #3b82f6; font-size: 22px; font-weight: 700; margin: 0;">{{event_time}}</p>
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+          <!-- Description -->
+          <div style="background: rgba(15, 23, 42, 0.5); border-radius: 12px; padding: 20px;">
+            <p style="color: #e2e8f0; font-size: 15px; line-height: 1.7; margin: 0;">{{event_description}}</p>
           </div>
         </div>
-        <p style="color: #e2e8f0; font-size: 15px; line-height: 1.6; margin: 0;">{{event_description}}</p>
+        
+        <!-- CTA Button -->
+        <div style="text-align: center;">
+          <a href="{{watch_link}}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: #fff; text-decoration: none; padding: 18px 48px; border-radius: 14px; font-weight: 700; font-size: 16px; letter-spacing: 0.3px; box-shadow: 0 12px 40px rgba(59, 130, 246, 0.4);">Watch Live →</a>
+        </div>
       </div>
-      <a href="{{watch_link}}" style="display: block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: #fff; text-decoration: none; text-align: center; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">Set Reminder</a>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background: #0a0a0f; padding: 32px 40px; text-align: center;">
+      <p style="color: #64748b; font-size: 13px; margin: 0;">© {{site_name}} • Event Reminder</p>
+      <p style="color: #475569; font-size: 11px; margin-top: 8px;">You subscribed to event notifications for this event</p>
     </div>
   </div>
 </body>
@@ -167,34 +289,64 @@ const premadeTemplates = [
   },
   {
     name: "bonus_hunt_winner",
-    subject: "🎯 Your Bonus Hunt Prediction Won! +{{points}} Points",
+    subject: "🎯 Perfect Prediction! You Earned +{{points}} Points!",
     template_type: "bonus_hunt",
     variables: "username, hunt_name, guess, actual_result, points, site_name",
     body_html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(145deg, #16213e 0%, #1a1a2e 100%); border-radius: 24px; padding: 40px; border: 1px solid rgba(16, 185, 129, 0.3);">
-      <div style="text-align: center; margin-bottom: 32px;">
-        <div style="font-size: 56px; margin-bottom: 16px;">🎯</div>
-        <h1 style="color: #10b981; font-size: 28px; margin: 0;">Bullseye, {{username}}!</h1>
-        <p style="color: #6ee7b7; font-size: 16px; margin-top: 8px;">Your prediction was spot on</p>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
-        <div style="background: rgba(16, 185, 129, 0.1); border-radius: 16px; padding: 20px; text-align: center;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">Your Guess</p>
-          <p style="color: #fff; font-size: 24px; font-weight: 700; margin: 0;">{{guess}}</p>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prediction Winner</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 0;">
+    <!-- Header Banner with Green Theme -->
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 4px;">
+      <div style="background: linear-gradient(180deg, #12121a 0%, #1a1a2e 100%); padding: 48px 40px;">
+        <!-- Success Icon -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; width: 100px; height: 100px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05)); border: 2px solid rgba(16, 185, 129, 0.5); border-radius: 50%; line-height: 100px;">
+            <span style="font-size: 52px;">🎯</span>
+          </div>
         </div>
-        <div style="background: rgba(16, 185, 129, 0.1); border-radius: 16px; padding: 20px; text-align: center;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0 0 4px 0; text-transform: uppercase;">Actual Result</p>
-          <p style="color: #10b981; font-size: 24px; font-weight: 700; margin: 0;">{{actual_result}}</p>
+        
+        <!-- Winner Text -->
+        <h1 style="color: #10b981; font-size: 32px; font-weight: 800; text-align: center; margin: 0 0 8px 0;">Bullseye!</h1>
+        <p style="color: #6ee7b7; font-size: 18px; text-align: center; margin: 0 0 32px 0;">{{username}}, your prediction was spot on!</p>
+        
+        <!-- Stats Grid -->
+        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-bottom: 24px;">
+          <tr>
+            <td width="48%" style="padding-right: 8px;">
+              <div style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; text-align: center;">
+                <p style="color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">Your Guess</p>
+                <p style="color: #fff; font-size: 28px; font-weight: 800; margin: 0;">{{guess}}</p>
+              </div>
+            </td>
+            <td width="48%" style="padding-left: 8px;">
+              <div style="background: linear-gradient(145deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; text-align: center;">
+                <p style="color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 8px 0;">Actual Result</p>
+                <p style="color: #10b981; font-size: 28px; font-weight: 800; margin: 0;">{{actual_result}}</p>
+              </div>
+            </td>
+          </tr>
+        </table>
+        
+        <!-- Points Earned Box -->
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.1) 100%); border: 2px solid rgba(16, 185, 129, 0.5); border-radius: 20px; padding: 32px; text-align: center; margin-bottom: 24px;">
+          <p style="color: #6ee7b7; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">Points Earned</p>
+          <p style="color: #10b981; font-size: 48px; font-weight: 800; margin: 0; text-shadow: 0 0 40px rgba(16, 185, 129, 0.5);">+{{points}}</p>
         </div>
+        
+        <!-- Hunt Name -->
+        <p style="color: #64748b; font-size: 14px; text-align: center; margin: 0;">Hunt: <strong style="color: #94a3b8;">{{hunt_name}}</strong></p>
       </div>
-      <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.05) 100%); border-radius: 20px; padding: 24px; text-align: center; border: 2px solid rgba(16, 185, 129, 0.3);">
-        <p style="color: #6ee7b7; font-size: 14px; margin: 0 0 8px 0;">Points Earned</p>
-        <p style="color: #10b981; font-size: 36px; font-weight: 800; margin: 0;">+{{points}}</p>
-      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background: #0a0a0f; padding: 32px 40px; text-align: center;">
+      <p style="color: #64748b; font-size: 13px; margin: 0;">© {{site_name}} • Bonus Hunt Notification</p>
     </div>
   </div>
 </body>
@@ -202,24 +354,52 @@ const premadeTemplates = [
   },
   {
     name: "new_follower",
-    subject: "{{follower_name}} just followed you on {{site_name}}! 👋",
+    subject: "👋 {{follower_name}} just followed you!",
     template_type: "social",
     variables: "username, follower_name, follower_link, site_name",
     body_html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div style="background: linear-gradient(145deg, #16213e 0%, #1a1a2e 100%); border-radius: 24px; padding: 40px; border: 1px solid rgba(236, 72, 153, 0.3);">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 36px;">👋</div>
-        <h1 style="color: #fff; font-size: 24px; margin: 0;">New Follower!</h1>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Follower</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0a0a0f;">
+  <div style="max-width: 640px; margin: 0 auto; padding: 0;">
+    <!-- Header Banner with Pink Theme -->
+    <div style="background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); padding: 4px;">
+      <div style="background: linear-gradient(180deg, #12121a 0%, #1a1a2e 100%); padding: 48px 40px;">
+        <!-- Avatar Placeholder -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; width: 90px; height: 90px; background: linear-gradient(135deg, #ec4899, #f472b6); border-radius: 50%; line-height: 90px; box-shadow: 0 16px 48px rgba(236, 72, 153, 0.4);">
+            <span style="font-size: 44px;">👋</span>
+          </div>
+        </div>
+        
+        <!-- Notification Text -->
+        <h1 style="color: #fff; font-size: 28px; font-weight: 800; text-align: center; margin: 0 0 8px 0;">New Follower!</h1>
+        <p style="color: #94a3b8; font-size: 16px; text-align: center; margin: 0 0 32px 0;">Hey {{username}}, you have a new follower!</p>
+        
+        <!-- Follower Card -->
+        <div style="background: linear-gradient(145deg, rgba(236, 72, 153, 0.15) 0%, rgba(236, 72, 153, 0.05) 100%); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 20px; padding: 32px; margin-bottom: 32px; text-align: center;">
+          <div style="display: inline-block; width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6, #ec4899); border-radius: 50%; line-height: 64px; margin-bottom: 16px;">
+            <span style="font-size: 28px; color: #fff;">👤</span>
+          </div>
+          <h2 style="color: #f472b6; font-size: 24px; font-weight: 700; margin: 0 0 8px 0;">{{follower_name}}</h2>
+          <p style="color: #64748b; font-size: 14px; margin: 0;">is now following you</p>
+        </div>
+        
+        <!-- CTA Button -->
+        <div style="text-align: center;">
+          <a href="{{follower_link}}" style="display: inline-block; background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); color: #fff; text-decoration: none; padding: 16px 40px; border-radius: 14px; font-weight: 700; font-size: 16px; box-shadow: 0 12px 40px rgba(236, 72, 153, 0.4);">View Profile</a>
+        </div>
       </div>
-      <div style="background: rgba(236, 72, 153, 0.1); border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 24px;">
-        <p style="color: #f472b6; font-size: 20px; font-weight: 600; margin: 0;">{{follower_name}}</p>
-        <p style="color: #94a3b8; font-size: 14px; margin-top: 8px;">is now following you</p>
-      </div>
-      <a href="{{follower_link}}" style="display: block; background: linear-gradient(135deg, #ec4899 0%, #f472b6 100%); color: #fff; text-decoration: none; text-align: center; padding: 14px 28px; border-radius: 12px; font-weight: 600;">View Profile</a>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background: #0a0a0f; padding: 32px 40px; text-align: center;">
+      <p style="color: #64748b; font-size: 13px; margin: 0;">© {{site_name}} • Social Notification</p>
+      <p style="color: #475569; font-size: 11px; margin-top: 8px;">You received this because you enabled follower notifications</p>
     </div>
   </div>
 </body>
