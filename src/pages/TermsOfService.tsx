@@ -47,7 +47,21 @@ export default function TermsOfService() {
 
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
-    const element = sectionRefs.current[id] || document.getElementById(id);
+    // Try refs first, then fall back to getElementById for content loaded via dangerouslySetInnerHTML
+    const element = sectionRefs.current[id] || document.getElementById(id) || document.querySelector(`[id="${id}"]`);
+    
+    // If still not found, try to find by text content in headings
+    if (!element) {
+      const headings = document.querySelectorAll('h2, h3');
+      for (const heading of headings) {
+        if (heading.textContent?.toLowerCase().includes(id.replace(/-/g, ' '))) {
+          heading.scrollIntoView({ behavior: "smooth", block: "start" });
+          window.history.pushState(null, "", `#${id}`);
+          return;
+        }
+      }
+    }
+    
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       window.history.pushState(null, "", `#${id}`);
