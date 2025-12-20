@@ -483,6 +483,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_templates: {
+        Row: {
+          body_html: string
+          body_text: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          subject: string
+          template_type: string
+          updated_at: string
+          variables: Json | null
+        }
+        Insert: {
+          body_html: string
+          body_text?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          subject: string
+          template_type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Update: {
+          body_html?: string
+          body_text?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          subject?: string
+          template_type?: string
+          updated_at?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       event_subscriptions: {
         Row: {
           created_at: string
@@ -1609,7 +1648,10 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          display_title: string | null
+          icon: string | null
           id: string
+          is_default: boolean | null
           name: string
           slug: string
           sort_order: number | null
@@ -1617,7 +1659,10 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          display_title?: string | null
+          icon?: string | null
           id?: string
+          is_default?: boolean | null
           name: string
           slug: string
           sort_order?: number | null
@@ -1625,7 +1670,10 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          display_title?: string | null
+          icon?: string | null
           id?: string
+          is_default?: boolean | null
           name?: string
           slug?: string
           sort_order?: number | null
