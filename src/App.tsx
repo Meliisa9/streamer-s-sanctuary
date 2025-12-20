@@ -138,6 +138,7 @@ const App = () => (
                     <Route path="auth-health" element={<Navigate to="/admin/settings/auth-health" replace />} />
                     <Route path="video-categories" element={<Navigate to="/admin/settings/video-categories" replace />} />
                     <Route path="send-notifications" element={<Navigate to="/admin/settings/notifications" replace />} />
+                    <Route path="user-bans" element={<Navigate to="/admin/settings/bans" replace />} />
                     <Route path="polls" element={<AdminPolls />} />
                     <Route path="streamers" element={<AdminStreamers />} />
                     <Route path="stream" element={<AdminStream />} />

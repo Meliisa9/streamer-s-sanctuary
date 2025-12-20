@@ -85,7 +85,7 @@ const navSections: NavSection[] = [
     roles: ["admin", "moderator", "writer"],
     items: [
       { icon: Video, label: "Videos", path: "/admin/videos", roles: ["admin", "moderator"] },
-      { icon: Tag, label: "Video Categories", path: "/admin/video-categories", roles: ["admin"] },
+      { icon: Tag, label: "Video Categories", path: "/admin/settings/video-categories", roles: ["admin"] },
       { icon: Newspaper, label: "News & Articles", path: "/admin/news", roles: ["admin", "moderator", "writer"] },
       { icon: Trophy, label: "Casino Bonuses", path: "/admin/bonuses", roles: ["admin", "moderator"] },
       { icon: Gift, label: "Giveaways", path: "/admin/giveaways", roles: ["admin", "moderator"] },
@@ -116,7 +116,7 @@ const navSections: NavSection[] = [
     roles: ["admin"],
     items: [
       { icon: Users, label: "All Users", path: "/admin/users", roles: ["admin"] },
-      { icon: Ban, label: "User Bans", path: "/admin/user-bans", roles: ["admin"] },
+      { icon: Ban, label: "User Bans", path: "/admin/settings/bans", roles: ["admin"] },
       { icon: RefreshCw, label: "Profile Sync", path: "/admin/profile-sync", roles: ["admin"] },
       { icon: Shield, label: "Roles & Permissions", path: "/admin/roles", roles: ["admin"] },
     ],
@@ -130,7 +130,7 @@ const navSections: NavSection[] = [
       { icon: Palette, label: "Branding", path: "/admin/settings/branding", roles: ["admin"] },
       { icon: Navigation, label: "Navigation", path: "/admin/settings/navigation", roles: ["admin"] },
       { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin"] },
-      { icon: Bell, label: "Send Notifications", path: "/admin/send-notifications", roles: ["admin"] },
+      { icon: Send, label: "Send Notifications", path: "/admin/settings/notifications", roles: ["admin"] },
       { icon: Webhook, label: "Webhooks", path: "/admin/webhooks", roles: ["admin"] },
     ],
   },
@@ -140,7 +140,7 @@ const navSections: NavSection[] = [
     roles: ["admin"],
     items: [
       { icon: History, label: "Audit Log", path: "/admin/audit", roles: ["admin"] },
-      { icon: CheckCircle, label: "Auth Health", path: "/admin/auth-health", roles: ["admin"] },
+      { icon: CheckCircle, label: "Auth Health", path: "/admin/settings/auth-health", roles: ["admin"] },
     ],
   },
 ];
