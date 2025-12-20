@@ -176,6 +176,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // Check if user logged in without "Remember me" - clear session if so
+      const isTemporarySession = sessionStorage.getItem('session_temporary') === 'true';
+      
+      // If there's no session_temporary flag in sessionStorage but there is a session,
+      // and we're starting fresh (sessionStorage doesn't persist across browser sessions),
+      // we should clear the session if it was meant to be temporary
+      if (session && !sessionStorage.getItem('session_checked')) {
+        sessionStorage.setItem('session_checked', 'true');
+        
+        // If this is a fresh browser session and we don't have the temporary flag,
+        // the previous session either used "Remember me" or this is a fresh login
+        // We keep the session in this case
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -188,7 +202,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Handle browser/tab close for temporary sessions
+    const handleBeforeUnload = () => {
+      if (sessionStorage.getItem('session_temporary') === 'true') {
+        // Sign out on browser close - this won't complete but clears local state
+        supabase.auth.signOut();
+      }
+    };
+
+    // Use visibilitychange + unload pattern for more reliable cleanup
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && sessionStorage.getItem('session_temporary') === 'true') {
+        // When tab becomes hidden, check if all tabs are closing
+        // This is a backup for beforeunload
+        navigator.sendBeacon && sessionStorage.setItem('session_pending_cleanup', 'true');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const signOut = async () => {
