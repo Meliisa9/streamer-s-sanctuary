@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, Search, RefreshCw, DollarSign, Gift, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
+import { EnhancedBonusForm } from "@/components/admin/forms";
 
 interface Bonus {
   id: string;
@@ -22,6 +24,7 @@ interface Bonus {
   is_featured: boolean;
   is_published: boolean;
   sort_order: number;
+  countries: string[] | null;
 }
 
 export default function AdminBonuses() {
@@ -29,37 +32,8 @@ export default function AdminBonuses() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingBonus, setEditingBonus] = useState<Bonus | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
-
-  const [formData, setFormData] = useState({
-    name: "",
-    logo_url: "",
-    bonus_text: "",
-    bonus_type: "Welcome Bonus",
-    wagering: "",
-    min_deposit: "",
-    free_spins: 0,
-    promo_code: "",
-    affiliate_url: "",
-    rating: 4.5,
-    is_exclusive: false,
-    is_featured: false,
-    is_published: true,
-    sort_order: 0,
-    countries: [] as string[],
-  });
-
-  const regionOptions = [
-    "Worldwide",
-    "Europe",
-    "North America", 
-    "South America",
-    "Asia",
-    "Africa",
-    "Oceania",
-    "Middle East",
-  ];
 
   useEffect(() => {
     fetchBonuses();
@@ -79,83 +53,9 @@ export default function AdminBonuses() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      logo_url: "",
-      bonus_text: "",
-      bonus_type: "Welcome Bonus",
-      wagering: "",
-      min_deposit: "",
-      free_spins: 0,
-      promo_code: "",
-      affiliate_url: "",
-      rating: 4.5,
-      is_exclusive: false,
-      is_featured: false,
-      is_published: true,
-      sort_order: 0,
-      countries: [],
-    });
-    setEditingBonus(null);
-    setShowForm(false);
-  };
-
   const handleEdit = (bonus: Bonus) => {
-    setFormData({
-      name: bonus.name,
-      logo_url: bonus.logo_url || "",
-      bonus_text: bonus.bonus_text,
-      bonus_type: bonus.bonus_type || "Welcome Bonus",
-      wagering: bonus.wagering || "",
-      min_deposit: bonus.min_deposit || "",
-      free_spins: bonus.free_spins,
-      promo_code: bonus.promo_code || "",
-      affiliate_url: bonus.affiliate_url || "",
-      rating: bonus.rating,
-      is_exclusive: bonus.is_exclusive,
-      is_featured: bonus.is_featured,
-      is_published: bonus.is_published,
-      sort_order: bonus.sort_order,
-      countries: (bonus as any).countries || [],
-    });
     setEditingBonus(bonus);
     setShowForm(true);
-  };
-
-  const toggleRegion = (region: string) => {
-    setFormData(prev => ({
-      ...prev,
-      countries: prev.countries.includes(region)
-        ? prev.countries.filter(r => r !== region)
-        : [...prev.countries, region]
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
-    try {
-      if (editingBonus) {
-        const { error } = await supabase
-          .from("casino_bonuses")
-          .update(formData)
-          .eq("id", editingBonus.id);
-        if (error) throw error;
-        toast({ title: "Bonus updated successfully" });
-      } else {
-        const { error } = await supabase.from("casino_bonuses").insert(formData);
-        if (error) throw error;
-        toast({ title: "Bonus added successfully" });
-      }
-      resetForm();
-      fetchBonuses();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleDelete = async (id: string) => {
@@ -170,6 +70,45 @@ export default function AdminBonuses() {
     }
   };
 
+  const togglePublished = async (bonus: Bonus) => {
+    try {
+      const { error } = await supabase
+        .from("casino_bonuses")
+        .update({ is_published: !bonus.is_published })
+        .eq("id", bonus.id);
+      if (error) throw error;
+      fetchBonuses();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const toggleFeatured = async (bonus: Bonus) => {
+    try {
+      const { error } = await supabase
+        .from("casino_bonuses")
+        .update({ is_featured: !bonus.is_featured })
+        .eq("id", bonus.id);
+      if (error) throw error;
+      fetchBonuses();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const filteredBonuses = bonuses.filter((bonus) =>
+    bonus.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    bonus.bonus_text.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Stats
+  const stats = {
+    total: bonuses.length,
+    published: bonuses.filter((b) => b.is_published).length,
+    exclusive: bonuses.filter((b) => b.is_exclusive).length,
+    featured: bonuses.filter((b) => b.is_featured).length,
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -180,212 +119,169 @@ export default function AdminBonuses() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Manage Casino Bonuses</h2>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Bonus
-        </Button>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Casino Bonuses</h1>
+          <p className="text-muted-foreground">Manage casino offers and promotions</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={fetchBonuses}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => { setEditingBonus(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Bonus
+          </Button>
+        </div>
       </div>
 
-      {showForm && (
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
-          <h3 className="text-xl font-bold mb-4">{editingBonus ? "Edit Bonus" : "Add New Bonus"}</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Casino Name *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Bonus Text *</label>
-                <input
-                  type="text"
-                  value={formData.bonus_text}
-                  onChange={(e) => setFormData({ ...formData, bonus_text: e.target.value })}
-                  required
-                  placeholder="200% up to $3000"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Logo URL</label>
-                <input
-                  type="url"
-                  value={formData.logo_url}
-                  onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Affiliate URL</label>
-                <input
-                  type="url"
-                  value={formData.affiliate_url}
-                  onChange={(e) => setFormData({ ...formData, affiliate_url: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Wagering</label>
-                <input
-                  type="text"
-                  value={formData.wagering}
-                  onChange={(e) => setFormData({ ...formData, wagering: e.target.value })}
-                  placeholder="40x"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Min Deposit</label>
-                <input
-                  type="text"
-                  value={formData.min_deposit}
-                  onChange={(e) => setFormData({ ...formData, min_deposit: e.target.value })}
-                  placeholder="$20"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Promo Code</label>
-                <input
-                  type="text"
-                  value={formData.promo_code}
-                  onChange={(e) => setFormData({ ...formData, promo_code: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Free Spins</label>
-                <input
-                  type="number"
-                  value={formData.free_spins}
-                  onChange={(e) => setFormData({ ...formData, free_spins: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Rating</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="1"
-                  max="5"
-                  value={formData.rating}
-                  onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Sort Order</label>
-                <input
-                  type="number"
-                  value={formData.sort_order}
-                  onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-            </div>
-            
-            {/* Region Multi-Select */}
-            <div className="col-span-2">
-              <label className="text-sm font-medium mb-2 block">Region Availability</label>
-              <div className="flex flex-wrap gap-2">
-                {regionOptions.map((region) => (
-                  <button
-                    key={region}
-                    type="button"
-                    onClick={() => toggleRegion(region)}
-                    className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                      formData.countries.includes(region)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-secondary border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {region}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {formData.countries.length === 0 ? "No regions selected (will show as Worldwide)" : `Selected: ${formData.countries.join(", ")}`}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-6 col-span-2">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={formData.is_exclusive} onChange={(e) => setFormData({ ...formData, is_exclusive: e.target.checked })} />
-                <span className="text-sm">Exclusive</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={formData.is_featured} onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })} />
-                <span className="text-sm">Featured</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={formData.is_published} onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })} />
-                <span className="text-sm">Published</span>
-              </label>
-            </div>
-            <div className="flex gap-3">
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Bonus"}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
-            </div>
-          </form>
-        </motion.div>
-      )}
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <DollarSign className="w-5 h-5 text-primary" />
+          </div>
+          <p className="text-2xl font-bold">{stats.total}</p>
+          <p className="text-sm text-muted-foreground">Total Bonuses</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Eye className="w-5 h-5 text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-green-500">{stats.published}</p>
+          <p className="text-sm text-muted-foreground">Published</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Gift className="w-5 h-5 text-accent" />
+          </div>
+          <p className="text-2xl font-bold text-accent">{stats.exclusive}</p>
+          <p className="text-sm text-muted-foreground">Exclusive</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+          </div>
+          <p className="text-2xl font-bold text-yellow-500">{stats.featured}</p>
+          <p className="text-sm text-muted-foreground">Featured</p>
+        </div>
+      </div>
 
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search bonuses..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Enhanced Form Modal */}
+      <EnhancedBonusForm
+        open={showForm}
+        onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingBonus(null); } else setShowForm(true); }}
+        onSuccess={() => { setShowForm(false); setEditingBonus(null); fetchBonuses(); }}
+        editingBonus={editingBonus}
+      />
+
+      {/* Bonuses List */}
       <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-border bg-secondary/30">
               <th className="text-left p-4 text-sm font-medium">Casino</th>
               <th className="text-left p-4 text-sm font-medium hidden md:table-cell">Bonus</th>
+              <th className="text-left p-4 text-sm font-medium hidden lg:table-cell">Regions</th>
               <th className="text-center p-4 text-sm font-medium">Rating</th>
               <th className="text-center p-4 text-sm font-medium">Status</th>
               <th className="text-right p-4 text-sm font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {bonuses.map((bonus) => (
-              <tr key={bonus.id} className="border-b border-border/50 last:border-0">
+            {filteredBonuses.map((bonus) => (
+              <motion.tr
+                key={bonus.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors"
+              >
                 <td className="p-4">
                   <div className="flex items-center gap-3">
-                    {bonus.logo_url && <img src={bonus.logo_url} alt="" className="w-10 h-10 rounded object-cover" />}
+                    {bonus.logo_url ? (
+                      <img src={bonus.logo_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+                        <DollarSign className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    )}
                     <div>
                       <p className="font-medium">{bonus.name}</p>
-                      {bonus.promo_code && <code className="text-xs text-primary">{bonus.promo_code}</code>}
+                      {bonus.promo_code && (
+                        <code className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded">{bonus.promo_code}</code>
+                      )}
                     </div>
                   </div>
                 </td>
                 <td className="p-4 hidden md:table-cell">
-                  <span className="text-sm text-accent">{bonus.bonus_text}</span>
+                  <span className="text-sm text-accent font-medium">{bonus.bonus_text}</span>
+                  {bonus.free_spins > 0 && (
+                    <p className="text-xs text-muted-foreground">+ {bonus.free_spins} Free Spins</p>
+                  )}
+                </td>
+                <td className="p-4 hidden lg:table-cell">
+                  <div className="flex items-center gap-1">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {bonus.countries && bonus.countries.length > 0
+                        ? bonus.countries.slice(0, 2).join(", ") + (bonus.countries.length > 2 ? ` +${bonus.countries.length - 2}` : "")
+                        : "Worldwide"}
+                    </span>
+                  </div>
                 </td>
                 <td className="p-4 text-center">
-                  <span className="text-sm">{bonus.rating}/5</span>
-                </td>
-                <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    {bonus.is_exclusive && <span className="px-2 py-0.5 text-xs bg-accent/20 text-accent rounded">Exclusive</span>}
-                    {bonus.is_published ? <Eye className="w-4 h-4 text-green-500" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                  <div className="flex items-center justify-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-500" fill="currentColor" />
+                    <span className="text-sm font-medium">{bonus.rating}</span>
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(bonus)}><Pencil className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(bonus.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  <div className="flex items-center justify-center gap-2">
+                    {bonus.is_exclusive && (
+                      <Badge variant="outline" className="border-accent/30 text-accent text-xs">Exclusive</Badge>
+                    )}
+                    <button
+                      onClick={() => toggleFeatured(bonus)}
+                      className={`p-1 rounded transition-colors ${bonus.is_featured ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}
+                    >
+                      <Star className="w-4 h-4" fill={bonus.is_featured ? "currentColor" : "none"} />
+                    </button>
+                    <button
+                      onClick={() => togglePublished(bonus)}
+                      className={`p-1 rounded transition-colors ${bonus.is_published ? "text-green-500" : "text-muted-foreground hover:text-green-500"}`}
+                    >
+                      {bonus.is_published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
                   </div>
                 </td>
-              </tr>
+                <td className="p-4">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(bonus)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(bonus.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </td>
+              </motion.tr>
             ))}
-            {bonuses.length === 0 && (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No bonuses found.</td></tr>
+            {filteredBonuses.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-muted-foreground">No bonuses found.</td>
+              </tr>
             )}
           </tbody>
         </table>

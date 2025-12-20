@@ -1,11 +1,21 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, Upload, ExternalLink, Film } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, Star, Loader2, Film, Search, RefreshCw, Filter, LayoutGrid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { EnhancedVideoForm } from "@/components/admin/forms";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Video {
   id: string;
@@ -35,26 +45,11 @@ export default function AdminVideos() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const { toast } = useToast();
   const { user } = useAuth();
-
-  const [formData, setFormData] = useState({
-    title: "",
-    video_url: "",
-    video_file_url: "",
-    is_external: true,
-    thumbnail_url: "",
-    duration: "",
-    category_id: "",
-    multiplier: "",
-    is_featured: false,
-    is_published: true,
-  });
-
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -76,130 +71,9 @@ export default function AdminVideos() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      video_url: "",
-      video_file_url: "",
-      is_external: true,
-      thumbnail_url: "",
-      duration: "",
-      category_id: "",
-      multiplier: "",
-      is_featured: false,
-      is_published: true,
-    });
-    setEditingVideo(null);
-    setShowForm(false);
-    setVideoFile(null);
-    setThumbnailFile(null);
-  };
-
   const handleEdit = (video: Video) => {
-    setFormData({
-      title: video.title,
-      video_url: video.video_url,
-      video_file_url: video.video_file_url || "",
-      is_external: video.is_external ?? true,
-      thumbnail_url: video.thumbnail_url || "",
-      duration: video.duration || "",
-      category_id: video.category_id || "",
-      multiplier: video.multiplier || "",
-      is_featured: video.is_featured,
-      is_published: video.is_published,
-    });
     setEditingVideo(video);
     setShowForm(true);
-  };
-
-  const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
-    }
-  };
-
-  const handleThumbnailFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setThumbnailFile(file);
-    }
-  };
-
-  const uploadFile = async (file: File, bucket: string, folder: string): Promise<string> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file);
-
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
-    return publicUrl;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
-    try {
-      let videoFileUrl = formData.video_file_url;
-      let thumbnailUrl = formData.thumbnail_url;
-
-      // Upload video file if provided
-      if (videoFile && !formData.is_external) {
-        setIsUploading(true);
-        videoFileUrl = await uploadFile(videoFile, "videos", "uploads");
-        setIsUploading(false);
-      }
-
-      // Upload thumbnail if provided
-      if (thumbnailFile) {
-        thumbnailUrl = await uploadFile(thumbnailFile, "media", "thumbnails");
-      }
-
-      const videoData = {
-        title: formData.title,
-        video_url: formData.is_external ? formData.video_url : (videoFileUrl || formData.video_url),
-        video_file_url: formData.is_external ? null : videoFileUrl,
-        is_external: formData.is_external,
-        thumbnail_url: thumbnailUrl || null,
-        duration: formData.duration || null,
-        category_id: formData.category_id || null,
-        multiplier: formData.multiplier || null,
-        is_featured: formData.is_featured,
-        is_published: formData.is_published,
-        created_by: user?.id,
-      };
-
-      if (editingVideo) {
-        const { error } = await supabase
-          .from("videos")
-          .update(videoData)
-          .eq("id", editingVideo.id);
-
-        if (error) throw error;
-        toast({ title: "Video updated successfully" });
-      } else {
-        const { error } = await supabase.from("videos").insert(videoData);
-        if (error) throw error;
-        toast({ title: "Video added successfully" });
-      }
-
-      resetForm();
-      fetchData();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-      setIsUploading(false);
-    }
   };
 
   const handleDelete = async (id: string) => {
@@ -255,6 +129,25 @@ export default function AdminVideos() {
     }
   };
 
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return "Uncategorized";
+    return categories.find((c) => c.id === categoryId)?.name || "Unknown";
+  };
+
+  const filteredVideos = videos.filter((video) => {
+    const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = filterCategory === "all" || video.category_id === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Stats
+  const stats = {
+    total: videos.length,
+    published: videos.filter((v) => v.is_published).length,
+    featured: videos.filter((v) => v.is_featured).length,
+    totalViews: videos.reduce((acc, v) => acc + (v.views || 0), 0),
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -265,267 +158,241 @@ export default function AdminVideos() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Manage Videos</h2>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Add Video
-        </Button>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Videos</h1>
+          <p className="text-muted-foreground">Manage video content</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={fetchData}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => { setEditingVideo(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Add Video
+          </Button>
+        </div>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-2xl p-6"
-        >
-          <h3 className="text-xl font-bold mb-4">
-            {editingVideo ? "Edit Video" : "Add New Video"}
-          </h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Video Type Toggle */}
-            <div className="flex items-center gap-4 p-4 bg-secondary/50 rounded-xl">
-              <div className="flex items-center gap-2">
-                <ExternalLink className="w-4 h-4" />
-                <span className="text-sm font-medium">External Link (YouTube, etc.)</span>
-              </div>
-              <Switch
-                checked={!formData.is_external}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_external: !checked })}
-              />
-              <div className="flex items-center gap-2">
-                <Film className="w-4 h-4" />
-                <span className="text-sm font-medium">Upload Video File</span>
-              </div>
-            </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold">{stats.total}</p>
+          <p className="text-sm text-muted-foreground">Total Videos</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-500">{stats.published}</p>
+          <p className="text-sm text-muted-foreground">Published</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-primary">{stats.featured}</p>
+          <p className="text-sm text-muted-foreground">Featured</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-accent">{stats.totalViews.toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground">Total Views</p>
+        </div>
+      </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Title *</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-
-              {formData.is_external ? (
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Video URL (YouTube, Twitch, Kick) *</label>
-                  <input
-                    type="url"
-                    value={formData.video_url}
-                    onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-                    required
-                    placeholder="https://youtube.com/watch?v=... or https://twitch.tv/videos/... or https://kick.com/video/..."
-                    className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Supports YouTube, Twitch VODs, and Kick VODs</p>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Upload Video File *</label>
-                  <div className="flex items-center gap-2">
-                    <label className="flex-1 cursor-pointer">
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={handleVideoFileChange}
-                        className="hidden"
-                      />
-                      <div className="w-full px-4 py-2 bg-secondary border border-border rounded-xl flex items-center gap-2 hover:border-primary transition-colors">
-                        <Upload className="w-4 h-4" />
-                        <span className="text-sm truncate">
-                          {videoFile ? videoFile.name : "Choose video file..."}
-                        </span>
-                      </div>
-                    </label>
-                  </div>
-                  {formData.video_file_url && !videoFile && (
-                    <p className="text-xs text-muted-foreground mt-1">Current: {formData.video_file_url.split("/").pop()}</p>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="text-sm font-medium mb-1 block">Thumbnail</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="url"
-                    value={formData.thumbnail_url}
-                    onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
-                    placeholder="URL or upload below"
-                    className="flex-1 px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                  />
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" onChange={handleThumbnailFileChange} className="hidden" />
-                    <Button variant="outline" type="button" asChild>
-                      <span><Upload className="w-4 h-4" /></span>
-                    </Button>
-                  </label>
-                </div>
-                {thumbnailFile && <p className="text-xs text-muted-foreground mt-1">Selected: {thumbnailFile.name}</p>}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-1 block">Duration</label>
-                <input
-                  type="text"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder="12:34"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Category</label>
-                <select
-                  value={formData.category_id}
-                  onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                >
-                  <option value="">Select category</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Multiplier</label>
-                <input
-                  type="text"
-                  value={formData.multiplier}
-                  onChange={(e) => setFormData({ ...formData, multiplier: e.target.value })}
-                  placeholder="50,000x"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-6">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.is_featured}
-                  onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm">Featured</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={formData.is_published}
-                  onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm">Published</span>
-              </label>
-            </div>
-            <div className="flex gap-3">
-              <Button type="submit" disabled={isSaving || isUploading}>
-                {isUploading ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" />Uploading...</>
-                ) : isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Save Video"
-                )}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </motion.div>
-      )}
-
-      {/* Videos List */}
-      <div className="glass rounded-2xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-border bg-secondary/30">
-              <th className="text-left p-4 text-sm font-medium">Video</th>
-              <th className="text-left p-4 text-sm font-medium hidden md:table-cell">Type</th>
-              <th className="text-left p-4 text-sm font-medium hidden md:table-cell">Category</th>
-              <th className="text-center p-4 text-sm font-medium hidden md:table-cell">Views</th>
-              <th className="text-center p-4 text-sm font-medium">Status</th>
-              <th className="text-right p-4 text-sm font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {videos.map((video) => (
-              <tr key={video.id} className="border-b border-border/50 last:border-0">
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    {video.thumbnail_url && (
-                      <img
-                        src={video.thumbnail_url}
-                        alt={video.title}
-                        className="w-16 h-10 rounded object-cover"
-                      />
-                    )}
-                    <div>
-                      <p className="font-medium line-clamp-1">{video.title}</p>
-                      <p className="text-xs text-muted-foreground">{video.duration}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 hidden md:table-cell">
-                  <span className={`text-xs px-2 py-1 rounded ${video.is_external ? "bg-blue-500/20 text-blue-400" : "bg-green-500/20 text-green-400"}`}>
-                    {video.is_external ? "External" : "Uploaded"}
-                  </span>
-                </td>
-                <td className="p-4 hidden md:table-cell">
-                  <span className="text-sm text-muted-foreground">
-                    {categories.find((c) => c.id === video.category_id)?.name || "-"}
-                  </span>
-                </td>
-                <td className="p-4 text-center hidden md:table-cell">
-                  <span className="text-sm">{video.views}</span>
-                </td>
-                <td className="p-4 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => toggleFeatured(video)}
-                      className={`p-1 rounded ${video.is_featured ? "text-accent" : "text-muted-foreground"}`}
-                    >
-                      <Star className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => togglePublished(video)}
-                      className={video.is_published ? "text-green-500" : "text-muted-foreground"}
-                    >
-                      {video.is_published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(video)}>
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(video.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search videos..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-[180px]">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
             ))}
-            {videos.length === 0 && (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                  No videos found. Click "Add Video" to create your first video.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          </SelectContent>
+        </Select>
+        <div className="flex gap-1 border border-border rounded-lg p-1">
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setViewMode("grid")}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
+
+      {/* Enhanced Form Modal */}
+      <EnhancedVideoForm
+        open={showForm}
+        onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingVideo(null); } else setShowForm(true); }}
+        onSuccess={() => { setShowForm(false); setEditingVideo(null); fetchData(); }}
+        editingVideo={editingVideo}
+        categories={categories}
+      />
+
+      {/* Videos List/Grid */}
+      {viewMode === "list" ? (
+        <div className="glass rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30">
+                <th className="text-left p-4 text-sm font-medium">Video</th>
+                <th className="text-left p-4 text-sm font-medium hidden md:table-cell">Type</th>
+                <th className="text-left p-4 text-sm font-medium hidden md:table-cell">Category</th>
+                <th className="text-center p-4 text-sm font-medium hidden md:table-cell">Views</th>
+                <th className="text-center p-4 text-sm font-medium">Status</th>
+                <th className="text-right p-4 text-sm font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredVideos.map((video) => (
+                <tr key={video.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors">
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      {video.thumbnail_url ? (
+                        <img
+                          src={video.thumbnail_url}
+                          alt={video.title}
+                          className="w-16 h-10 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="w-16 h-10 rounded bg-secondary flex items-center justify-center">
+                          <Film className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium line-clamp-1">{video.title}</p>
+                        <p className="text-xs text-muted-foreground">{video.duration || "N/A"}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4 hidden md:table-cell">
+                    <Badge variant="outline" className={video.is_external ? "border-blue-500/30 text-blue-400" : "border-green-500/30 text-green-400"}>
+                      {video.is_external ? "External" : "Uploaded"}
+                    </Badge>
+                  </td>
+                  <td className="p-4 hidden md:table-cell">
+                    <span className="text-sm text-muted-foreground">{getCategoryName(video.category_id)}</span>
+                  </td>
+                  <td className="p-4 text-center hidden md:table-cell">
+                    <span className="text-sm">{video.views?.toLocaleString() || 0}</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => toggleFeatured(video)}
+                        className={`p-1 rounded transition-colors ${video.is_featured ? "text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}`}
+                      >
+                        <Star className="w-4 h-4" fill={video.is_featured ? "currentColor" : "none"} />
+                      </button>
+                      <button
+                        onClick={() => togglePublished(video)}
+                        className={`p-1 rounded transition-colors ${video.is_published ? "text-green-500" : "text-muted-foreground hover:text-green-500"}`}
+                      >
+                        {video.is_published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(video)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(video.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredVideos.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    No videos found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredVideos.map((video) => (
+            <motion.div
+              key={video.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-xl overflow-hidden group"
+            >
+              <div className="aspect-video relative">
+                {video.thumbnail_url ? (
+                  <img
+                    src={video.thumbnail_url}
+                    alt={video.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-secondary flex items-center justify-center">
+                    <Film className="w-10 h-10 text-muted-foreground" />
+                  </div>
+                )}
+                {video.multiplier && (
+                  <Badge className="absolute top-2 left-2 bg-primary">{video.multiplier}</Badge>
+                )}
+                {video.duration && (
+                  <Badge variant="secondary" className="absolute bottom-2 right-2">{video.duration}</Badge>
+                )}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <Button size="icon" variant="secondary" onClick={() => handleEdit(video)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button size="icon" variant="destructive" onClick={() => handleDelete(video.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-3">
+                <p className="font-medium line-clamp-1">{video.title}</p>
+                <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                  <span>{getCategoryName(video.category_id)}</span>
+                  <span>{video.views?.toLocaleString() || 0} views</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => toggleFeatured(video)}
+                    className={`p-1 rounded ${video.is_featured ? "text-yellow-500" : "text-muted-foreground"}`}
+                  >
+                    <Star className="w-4 h-4" fill={video.is_featured ? "currentColor" : "none"} />
+                  </button>
+                  <button
+                    onClick={() => togglePublished(video)}
+                    className={`p-1 rounded ${video.is_published ? "text-green-500" : "text-muted-foreground"}`}
+                  >
+                    {video.is_published ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

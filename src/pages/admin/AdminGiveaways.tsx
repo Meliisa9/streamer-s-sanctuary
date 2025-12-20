@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Users, Loader2, Infinity } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Loader2, Infinity, Gift, Trophy, Clock, RefreshCw, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { EnhancedGiveawayForm } from "@/components/admin/forms";
 
 interface Giveaway {
   id: string;
@@ -28,24 +31,9 @@ export default function AdminGiveaways() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingGiveaway, setEditingGiveaway] = useState<Giveaway | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { user } = useAuth();
-
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    prize: "",
-    prize_type: "Cash",
-    image_url: "",
-    max_entries: "",
-    winners_count: 1,
-    requirements: "",
-    status: "active",
-    end_date: "",
-    end_time: "",
-    is_exclusive: false,
-  });
 
   useEffect(() => {
     fetchGiveaways();
@@ -78,99 +66,9 @@ export default function AdminGiveaways() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      prize: "",
-      prize_type: "Cash",
-      image_url: "",
-      max_entries: "",
-      winners_count: 1,
-      requirements: "",
-      status: "active",
-      end_date: "",
-      end_time: "",
-      is_exclusive: false,
-    });
-    setEditingGiveaway(null);
-    setShowForm(false);
-  };
-
   const handleEdit = (giveaway: Giveaway) => {
-    const endDateTime = new Date(giveaway.end_date);
-    const dateStr = endDateTime.toISOString().split("T")[0];
-    const timeStr = endDateTime.toTimeString().slice(0, 5);
-    
-    setFormData({
-      title: giveaway.title,
-      description: giveaway.description || "",
-      prize: giveaway.prize,
-      prize_type: giveaway.prize_type || "Cash",
-      image_url: giveaway.image_url || "",
-      max_entries: giveaway.max_entries?.toString() || "",
-      winners_count: giveaway.winners_count,
-      requirements: giveaway.requirements?.join("\n") || "",
-      status: giveaway.status,
-      end_date: dateStr,
-      end_time: timeStr,
-      is_exclusive: giveaway.is_exclusive,
-    });
     setEditingGiveaway(giveaway);
     setShowForm(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-
-    // Combine date and time
-    let endDateISO: string;
-    if (formData.end_time) {
-      endDateISO = new Date(`${formData.end_date}T${formData.end_time}`).toISOString();
-    } else {
-      endDateISO = new Date(`${formData.end_date}T23:59:59`).toISOString();
-    }
-
-    // Handle max_entries: empty or 0 means unlimited (null)
-    const maxEntries = formData.max_entries ? parseInt(formData.max_entries) : null;
-    const finalMaxEntries = maxEntries === 0 ? null : maxEntries;
-
-    const giveawayData = {
-      title: formData.title,
-      description: formData.description || null,
-      prize: formData.prize,
-      prize_type: formData.prize_type,
-      image_url: formData.image_url || null,
-      max_entries: finalMaxEntries,
-      winners_count: formData.winners_count,
-      requirements: formData.requirements.split("\n").filter(Boolean),
-      status: formData.status,
-      end_date: endDateISO,
-      is_exclusive: formData.is_exclusive,
-      created_by: user?.id,
-    };
-
-    try {
-      if (editingGiveaway) {
-        const { error } = await supabase
-          .from("giveaways")
-          .update(giveawayData)
-          .eq("id", editingGiveaway.id);
-        if (error) throw error;
-        toast({ title: "Giveaway updated" });
-      } else {
-        const { error } = await supabase.from("giveaways").insert(giveawayData);
-        if (error) throw error;
-        toast({ title: "Giveaway created" });
-      }
-      resetForm();
-      fetchGiveaways();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleDelete = async (id: string) => {
@@ -197,12 +95,25 @@ export default function AdminGiveaways() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active": return "bg-green-500/20 text-green-500";
-      case "upcoming": return "bg-blue-500/20 text-blue-500";
-      case "locked": return "bg-amber-500/20 text-amber-500";
-      case "ended": return "bg-muted text-muted-foreground";
-      default: return "bg-muted text-muted-foreground";
+      case "active": return "bg-green-500/20 text-green-400 border-green-500/30";
+      case "upcoming": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      case "locked": return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+      case "ended": return "bg-muted text-muted-foreground border-border";
+      default: return "bg-muted text-muted-foreground border-border";
     }
+  };
+
+  const filteredGiveaways = giveaways.filter((g) =>
+    g.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    g.prize.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Stats
+  const stats = {
+    total: giveaways.length,
+    active: giveaways.filter((g) => g.status === "active").length,
+    totalEntries: Object.values(entryCounts).reduce((a, b) => a + b, 0),
+    exclusive: giveaways.filter((g) => g.is_exclusive).length,
   };
 
   if (isLoading) {
@@ -215,151 +126,75 @@ export default function AdminGiveaways() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Manage Giveaways</h2>
-        <Button onClick={() => setShowForm(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create Giveaway
-        </Button>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Giveaways</h1>
+          <p className="text-muted-foreground">Manage giveaways and prizes</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={fetchGiveaways}>
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+          <Button onClick={() => { setEditingGiveaway(null); setShowForm(true); }} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Create Giveaway
+          </Button>
+        </div>
       </div>
 
-      {showForm && (
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-2xl p-6">
-          <h3 className="text-xl font-bold mb-4">{editingGiveaway ? "Edit Giveaway" : "Create New Giveaway"}</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Title *</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Prize *</label>
-                <input
-                  type="text"
-                  value={formData.prize}
-                  onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
-                  required
-                  placeholder="$10,000"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Prize Type</label>
-                <select
-                  value={formData.prize_type}
-                  onChange={(e) => setFormData({ ...formData, prize_type: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Bonus">Bonus</option>
-                  <option value="Merchandise">Merchandise</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">End Date *</label>
-                <input
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                  required
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">End Time</label>
-                <input
-                  type="time"
-                  value={formData.end_time}
-                  onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-                <p className="text-xs text-muted-foreground mt-1">Leave empty for 23:59</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Image URL</label>
-                <input
-                  type="url"
-                  value={formData.image_url}
-                  onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Max Entries</label>
-                <input
-                  type="number"
-                  value={formData.max_entries}
-                  onChange={(e) => setFormData({ ...formData, max_entries: e.target.value })}
-                  placeholder="Leave empty or 0 for unlimited"
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-                <p className="text-xs text-muted-foreground mt-1">0 or empty = unlimited entries</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Winners Count</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.winners_count}
-                  onChange={(e) => setFormData({ ...formData, winners_count: parseInt(e.target.value) || 1 })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Status</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-                >
-                  <option value="upcoming">Upcoming</option>
-                  <option value="active">Active</option>
-                  <option value="locked">Locked</option>
-                  <option value="ended">Ended</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={2}
-                placeholder="Add a description for the giveaway..."
-                className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">Requirements (one per line)</label>
-              <textarea
-                value={formData.requirements}
-                onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
-                rows={3}
-                placeholder="Follow on Twitch&#10;Join Discord Server&#10;Subscribe to Newsletter"
-                className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
-              />
-            </div>
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={formData.is_exclusive} onChange={(e) => setFormData({ ...formData, is_exclusive: e.target.checked })} />
-              <span className="text-sm">Exclusive Giveaway</span>
-            </label>
-            <div className="flex gap-3">
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Giveaway"}
-              </Button>
-              <Button type="button" variant="outline" onClick={resetForm}>Cancel</Button>
-            </div>
-          </form>
-        </motion.div>
-      )}
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Gift className="w-5 h-5 text-primary" />
+          </div>
+          <p className="text-2xl font-bold">{stats.total}</p>
+          <p className="text-sm text-muted-foreground">Total Giveaways</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Clock className="w-5 h-5 text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-green-500">{stats.active}</p>
+          <p className="text-sm text-muted-foreground">Active</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Users className="w-5 h-5 text-accent" />
+          </div>
+          <p className="text-2xl font-bold text-accent">{stats.totalEntries}</p>
+          <p className="text-sm text-muted-foreground">Total Entries</p>
+        </div>
+        <div className="glass rounded-xl p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+          </div>
+          <p className="text-2xl font-bold text-yellow-500">{stats.exclusive}</p>
+          <p className="text-sm text-muted-foreground">Exclusive</p>
+        </div>
+      </div>
 
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search giveaways..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
+      {/* Enhanced Form Modal */}
+      <EnhancedGiveawayForm
+        open={showForm}
+        onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingGiveaway(null); } else setShowForm(true); }}
+        onSuccess={() => { setShowForm(false); setEditingGiveaway(null); fetchGiveaways(); }}
+        editingGiveaway={editingGiveaway}
+      />
+
+      {/* Giveaways List */}
       <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full">
           <thead>
@@ -372,36 +207,52 @@ export default function AdminGiveaways() {
             </tr>
           </thead>
           <tbody>
-            {giveaways.map((giveaway) => (
-              <tr key={giveaway.id} className="border-b border-border/50 last:border-0">
+            {filteredGiveaways.map((giveaway) => (
+              <motion.tr
+                key={giveaway.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors"
+              >
                 <td className="p-4">
-                  <p className="font-medium">{giveaway.title}</p>
-                  {giveaway.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-1">{giveaway.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Ends: {new Date(giveaway.end_date).toLocaleString()}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    {giveaway.image_url ? (
+                      <img src={giveaway.image_url} alt="" className="w-12 h-12 rounded-xl object-cover" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Gift className="w-5 h-5 text-primary" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium">{giveaway.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Ends: {new Date(giveaway.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
                 </td>
                 <td className="p-4 hidden md:table-cell">
-                  <span className="text-accent font-semibold">{giveaway.prize}</span>
+                  <div>
+                    <span className="text-accent font-semibold">{giveaway.prize}</span>
+                    <Badge variant="outline" className="ml-2 text-xs">{giveaway.prize_type}</Badge>
+                  </div>
                 </td>
                 <td className="p-4 text-center">
-                  <span className="flex items-center justify-center gap-1">
-                    <Users className="w-4 h-4" />
-                    {entryCounts[giveaway.id] || 0}
+                  <div className="flex items-center justify-center gap-1">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <span className="font-medium">{entryCounts[giveaway.id] || 0}</span>
                     {giveaway.max_entries ? (
                       <span className="text-muted-foreground">/ {giveaway.max_entries}</span>
                     ) : (
                       <Infinity className="w-3 h-3 text-muted-foreground ml-1" />
                     )}
-                  </span>
+                  </div>
                 </td>
                 <td className="p-4 text-center">
                   <select
                     value={giveaway.status}
                     onChange={(e) => updateStatus(giveaway.id, e.target.value)}
-                    className={`px-2 py-1 text-xs rounded-full ${getStatusColor(giveaway.status)} bg-transparent border-0 cursor-pointer`}
+                    className={`px-3 py-1.5 text-xs rounded-full border cursor-pointer ${getStatusColor(giveaway.status)} bg-transparent`}
                   >
                     <option value="upcoming">Upcoming</option>
                     <option value="active">Active</option>
@@ -410,15 +261,21 @@ export default function AdminGiveaways() {
                   </select>
                 </td>
                 <td className="p-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(giveaway)}><Pencil className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(giveaway.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                  <div className="flex items-center justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(giveaway)}>
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(giveaway.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </td>
-              </tr>
+              </motion.tr>
             ))}
-            {giveaways.length === 0 && (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No giveaways found.</td></tr>
+            {filteredGiveaways.length === 0 && (
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-muted-foreground">No giveaways found.</td>
+              </tr>
             )}
           </tbody>
         </table>
