@@ -3,20 +3,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Radio, X, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 const DISMISSED_KEY = "live_stream_alert_dismissed";
 
+// Paths where the live stream alert should NOT be shown
+const EXCLUDED_PATHS = ["/admin"];
+
 export function LiveStreamAlert() {
   const { settings } = useSiteSettings();
   const { user } = useAuth();
+  const location = useLocation();
   const [dismissed, setDismissed] = useState(false);
   const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
   const isLive = settings?.is_live === true;
   const platform = settings?.live_platform === "kick" ? "Kick" : "Twitch";
   const streamChannel = settings?.stream_channel || "";
+  
+  // Check if current path is excluded (admin pages)
+  const isExcludedPath = EXCLUDED_PATHS.some(path => location.pathname.startsWith(path));
 
   // Check session storage on mount
   useEffect(() => {
@@ -72,8 +79,8 @@ export function LiveStreamAlert() {
     );
   };
 
-  // Don't show if not live, dismissed, or haven't checked session yet
-  if (!isLive || dismissed || !hasCheckedSession) {
+  // Don't show if not live, dismissed, haven't checked session yet, or on excluded paths
+  if (!isLive || dismissed || !hasCheckedSession || isExcludedPath) {
     return null;
   }
 

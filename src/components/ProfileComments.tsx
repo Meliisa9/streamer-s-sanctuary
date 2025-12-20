@@ -250,41 +250,69 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
   const getLikeCount = (commentId: string) => likeCounts[commentId] || 0;
 
   return (
-    <div className="space-y-4">
-      <h3 className="font-semibold flex items-center gap-2">
-        <MessageSquare className="w-4 h-4" />
-        Profile Comments
-        {comments && comments.length > 0 && <span className="text-sm text-muted-foreground">({comments.length})</span>}
-      </h3>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-lg flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <MessageSquare className="w-4 h-4 text-primary" />
+          </div>
+          Profile Comments
+          {comments && comments.length > 0 && (
+            <span className="text-sm font-normal text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full">
+              {comments.length}
+            </span>
+          )}
+        </h3>
+      </div>
 
+      {/* Comment Form */}
       {user && (
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <MentionInput value={newComment} onChange={setNewComment} placeholder="Leave a comment... Use @ to mention users" rows={2} maxLength={500} />
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 rounded-xl bg-secondary/30 border border-border/50">
+          <MentionInput 
+            value={newComment} 
+            onChange={setNewComment} 
+            placeholder="Write a comment... Use @ to mention users" 
+            rows={3} 
+            maxLength={500} 
+          />
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-              <span className="text-xs text-muted-foreground">{newComment.length}/500</span>
+              <span className="text-xs text-muted-foreground">
+                {newComment.length}<span className="text-muted-foreground/50">/500</span>
+              </span>
             </div>
-            <Button type="submit" size="sm" disabled={!newComment.trim() || addCommentMutation.isPending} className="gap-2">
+            <Button 
+              type="submit" 
+              size="sm" 
+              disabled={!newComment.trim() || addCommentMutation.isPending} 
+              className="gap-2 px-4"
+            >
               {addCommentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Post
+              Post Comment
             </Button>
           </div>
         </form>
       )}
 
-      {!user && <p className="text-sm text-muted-foreground text-center py-2">Sign in to leave a comment</p>}
+      {!user && (
+        <div className="text-center py-4 px-6 rounded-xl bg-secondary/20 border border-dashed border-border">
+          <p className="text-sm text-muted-foreground">Sign in to leave a comment</p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-4">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : comments && comments.length > 0 ? (
-        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
           {comments.map((comment, index) => {
             const author = commentAuthors?.[comment.author_id];
             const liked = isLiked(comment.id);
             const likeCount = getLikeCount(comment.id);
+            const isHighlighted = highlightedCommentId === comment.id;
 
             return (
               <motion.div
@@ -294,79 +322,109 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
                 animate={{ 
                   opacity: 1, 
                   y: 0,
-                  boxShadow: highlightedCommentId === comment.id 
-                    ? "0 0 0 2px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.25)"
-                    : "none"
                 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
-                className={`flex gap-3 p-3 bg-secondary/30 rounded-xl scroll-mt-20 transition-all duration-500 ${
-                  highlightedCommentId === comment.id
-                    ? "ring-2 ring-primary bg-primary/10 scale-[1.02]"
-                    : ""
+                transition={{ delay: index * 0.04, duration: 0.25 }}
+                className={`relative group rounded-xl scroll-mt-20 transition-all duration-500 overflow-hidden ${
+                  isHighlighted
+                    ? "ring-2 ring-primary shadow-lg shadow-primary/20"
+                    : "hover:shadow-md"
                 }`}
               >
-                <UserAvatarLink userId={comment.author_id} username={author?.username} avatarUrl={author?.avatar_url} size="md" className="flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <UserAvatarLink
-                      userId={comment.author_id}
-                      username={author?.username}
-                      avatarUrl={author?.avatar_url}
-                      displayName={author?.display_name}
-                      className="font-medium text-sm truncate hover:text-primary transition-colors"
-                    >
-                      {author?.display_name || author?.username || "Anonymous"}
-                    </UserAvatarLink>
-                    <span className="text-xs text-muted-foreground flex-shrink-0">{format(new Date(comment.created_at), "MMM d")}</span>
-                  </div>
+                {/* Highlighted background glow */}
+                {isHighlighted && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20"
+                  />
+                )}
+                
+                <div className={`relative flex gap-3 p-4 ${
+                  isHighlighted 
+                    ? "bg-primary/5" 
+                    : "bg-secondary/40 hover:bg-secondary/60"
+                } transition-colors`}>
+                  <UserAvatarLink 
+                    userId={comment.author_id} 
+                    username={author?.username} 
+                    avatarUrl={author?.avatar_url} 
+                    size="md" 
+                    className="flex-shrink-0 ring-2 ring-background shadow-sm" 
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <UserAvatarLink
+                          userId={comment.author_id}
+                          username={author?.username}
+                          avatarUrl={author?.avatar_url}
+                          displayName={author?.display_name}
+                          className="font-semibold text-sm truncate hover:text-primary transition-colors"
+                        >
+                          {author?.display_name || author?.username || "Anonymous"}
+                        </UserAvatarLink>
+                        <span className="text-[10px] text-muted-foreground/60 flex-shrink-0">•</span>
+                        <span className="text-xs text-muted-foreground/70 flex-shrink-0">
+                          {format(new Date(comment.created_at), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                    </div>
 
-                  <p className="text-sm text-muted-foreground break-words">{parseMentions(comment.content)}</p>
+                    <p className="text-sm text-foreground/90 break-words leading-relaxed">
+                      {parseMentions(comment.content)}
+                    </p>
 
-                  <div className="flex gap-2 mt-2">
-                    {user && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => likeCommentMutation.mutate({ commentId: comment.id, isLiked: liked })}
-                        disabled={likeCommentMutation.isPending}
-                        className={`h-6 px-2 text-xs gap-1 ${liked ? "text-destructive" : "text-muted-foreground"}`}
-                      >
-                        <Heart className={`w-3 h-3 ${liked ? "fill-current" : ""}`} />
-                        {likeCount > 0 && likeCount}
-                      </Button>
-                    )}
+                    {/* Actions Row */}
+                    <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/30">
+                      {user && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => likeCommentMutation.mutate({ commentId: comment.id, isLiked: liked })}
+                          disabled={likeCommentMutation.isPending}
+                          className={`h-7 px-2.5 text-xs gap-1.5 rounded-lg transition-all ${
+                            liked 
+                              ? "text-red-500 bg-red-500/10 hover:bg-red-500/20" 
+                              : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                          }`}
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${liked ? "fill-current" : ""}`} />
+                          {likeCount > 0 && <span>{likeCount}</span>}
+                        </Button>
+                      )}
 
-                    {!user && likeCount > 0 && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Heart className="w-3 h-3" />
-                        {likeCount}
-                      </span>
-                    )}
+                      {!user && likeCount > 0 && (
+                        <span className="h-7 px-2.5 text-xs text-muted-foreground flex items-center gap-1.5 bg-secondary/50 rounded-lg">
+                          <Heart className="w-3.5 h-3.5" />
+                          {likeCount}
+                        </span>
+                      )}
 
-                    {canDelete(comment) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteCommentMutation.mutate(comment.id)}
-                        disabled={deleteCommentMutation.isPending}
-                        className="h-6 px-2 text-xs text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Delete
-                      </Button>
-                    )}
+                      {canDelete(comment) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteCommentMutation.mutate(comment.id)}
+                          disabled={deleteCommentMutation.isPending}
+                          className="h-7 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </Button>
+                      )}
 
-                    {user && user.id !== comment.author_id && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleReportClick(comment.id)}
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                      >
-                        <Flag className="w-3 h-3 mr-1" />
-                        Report
-                      </Button>
-                    )}
+                      {user && user.id !== comment.author_id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReportClick(comment.id)}
+                          className="h-7 px-2.5 text-xs text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded-lg gap-1.5 ml-auto"
+                        >
+                          <Flag className="w-3.5 h-3.5" />
+                          Report
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -374,7 +432,11 @@ export function ProfileComments({ profileUserId }: ProfileCommentsProps) {
           })}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first!</p>
+        <div className="text-center py-8 px-6 rounded-xl bg-secondary/20 border border-dashed border-border">
+          <MessageSquare className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
+          <p className="text-sm text-muted-foreground font-medium">No comments yet</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Be the first to share your thoughts!</p>
+        </div>
       )}
 
       {reportingCommentId && (

@@ -161,11 +161,31 @@ export default function Videos() {
     return "https://images.unsplash.com/photo-1596838132731-3301c3fd4317?w=800&h=450&fit=crop";
   };
 
-  const handleVideoClick = (video: Video) => {
+  const handleVideoClick = async (video: Video) => {
     const isLocalVideo = video.video_file_url && !video.is_external;
     const isYouTube = extractYouTubeId(video.video_url);
     const isTwitch = isTwitchUrl(video.video_url);
     const isKick = isKickUrl(video.video_url);
+    
+    // Increment view count
+    try {
+      const { data: currentVideo } = await supabase
+        .from("videos")
+        .select("views")
+        .eq("id", video.id)
+        .single();
+      
+      const currentViews = currentVideo?.views || 0;
+      await supabase
+        .from("videos")
+        .update({ views: currentViews + 1 })
+        .eq("id", video.id);
+      
+      // Invalidate to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
+    } catch (error) {
+      console.error("Error incrementing view count:", error);
+    }
     
     // Open modal for YouTube, Twitch, Kick, and local videos
     if (isLocalVideo || isYouTube || isTwitch || isKick) {
