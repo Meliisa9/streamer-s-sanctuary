@@ -112,6 +112,8 @@ const navSections: NavSection[] = [
     items: [
       { icon: Crosshair, label: "Bonus Hunt", path: "/admin/bonus-hunt", roles: ["admin", "moderator"] },
       { icon: BarChart3, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
+      { icon: Target, label: "Predictions", path: "/admin/predictions", roles: ["admin", "moderator"] },
+      { icon: Trophy, label: "Win Gallery", path: "/admin/win-gallery", roles: ["admin", "moderator"] },
     ],
   },
   {
@@ -121,6 +123,7 @@ const navSections: NavSection[] = [
     items: [
       { icon: Users, label: "Streamers", path: "/admin/streamers", roles: ["admin", "moderator"] },
       { icon: Tv, label: "Live Stream", path: "/admin/stream", roles: ["admin", "moderator"] },
+      { icon: BarChart3, label: "Streamer Stats", path: "/admin/streamer-stats", roles: ["admin", "moderator"] },
     ],
   },
   {
@@ -143,6 +146,7 @@ const navSections: NavSection[] = [
       { icon: Palette, label: "Branding", path: "/admin/settings/branding", roles: ["admin"] },
       { icon: Palette, label: "White Label", path: "/admin/settings/white-label", roles: ["admin"] },
       { icon: Navigation, label: "Navigation", path: "/admin/settings/navigation", roles: ["admin"] },
+      { icon: FileText, label: "Language", path: "/admin/settings/language", roles: ["admin"] },
       { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin"] },
       { icon: Send, label: "Send Notifications", path: "/admin/settings/notifications", roles: ["admin"] },
       { icon: Webhook, label: "Webhooks", path: "/admin/webhooks", roles: ["admin"] },

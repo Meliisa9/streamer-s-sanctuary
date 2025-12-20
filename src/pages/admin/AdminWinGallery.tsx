@@ -39,7 +39,7 @@ interface BigWin {
   profile?: {
     username: string | null;
     display_name: string | null;
-  };
+  } | null;
 }
 
 export default function AdminWinGallery() {
@@ -61,7 +61,7 @@ export default function AdminWinGallery() {
     setIsLoading(true);
     let query = supabase
       .from("big_wins")
-      .select("*, profile:profiles!big_wins_user_id_fkey(username, display_name)")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (statusFilter !== "all") {
@@ -71,7 +71,21 @@ export default function AdminWinGallery() {
     const { data, error } = await query;
 
     if (!error && data) {
-      setWins(data as BigWin[]);
+      // Fetch profiles for each win
+      const userIds = [...new Set(data.map(w => w.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name")
+        .in("user_id", userIds);
+      
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      
+      const winsWithProfiles = data.map(win => ({
+        ...win,
+        profile: profileMap.get(win.user_id) || null
+      }));
+      
+      setWins(winsWithProfiles as BigWin[]);
     }
     setIsLoading(false);
   };

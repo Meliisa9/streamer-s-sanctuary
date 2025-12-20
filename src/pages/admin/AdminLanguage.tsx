@@ -96,7 +96,7 @@ export default function AdminLanguage() {
         .single();
 
       if (customKeysSetting?.value && Array.isArray(customKeysSetting.value)) {
-        setCustomKeys(customKeysSetting.value);
+        setCustomKeys(customKeysSetting.value as { key: string; defaultValue: string }[]);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);

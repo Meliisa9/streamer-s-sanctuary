@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { OnlinePresenceProvider } from "@/contexts/OnlinePresenceContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DailyRewardsManager } from "@/components/DailyRewardsManager";
@@ -70,6 +71,13 @@ import AdminRoleManagement from "./pages/admin/AdminRoleManagement";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
 import AdminEngagement from "./pages/admin/AdminEngagement";
 import AdminWhiteLabel from "./pages/admin/AdminWhiteLabel";
+import AdminPredictions from "./pages/admin/AdminPredictions";
+import AdminWinGallery from "./pages/admin/AdminWinGallery";
+import AdminStreamerStats from "./pages/admin/AdminStreamerStats";
+import AdminLanguage from "./pages/admin/AdminLanguage";
+import Predictions from "./pages/Predictions";
+import WinGallery from "./pages/WinGallery";
+import StreamerStats from "./pages/StreamerStats";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -93,15 +101,16 @@ const App = () => (
           <DevDiagnosticsOverlay />
           <OnlinePresenceProvider>
             <SiteSettingsProvider>
-              <TooltipProvider>
-                <DailyRewardsManager />
-                <DailyRewardPopup />
-                <LiveStreamAlert />
-                <CookieConsent />
-                <Toaster />
-                <Sonner />
+              <LanguageProvider>
+                <TooltipProvider>
+                  <DailyRewardsManager />
+                  <DailyRewardPopup />
+                  <LiveStreamAlert />
+                  <CookieConsent />
+                  <Toaster />
+                  <Sonner />
 
-                <Routes>
+                  <Routes>
                   <Route path="/auth" element={<Auth />} />
 
                   {/* Public routes with MainLayout */}
@@ -126,6 +135,9 @@ const App = () => (
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/achievements" element={<Achievements />} />
                     <Route path="/bonus-hunt" element={<BonusHunt />} />
+                    <Route path="/predictions" element={<Predictions />} />
+                    <Route path="/wins" element={<WinGallery />} />
+                    <Route path="/streamer-stats" element={<StreamerStats />} />
                     <Route path="/user/:usernameOrId" element={<UserProfile />} />
                   </Route>
 
@@ -168,13 +180,18 @@ const App = () => (
                     <Route path="webhooks" element={<AdminWebhooks />} />
                     <Route path="engagement" element={<AdminEngagement />} />
                     <Route path="bonus-hunt" element={<AdminBonusHunt />} />
+                    <Route path="predictions" element={<AdminPredictions />} />
+                    <Route path="win-gallery" element={<AdminWinGallery />} />
+                    <Route path="streamer-stats" element={<AdminStreamerStats />} />
+                    <Route path="settings/language" element={<AdminLanguage />} />
                     <Route path="audit" element={<AdminAuditLog />} />
                     <Route path="activity" element={<AdminActivityLog />} />
                   </Route>
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </TooltipProvider>
+                </TooltipProvider>
+              </LanguageProvider>
             </SiteSettingsProvider>
           </OnlinePresenceProvider>
         </AuthProvider>
