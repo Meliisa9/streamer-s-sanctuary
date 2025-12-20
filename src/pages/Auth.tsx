@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Twitch, MessageCircle, Mail, Lock, User, ArrowLeft, Loader2, 
+  Twitch, MessageCircle, Mail, Lock, User, X, Loader2, 
   Eye, EyeOff, CheckCircle, Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { Sidebar } from "@/components/layout/Sidebar";
+import { Footer } from "@/components/layout/Footer";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import {
   Tooltip,
   TooltipContent,
@@ -38,6 +41,7 @@ function Auth() {
   const [errors, setErrors] = useState<{ email?: string; password?: string; username?: string }>({});
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -48,6 +52,23 @@ function Auth() {
       navigate("/");
     }
   }, [user, navigate]);
+
+  useEffect(() => {
+    const checkSidebarState = () => {
+      const sidebar = document.querySelector("aside");
+      if (sidebar) {
+        setSidebarCollapsed(sidebar.clientWidth < 100);
+      }
+    };
+
+    const observer = new ResizeObserver(checkSidebarState);
+    const sidebar = document.querySelector("aside");
+    if (sidebar) {
+      observer.observe(sidebar);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   // Safety: if an auth request gets stuck, auto-unlock the UI
   useEffect(() => {
@@ -272,353 +293,364 @@ function Auth() {
   const strengthColors = ["bg-destructive", "bg-orange-500", "bg-yellow-500", "bg-lime-500", "bg-green-500"];
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Full Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-purple-900/20" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-purple-500/20 via-transparent to-transparent" />
+    <div className="min-h-screen flex">
+      {/* Sidebar */}
+      <Sidebar />
       
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{ y: [-20, 20, -20], x: [-10, 10, -10] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-20 left-20 w-72 h-72 bg-primary/20 rounded-full blur-[100px]"
-        />
-        <motion.div
-          animate={{ y: [20, -20, 20], x: [10, -10, 10] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-[120px]"
-        />
-        <motion.div
-          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px]"
-        />
-      </div>
-
-      {/* Auth Popup */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="relative z-10 w-full max-w-md mx-4"
+      {/* Main Content Area */}
+      <motion.main
+        className="flex-1 flex flex-col min-h-screen relative"
+        animate={{
+          marginLeft: sidebarCollapsed ? 80 : 260,
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        {/* Back Button */}
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors group"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Back to Home
-        </button>
-
-        {/* Form Card */}
-        <div className="bg-card/90 backdrop-blur-xl rounded-3xl p-8 border border-border/50 shadow-2xl shadow-black/20">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={mode}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-                  {mode === "forgot" ? (
-                    <Mail className="w-8 h-8 text-white" />
-                  ) : mode === "signup" ? (
-                    <User className="w-8 h-8 text-white" />
-                  ) : (
-                    <Lock className="w-8 h-8 text-white" />
-                  )}
-                </div>
-                <h1 className="text-2xl font-bold mb-2">
-                  {mode === "login" ? "Welcome Back" : mode === "signup" ? "Create Account" : "Reset Password"}
-                </h1>
-                <p className="text-muted-foreground text-sm">
-                  {mode === "login"
-                    ? "Sign in to access your account"
-                    : mode === "signup"
-                    ? "Join the community today"
-                    : "Enter your email to receive a reset link"}
-                </p>
-              </motion.div>
-            </AnimatePresence>
+        {/* Top bar */}
+        <div className="flex items-center gap-4 p-4">
+          <div className="flex-1 flex justify-center">
+            <GlobalSearch />
           </div>
+        </div>
+        
+        {/* Background content placeholder */}
+        <div className="flex-1 px-6 opacity-30 pointer-events-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-48 rounded-2xl bg-card/50 border border-border/30" />
+            ))}
+          </div>
+        </div>
+        
+        <Footer />
+      </motion.main>
 
-          {/* OAuth Buttons */}
-          {mode !== "forgot" && (
-            <>
-              <div className="grid grid-cols-3 gap-3 mb-6">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-12 bg-[#9146FF]/10 border-[#9146FF]/30 hover:bg-[#9146FF]/20 hover:border-[#9146FF]/50 transition-all"
-                        onClick={() => handleOAuthLogin("twitch")}
-                        disabled={isLoading}
-                      >
-                        <Twitch className="w-5 h-5 text-[#9146FF]" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Sign in with Twitch</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-12 bg-[#5865F2]/10 border-[#5865F2]/30 hover:bg-[#5865F2]/20 hover:border-[#5865F2]/50 transition-all"
-                        onClick={() => handleOAuthLogin("discord")}
-                        disabled={isLoading}
-                      >
-                        <MessageCircle className="w-5 h-5 text-[#5865F2]" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Sign in with Discord</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-12 bg-[#53FC18]/10 border-[#53FC18]/30 hover:bg-[#53FC18]/20 hover:border-[#53FC18]/50 transition-all"
-                        onClick={() => handleKickLogin()}
-                        disabled={isLoading}
-                      >
-                        <span className="w-5 h-5 flex items-center justify-center font-bold text-[#53FC18]">K</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Sign in with Kick</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+      {/* Modal Overlay */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Backdrop */}
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+        
+        {/* Auth Popup */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="relative z-10 w-full max-w-md mx-4"
+        >
+          {/* Form Card */}
+          <div className="bg-card/95 backdrop-blur-xl rounded-3xl p-8 border border-border/50 shadow-2xl shadow-black/20">
+            {/* Close Button */}
+            <button
+              onClick={() => navigate("/")}
+              className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary/50 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-              {/* Divider */}
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-3 text-muted-foreground">or continue with email</span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Email Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Username</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      setErrors((prev) => ({ ...prev, username: undefined }));
-                    }}
-                    placeholder="Choose a username"
-                    className={`w-full pl-10 pr-4 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                      errors.username ? "border-destructive" : "border-border/50 focus:border-primary"
-                    }`}
-                  />
-                </div>
-                {errors.username && (
-                  <p className="text-sm text-destructive">{errors.username}</p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setErrors((prev) => ({ ...prev, email: undefined }));
-                  }}
-                  placeholder="Enter your email"
-                  className={`w-full pl-10 pr-4 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                    errors.email ? "border-destructive" : "border-border/50 focus:border-primary"
-                  }`}
-                />
-              </div>
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email}</p>
-              )}
-            </div>
-
-            {mode !== "forgot" && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">Password</label>
-                    {mode === "signup" && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button type="button" className="text-muted-foreground hover:text-foreground">
-                              <Info className="w-4 h-4" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="w-64 p-3">
-                            <p className="font-medium mb-2">Password Requirements</p>
-                            <ul className="space-y-1.5">
-                              {passwordRequirements.map((req, i) => (
-                                <li key={i} className="flex items-center gap-2 text-sm">
-                                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                                    req.test(password) ? "bg-green-500" : "bg-muted"
-                                  }`}>
-                                    {req.test(password) && <CheckCircle className="w-3 h-3 text-white" />}
-                                  </div>
-                                  <span className={req.test(password) ? "text-foreground" : "text-muted-foreground"}>
-                                    {req.label}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={mode}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
+                    {mode === "forgot" ? (
+                      <Mail className="w-8 h-8 text-white" />
+                    ) : mode === "signup" ? (
+                      <User className="w-8 h-8 text-white" />
+                    ) : (
+                      <Lock className="w-8 h-8 text-white" />
                     )}
                   </div>
-                  {mode === "login" && (
-                    <button
-                      type="button"
-                      onClick={() => { setMode("forgot"); setResetEmailSent(false); }}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </button>
+                  <h1 className="text-2xl font-bold mb-2">
+                    {mode === "login" ? "Welcome Back" : mode === "signup" ? "Create Account" : "Reset Password"}
+                  </h1>
+                  <p className="text-muted-foreground text-sm">
+                    {mode === "login"
+                      ? "Sign in to access your account"
+                      : mode === "signup"
+                      ? "Join the community today"
+                      : "Enter your email to receive a reset link"}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* OAuth Buttons */}
+            {mode !== "forgot" && (
+              <>
+                <div className="grid grid-cols-3 gap-3 mb-6">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 bg-[#9146FF]/10 border-[#9146FF]/30 hover:bg-[#9146FF]/20 hover:border-[#9146FF]/50 transition-all"
+                          onClick={() => handleOAuthLogin("twitch")}
+                          disabled={isLoading}
+                        >
+                          <Twitch className="w-5 h-5 text-[#9146FF]" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sign in with Twitch</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 bg-[#5865F2]/10 border-[#5865F2]/30 hover:bg-[#5865F2]/20 hover:border-[#5865F2]/50 transition-all"
+                          onClick={() => handleOAuthLogin("discord")}
+                          disabled={isLoading}
+                        >
+                          <MessageCircle className="w-5 h-5 text-[#5865F2]" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sign in with Discord</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-12 bg-[#53FC18]/10 border-[#53FC18]/30 hover:bg-[#53FC18]/20 hover:border-[#53FC18]/50 transition-all"
+                          onClick={() => handleKickLogin()}
+                          disabled={isLoading}
+                        >
+                          <span className="w-5 h-5 flex items-center justify-center font-bold text-[#53FC18]">K</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Sign in with Kick</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+                {/* Divider */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-3 text-muted-foreground">or continue with email</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Email Form */}
+            <form onSubmit={handleEmailAuth} className="space-y-4">
+              {mode === "signup" && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Username</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setErrors((prev) => ({ ...prev, username: undefined }));
+                      }}
+                      placeholder="Choose a username"
+                      className={`w-full pl-10 pr-4 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        errors.username ? "border-destructive" : "border-border/50 focus:border-primary"
+                      }`}
+                    />
+                  </div>
+                  {errors.username && (
+                    <p className="text-sm text-destructive">{errors.username}</p>
                   )}
                 </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Email</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
+                    type="email"
+                    value={email}
                     onChange={(e) => {
-                      setPassword(e.target.value);
-                      setErrors((prev) => ({ ...prev, password: undefined }));
+                      setEmail(e.target.value);
+                      setErrors((prev) => ({ ...prev, email: undefined }));
                     }}
-                    placeholder="Enter your password"
-                    className={`w-full pl-10 pr-12 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
-                      errors.password ? "border-destructive" : "border-border/50 focus:border-primary"
+                    placeholder="Enter your email"
+                    className={`w-full pl-10 pr-4 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                      errors.email ? "border-destructive" : "border-border/50 focus:border-primary"
                     }`}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
+                {errors.email && (
+                  <p className="text-sm text-destructive">{errors.email}</p>
                 )}
-                {mode === "signup" && password.length > 0 && (
-                  <div className="space-y-1.5">
-                    <div className="flex gap-1">
-                      {[0, 1, 2, 3, 4].map((i) => (
-                        <div
-                          key={i}
-                          className={`h-1.5 flex-1 rounded-full transition-colors ${
-                            i < getPasswordStrength() ? strengthColors[getPasswordStrength() - 1] : "bg-muted"
-                          }`}
-                        />
-                      ))}
+              </div>
+
+              {mode !== "forgot" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium">Password</label>
+                      {mode === "signup" && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" className="text-muted-foreground hover:text-foreground">
+                                <Info className="w-4 h-4" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="w-64 p-3">
+                              <p className="font-medium mb-2">Password Requirements</p>
+                              <ul className="space-y-1.5">
+                                {passwordRequirements.map((req, i) => (
+                                  <li key={i} className="flex items-center gap-2 text-sm">
+                                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                      req.test(password) ? "bg-green-500" : "bg-muted"
+                                    }`}>
+                                      {req.test(password) && <CheckCircle className="w-3 h-3 text-white" />}
+                                    </div>
+                                    <span className={req.test(password) ? "text-foreground" : "text-muted-foreground"}>
+                                      {req.label}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {getPasswordStrength() <= 1 && "Weak password"}
-                      {getPasswordStrength() === 2 && "Fair password"}
-                      {getPasswordStrength() === 3 && "Good password"}
-                      {getPasswordStrength() === 4 && "Strong password"}
-                      {getPasswordStrength() === 5 && "Excellent password"}
-                    </p>
+                    {mode === "login" && (
+                      <button
+                        type="button"
+                        onClick={() => { setMode("forgot"); setResetEmailSent(false); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
-
-            {mode === "signup" && (
-              <div className="flex items-start gap-3 pt-2">
-                <input
-                  type="checkbox"
-                  id="terms"
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-border bg-secondary accent-primary"
-                />
-                <label htmlFor="terms" className="text-sm text-muted-foreground">
-                  I agree to the{" "}
-                  <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
-                  {" "}and{" "}
-                  <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
-                </label>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full h-12 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white font-semibold rounded-xl shadow-lg shadow-primary/25 transition-all"
-              disabled={isLoading || (mode === "forgot" && resetEmailSent)}
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : mode === "login" ? (
-                "Sign In"
-              ) : mode === "signup" ? (
-                "Create Account"
-              ) : resetEmailSent ? (
-                <span className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  Email Sent!
-                </span>
-              ) : (
-                "Send Reset Link"
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setErrors((prev) => ({ ...prev, password: undefined }));
+                      }}
+                      placeholder="Enter your password"
+                      className={`w-full pl-10 pr-12 py-3 bg-secondary/50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all ${
+                        errors.password ? "border-destructive" : "border-border/50 focus:border-primary"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password}</p>
+                  )}
+                  {mode === "signup" && password.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex gap-1">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                          <div
+                            key={i}
+                            className={`h-1.5 flex-1 rounded-full transition-colors ${
+                              i < getPasswordStrength() ? strengthColors[getPasswordStrength() - 1] : "bg-muted"
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {getPasswordStrength() <= 1 && "Weak password"}
+                        {getPasswordStrength() === 2 && "Fair password"}
+                        {getPasswordStrength() === 3 && "Good password"}
+                        {getPasswordStrength() === 4 && "Strong password"}
+                        {getPasswordStrength() === 5 && "Excellent password"}
+                      </p>
+                    </div>
+                  )}
+                </div>
               )}
-            </Button>
-          </form>
 
-          {/* Toggle Mode */}
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            {mode === "login" ? "Don't have an account?" : mode === "signup" ? "Already have an account?" : "Remember your password?"}{" "}
-            <button
-              type="button"
-              onClick={() => { 
-                setMode(mode === "forgot" ? "login" : mode === "login" ? "signup" : "login"); 
-                setResetEmailSent(false);
-                setErrors({});
-              }}
-              className="text-primary hover:underline font-medium"
-            >
-              {mode === "login" ? "Sign up" : "Sign in"}
-            </button>
+              {mode === "signup" && (
+                <div className="flex items-start gap-3 pt-2">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    className="mt-1 w-4 h-4 rounded border-border bg-secondary accent-primary"
+                  />
+                  <label htmlFor="terms" className="text-sm text-muted-foreground">
+                    I agree to the{" "}
+                    <a href="/terms" className="text-primary hover:underline">Terms of Service</a>
+                    {" "}and{" "}
+                    <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
+                  </label>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                className="w-full h-12 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90 text-white font-semibold rounded-xl shadow-lg shadow-primary/25 transition-all"
+                disabled={isLoading || (mode === "forgot" && resetEmailSent)}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : mode === "login" ? (
+                  "Sign In"
+                ) : mode === "signup" ? (
+                  "Create Account"
+                ) : resetEmailSent ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Email Sent!
+                  </span>
+                ) : (
+                  "Send Reset Link"
+                )}
+              </Button>
+            </form>
+
+            {/* Toggle Mode */}
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              {mode === "login" ? "Don't have an account?" : mode === "signup" ? "Already have an account?" : "Remember your password?"}{" "}
+              <button
+                type="button"
+                onClick={() => { 
+                  setMode(mode === "forgot" ? "login" : mode === "login" ? "signup" : "login"); 
+                  setResetEmailSent(false);
+                  setErrors({});
+                }}
+                className="text-primary hover:underline font-medium"
+              >
+                {mode === "login" ? "Sign up" : "Sign in"}
+              </button>
+            </p>
+          </div>
+
+          {/* Terms */}
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            By continuing, you agree to our{" "}
+            <a href="/terms" className="text-primary hover:underline">Terms</a>
+            {" "}and{" "}
+            <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
           </p>
-        </div>
-
-        {/* Terms */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          By continuing, you agree to our{" "}
-          <a href="/terms" className="text-primary hover:underline">Terms</a>
-          {" "}and{" "}
-          <a href="/privacy" className="text-primary hover:underline">Privacy Policy</a>
-        </p>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
