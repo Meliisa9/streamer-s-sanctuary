@@ -49,10 +49,12 @@ export default function WinGallery() {
     provider: "",
     bet_amount: "",
     win_amount: "",
-    multiplier: "",
     image_url: "",
+    video_url: "",
     description: "",
   });
+  const [uploadType, setUploadType] = useState<"url" | "file">("url");
+  const [isUploading, setIsUploading] = useState(false);
   
   const { user } = useAuth();
   const { toast } = useToast();
@@ -161,14 +163,20 @@ export default function WinGallery() {
 
     setIsSubmitting(true);
 
+    // Calculate multiplier from bet and win amounts
+    const betAmount = newWin.bet_amount ? parseFloat(newWin.bet_amount) : null;
+    const winAmount = parseFloat(newWin.win_amount);
+    const calculatedMultiplier = betAmount && betAmount > 0 ? winAmount / betAmount : null;
+
     const { error } = await supabase.from("big_wins").insert({
       user_id: user.id,
       game_name: newWin.game_name,
       provider: newWin.provider || null,
-      bet_amount: newWin.bet_amount ? parseFloat(newWin.bet_amount) : null,
-      win_amount: parseFloat(newWin.win_amount),
-      multiplier: newWin.multiplier ? parseFloat(newWin.multiplier) : null,
+      bet_amount: betAmount,
+      win_amount: winAmount,
+      multiplier: calculatedMultiplier,
       image_url: newWin.image_url || null,
+      video_url: newWin.video_url || null,
       description: newWin.description || null,
       status: "pending",
     });
@@ -187,10 +195,46 @@ export default function WinGallery() {
       provider: "",
       bet_amount: "",
       win_amount: "",
-      multiplier: "",
       image_url: "",
+      video_url: "",
       description: "",
     });
+  };
+
+  const handleFileUpload = async (file: File, type: "image" | "video") => {
+    if (!user) return;
+    setIsUploading(true);
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const bucket = type === "image" ? "win-screenshots" : "win-videos";
+
+    const { data, error } = await supabase.storage.from(bucket).upload(fileName, file);
+
+    if (error) {
+      toast({ title: `Error uploading ${type}`, variant: "destructive" });
+      setIsUploading(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
+
+    if (type === "image") {
+      setNewWin({ ...newWin, image_url: publicUrl });
+    } else {
+      setNewWin({ ...newWin, video_url: publicUrl });
+    }
+    setIsUploading(false);
+    toast({ title: `${type === "image" ? "Image" : "Video"} uploaded!` });
+  };
+
+  const calculatedMultiplier = () => {
+    const bet = parseFloat(newWin.bet_amount);
+    const win = parseFloat(newWin.win_amount);
+    if (bet > 0 && win > 0) {
+      return (win / bet).toFixed(2);
+    }
+    return null;
   };
 
   const filteredWins = wins.filter(
@@ -273,23 +317,85 @@ export default function WinGallery() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <Label>Multiplier</Label>
-                    <Input
-                      type="number"
-                      value={newWin.multiplier}
-                      onChange={(e) => setNewWin({ ...newWin, multiplier: e.target.value })}
-                      placeholder="e.g., 5000"
-                    />
+                  
+                  {/* Auto-calculated Multiplier */}
+                  {calculatedMultiplier() && (
+                    <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                      <p className="text-sm text-muted-foreground">Calculated Multiplier</p>
+                      <p className="text-xl font-bold text-yellow-500">{calculatedMultiplier()}x</p>
+                    </div>
+                  )}
+
+                  {/* Media Upload Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Label>Upload Type</Label>
+                      <Select value={uploadType} onValueChange={(v: "url" | "file") => setUploadType(v)}>
+                        <SelectTrigger className="w-32 h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="url">URL</SelectItem>
+                          <SelectItem value="file">File Upload</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {uploadType === "url" ? (
+                      <>
+                        <div>
+                          <Label>Screenshot URL</Label>
+                          <Input
+                            value={newWin.image_url}
+                            onChange={(e) => setNewWin({ ...newWin, image_url: e.target.value })}
+                            placeholder="https://..."
+                          />
+                        </div>
+                        <div>
+                          <Label>Video URL (optional)</Label>
+                          <Input
+                            value={newWin.video_url}
+                            onChange={(e) => setNewWin({ ...newWin, video_url: e.target.value })}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <Label>Upload Screenshot</Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file, "image");
+                            }}
+                            disabled={isUploading}
+                          />
+                          {newWin.image_url && (
+                            <p className="text-xs text-green-500 mt-1">Image uploaded ✓</p>
+                          )}
+                        </div>
+                        <div>
+                          <Label>Upload Video (optional)</Label>
+                          <Input
+                            type="file"
+                            accept="video/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(file, "video");
+                            }}
+                            disabled={isUploading}
+                          />
+                          {newWin.video_url && (
+                            <p className="text-xs text-green-500 mt-1">Video uploaded ✓</p>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div>
-                    <Label>Screenshot URL</Label>
-                    <Input
-                      value={newWin.image_url}
-                      onChange={(e) => setNewWin({ ...newWin, image_url: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
+
                   <div>
                     <Label>Description</Label>
                     <Textarea
@@ -301,13 +407,13 @@ export default function WinGallery() {
                   </div>
                   <Button
                     onClick={handleSubmitWin}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isUploading}
                     className="w-full"
                   >
-                    {isSubmitting ? (
+                    {(isSubmitting || isUploading) ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                     ) : null}
-                    Submit for Review
+                    {isUploading ? "Uploading..." : "Submit for Review"}
                   </Button>
                 </div>
               </DialogContent>

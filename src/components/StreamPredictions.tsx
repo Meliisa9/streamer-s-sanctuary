@@ -20,6 +20,10 @@ interface Prediction {
   loss_pool: number;
   min_bet: number;
   max_bet: number;
+  option_a_label: string;
+  option_b_label: string;
+  option_a_pool: number;
+  option_b_pool: number;
   created_at: string;
   locked_at: string | null;
   resolved_at: string | null;
@@ -108,7 +112,7 @@ export function StreamPredictions() {
     }
   };
 
-  const placeBet = async (predictionId: string, outcome: "profit" | "loss") => {
+  const placeBet = async (predictionId: string, outcome: "option_a" | "option_b") => {
     if (!user) {
       toast({ title: "Please login to place bets", variant: "destructive" });
       return;
@@ -161,13 +165,15 @@ export function StreamPredictions() {
       return;
     }
 
-    const poolField = outcome === "profit" ? "profit_pool" : "loss_pool";
+    const poolField = outcome === "option_a" ? "option_a_pool" : "option_b_pool";
+    const currentPool = outcome === "option_a" ? (prediction.option_a_pool || 0) : (prediction.option_b_pool || 0);
     await supabase
       .from("stream_predictions")
-      .update({ [poolField]: prediction[poolField] + amount })
+      .update({ [poolField]: currentPool + amount })
       .eq("id", predictionId);
 
-    toast({ title: `Bet placed: ${amount} points on ${outcome}` });
+    const outcomeLabel = outcome === "option_a" ? (prediction.option_a_label || "Option A") : (prediction.option_b_label || "Option B");
+    toast({ title: `Bet placed: ${amount} points on ${outcomeLabel}` });
     setUserPoints(userPoints - amount);
     fetchUserBets();
     fetchPredictions();
@@ -185,11 +191,13 @@ export function StreamPredictions() {
   };
 
   const calculateOdds = (prediction: Prediction) => {
-    const total = prediction.profit_pool + prediction.loss_pool;
-    if (total === 0) return { profit: 50, loss: 50 };
+    const poolA = prediction.option_a_pool || 0;
+    const poolB = prediction.option_b_pool || 0;
+    const total = poolA + poolB;
+    if (total === 0) return { optionA: 50, optionB: 50 };
     return {
-      profit: Math.round((prediction.profit_pool / total) * 100),
-      loss: Math.round((prediction.loss_pool / total) * 100),
+      optionA: Math.round((poolA / total) * 100),
+      optionB: Math.round((poolB / total) * 100),
     };
   };
 
@@ -235,7 +243,9 @@ export function StreamPredictions() {
           {predictions.map((prediction, index) => {
             const odds = calculateOdds(prediction);
             const userBet = userBets[prediction.id];
-            const totalPool = prediction.profit_pool + prediction.loss_pool;
+            const totalPool = (prediction.option_a_pool || 0) + (prediction.option_b_pool || 0);
+            const optionALabel = prediction.option_a_label || "Option A";
+            const optionBLabel = prediction.option_b_label || "Option B";
 
             return (
               <motion.div
@@ -265,21 +275,21 @@ export function StreamPredictions() {
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1 text-green-400">
                           <TrendingUp className="w-3 h-3" />
-                          <span>Profit {odds.profit}%</span>
+                          <span>{optionALabel} {odds.optionA}%</span>
                         </div>
                         <div className="flex items-center gap-1 text-red-400">
-                          <span>Loss {odds.loss}%</span>
+                          <span>{optionBLabel} {odds.optionB}%</span>
                           <TrendingDown className="w-3 h-3" />
                         </div>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden flex">
                         <div 
                           className="h-full bg-gradient-to-r from-green-500 to-green-400" 
-                          style={{ width: `${odds.profit}%` }} 
+                          style={{ width: `${odds.optionA}%` }} 
                         />
                         <div 
                           className="h-full bg-gradient-to-r from-red-400 to-red-500" 
-                          style={{ width: `${odds.loss}%` }} 
+                          style={{ width: `${odds.optionB}%` }} 
                         />
                       </div>
                     </div>
@@ -291,8 +301,8 @@ export function StreamPredictions() {
                           <span className="text-muted-foreground">Your bet:</span>
                           <span className="font-bold">
                             {userBet.bet_amount} pts on{" "}
-                            <span className={userBet.predicted_outcome === "profit" ? "text-green-400" : "text-red-400"}>
-                              {userBet.predicted_outcome}
+                            <span className={userBet.predicted_outcome === "option_a" ? "text-green-400" : "text-red-400"}>
+                              {userBet.predicted_outcome === "option_a" ? optionALabel : optionBLabel}
                             </span>
                           </span>
                         </div>
@@ -323,19 +333,19 @@ export function StreamPredictions() {
                             variant="outline"
                             size="sm"
                             className="bg-green-500/10 border-green-500/30 hover:bg-green-500/20 text-green-400"
-                            onClick={() => placeBet(prediction.id, "profit")}
+                            onClick={() => placeBet(prediction.id, "option_a")}
                           >
                             <TrendingUp className="w-3 h-3 mr-1" />
-                            Profit
+                            {optionALabel}
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             className="bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400"
-                            onClick={() => placeBet(prediction.id, "loss")}
+                            onClick={() => placeBet(prediction.id, "option_b")}
                           >
                             <TrendingDown className="w-3 h-3 mr-1" />
-                            Loss
+                            {optionBLabel}
                           </Button>
                         </div>
                       </div>

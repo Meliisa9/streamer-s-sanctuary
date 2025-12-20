@@ -1514,6 +1514,10 @@ export type Database = {
           loss_pool: number
           max_bet: number
           min_bet: number
+          option_a_label: string | null
+          option_a_pool: number | null
+          option_b_label: string | null
+          option_b_pool: number | null
           outcome: string | null
           profit_pool: number
           resolved_at: string | null
@@ -1529,6 +1533,10 @@ export type Database = {
           loss_pool?: number
           max_bet?: number
           min_bet?: number
+          option_a_label?: string | null
+          option_a_pool?: number | null
+          option_b_label?: string | null
+          option_b_pool?: number | null
           outcome?: string | null
           profit_pool?: number
           resolved_at?: string | null
@@ -1544,6 +1552,10 @@ export type Database = {
           loss_pool?: number
           max_bet?: number
           min_bet?: number
+          option_a_label?: string | null
+          option_a_pool?: number | null
+          option_b_label?: string | null
+          option_b_pool?: number | null
           outcome?: string | null
           profit_pool?: number
           resolved_at?: string | null
