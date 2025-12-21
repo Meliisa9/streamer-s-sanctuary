@@ -5,7 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -131,6 +132,20 @@ export default function Store() {
       return data as StoreRedemption[];
     },
     enabled: !!user,
+  });
+
+  // Fetch Store FAQ from settings
+  const { data: storeFaq = [] } = useQuery({
+    queryKey: ["store-faq"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "store_terms_faq")
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.value as Array<{ question: string; answer: string }>) || [];
+    },
   });
 
   // Redeem mutation
@@ -275,42 +290,42 @@ export default function Store() {
 
         {/* Stats/Info Boxes */}
         <section className="container pb-8">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className={`grid gap-6 ${user && profile ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
             {/* User Info Box */}
             {user && profile && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="p-5 rounded-2xl bg-card border border-border"
+                className="p-6 rounded-2xl bg-card border border-border"
               >
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-4 mb-5">
                   {profile.avatar_url ? (
-                    <img src={profile.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
+                    <img src={profile.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover ring-2 ring-primary/20" />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Wallet className="w-6 h-6 text-primary" />
+                    <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Wallet className="w-7 h-7 text-primary" />
                     </div>
                   )}
                   <div>
-                    <p className="font-semibold">{profile.display_name || profile.username || 'User'}</p>
+                    <p className="font-semibold text-lg">{profile.display_name || profile.username || 'User'}</p>
                     <p className="text-sm text-muted-foreground">Member</p>
                   </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
                     <span className="flex items-center gap-2">
                       <Coins className="w-4 h-4 text-yellow-500" />
                       Points Balance
                     </span>
-                    <span className="font-bold">{userPoints.toLocaleString()}</span>
+                    <span className="font-bold text-base">{userPoints.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
                     <span className="flex items-center gap-2">
                       <ShoppingCart className="w-4 h-4 text-primary" />
                       Redemptions
                     </span>
-                    <span className="font-bold">{myRedemptions.length}</span>
+                    <span className="font-bold text-base">{myRedemptions.length}</span>
                   </div>
                 </div>
               </motion.div>
@@ -321,15 +336,15 @@ export default function Store() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="p-5 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20"
+              className="p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-primary/20">
-                  <Clock className="w-5 h-5 text-primary" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-primary/20">
+                  <Clock className="w-6 h-6 text-primary" />
                 </div>
-                <p className="font-semibold">Delivery Info</p>
+                <p className="font-semibold text-lg">Delivery Info</p>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground leading-relaxed">
                 Items will be credited within <span className="font-semibold text-foreground">14 BUSINESS DAYS</span> from the day of approval.
               </p>
             </motion.div>
@@ -339,20 +354,20 @@ export default function Store() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="p-5 rounded-2xl bg-card border border-border"
+              className="p-6 rounded-2xl bg-card border border-border"
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-muted">
-                  <FileText className="w-5 h-5 text-muted-foreground" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-xl bg-muted">
+                  <FileText className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <p className="font-semibold">Terms & Conditions</p>
+                <p className="font-semibold text-lg">Terms & Conditions</p>
               </div>
-              <p className="text-sm text-muted-foreground mb-3">
+              <p className="text-muted-foreground mb-4 leading-relaxed">
                 Learn how points work, delivery times, and store policies.
               </p>
               <Link 
                 to="/store/terms" 
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
               >
                 Read Store T&C
                 <ExternalLink className="w-4 h-4" />
@@ -533,7 +548,34 @@ export default function Store() {
           </Tabs>
         </section>
 
-        {/* Confirmation Dialog */}
+        {/* FAQ Section */}
+        {storeFaq.length > 0 && (
+          <section className="container py-12 border-t border-border">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-4xl mx-auto"
+            >
+              <h2 className="text-2xl font-bold mb-6 text-center">Frequently Asked Questions</h2>
+              <Accordion type="single" collapsible className="space-y-3">
+                {storeFaq.map((item, index) => (
+                  <AccordionItem
+                    key={index}
+                    value={`faq-${index}`}
+                    className="border border-border/50 rounded-xl bg-card/50 backdrop-blur-sm px-6 overflow-hidden"
+                  >
+                    <AccordionTrigger className="text-left font-semibold text-sm md:text-base uppercase tracking-wide hover:no-underline py-5">
+                      {item.question}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-muted-foreground pb-5 pt-0">
+                      {item.answer}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </motion.div>
+          </section>
+        )}
         <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <DialogContent>
           <DialogHeader>
@@ -633,19 +675,18 @@ function ItemCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ delay: index * 0.05 }}
+      className="h-full"
     >
-      <Card className={`h-full flex flex-col overflow-hidden group ${isFeatured ? "border-primary/50 shadow-lg shadow-primary/10" : ""}`}>
-        <CardHeader className="p-0 relative overflow-hidden">
+      <Card className={`h-full flex flex-col group ${isFeatured ? "border-primary/50 shadow-lg shadow-primary/10" : ""}`}>
+        <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
           {item.image_url ? (
-            <div className="w-full h-48 overflow-hidden">
-              <img
-                src={item.image_url}
-                alt={item.name}
-                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-              />
-            </div>
+            <img
+              src={item.image_url}
+              alt={item.name}
+              className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105"
+            />
           ) : (
-            <div className="w-full h-48 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
+            <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
               <Package className="w-16 h-16 text-muted-foreground" />
             </div>
           )}
@@ -659,7 +700,7 @@ function ItemCard({
               <Badge variant="destructive" className="text-lg px-4 py-2">Out of Stock</Badge>
             </div>
           )}
-        </CardHeader>
+        </div>
         <CardContent className="flex-1 p-4">
           {item.category?.name && (
             <div className="flex items-center gap-2 mb-2">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, FileText, Plus, Trash2, GripVertical, ExternalLink, Eye, Link2 } from "lucide-react";
+import { Save, Loader2, FileText, Plus, Trash2, GripVertical, Eye, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
@@ -42,7 +43,8 @@ interface FooterLink {
 
 interface StoreTermsSettings {
   store_terms_enabled: boolean;
-  store_terms_intro: string;
+  store_terms_title: string;
+  store_terms_content: string;
   store_terms_faq: FAQItem[];
   store_terms_footer_text: string;
   store_terms_footer_links: FooterLink[];
@@ -52,28 +54,33 @@ interface StoreTermsSettings {
 
 const defaultSettings: StoreTermsSettings = {
   store_terms_enabled: true,
-  store_terms_intro: "Welcome to our Points Store! Please read the following frequently asked questions to understand how our store works.",
+  store_terms_title: "Terms and Conditions",
+  store_terms_content: `<h2>Store</h2>
+<p>By creating an account, you agree to the Terms and Conditions, Privacy Policy, Cookies Policy on our web-site as well as the Terms and Conditions of the Store...</p>`,
   store_terms_faq: [
     {
       question: "HOW DO I COLLECT POINTS?",
-      answer: "Points are earned by watching streams, participating in community events, daily check-ins, and engaging with our content."
+      answer:
+        "Points are earned by watching streams, participating in community events, daily check-ins, and engaging with our content.",
     },
     {
       question: "WHAT CAN I DO WITH MY POINTS?",
-      answer: "You can use your points to claim items from the store. The range of products will change regularly."
+      answer:
+        "You can use your points to claim items from the store. The range of products will change regularly.",
     },
     {
       question: "HOW LONG WILL IT TAKE TO GET AN ITEM?",
-      answer: "Digital items will be credited within 14 business days from approval. Physical items may take longer."
-    }
+      answer:
+        "Digital items will be credited within 14 business days from approval. Physical items may take longer.",
+    },
   ],
   store_terms_footer_text: "For more information, please check our Terms of Service and Privacy Policy.",
   store_terms_footer_links: [
     { label: "Terms of Service", url: "/terms" },
-    { label: "Privacy Policy", url: "/privacy" }
+    { label: "Privacy Policy", url: "/privacy" },
   ],
   store_restock_info: "Latest restock information will be announced on stream.",
-  store_delivery_info: "Item will be credited within 14 BUSINESS DAYS from the day of the approval."
+  store_delivery_info: "Item will be credited within 14 BUSINESS DAYS from the day of the approval.",
 };
 
 function SortableFAQItem({
@@ -87,14 +94,9 @@ function SortableFAQItem({
   onUpdate: (index: number, field: "question" | "answer", value: string) => void;
   onDelete: (index: number) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: `faq-${index}` });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `faq-${index}`,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -159,9 +161,7 @@ export default function AdminStoreTerms() {
 
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   useEffect(() => {
@@ -171,10 +171,7 @@ export default function AdminStoreTerms() {
   const fetchSettings = async () => {
     try {
       const keys = Object.keys(defaultSettings);
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("key, value")
-        .in("key", keys);
+      const { data, error } = await supabase.from("site_settings").select("key, value").in("key", keys);
 
       if (error) throw error;
 
@@ -198,9 +195,7 @@ export default function AdminStoreTerms() {
     setIsSaving(true);
     try {
       for (const [key, value] of Object.entries(settings)) {
-        const { error } = await supabase
-          .from("site_settings")
-          .upsert({ key, value }, { onConflict: "key" });
+        const { error } = await supabase.from("site_settings").upsert({ key, value }, { onConflict: "key" });
         if (error) throw error;
       }
       toast({ title: "Settings saved successfully!" });
@@ -226,9 +221,7 @@ export default function AdminStoreTerms() {
   const updateFAQ = (index: number, field: "question" | "answer", value: string) => {
     setSettings((s) => ({
       ...s,
-      store_terms_faq: s.store_terms_faq.map((faq, i) =>
-        i === index ? { ...faq, [field]: value } : faq
-      ),
+      store_terms_faq: s.store_terms_faq.map((faq, i) => (i === index ? { ...faq, [field]: value } : faq)),
     }));
   };
 
@@ -280,8 +273,8 @@ export default function AdminStoreTerms() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Store Terms & Conditions"
-        description="Configure the Store T&C page content and FAQ items"
+        title="Store Terms & FAQ"
+        description="Configure the Store T&C page content and FAQ displayed on the Store page"
         icon={FileText}
       />
 
@@ -297,160 +290,187 @@ export default function AdminStoreTerms() {
           <Button variant="outline" asChild>
             <a href="/store/terms" target="_blank" rel="noopener noreferrer">
               <Eye className="w-4 h-4 mr-2" />
-              Preview
+              Preview T&C
+            </a>
+          </Button>
+          <Button variant="outline" asChild>
+            <a href="/store" target="_blank" rel="noopener noreferrer">
+              <Eye className="w-4 h-4 mr-2" />
+              Preview Store
             </a>
           </Button>
           <Button onClick={saveSettings} disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             Save Changes
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-6">
-        {/* Introduction */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Introduction</CardTitle>
-            <CardDescription>The introductory text shown at the top of the page</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={settings.store_terms_intro}
-              onChange={(e) => setSettings((s) => ({ ...s, store_terms_intro: e.target.value }))}
-              placeholder="Enter introduction text..."
-              className="min-h-[100px]"
-            />
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="faq" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="faq">FAQ (Store Page)</TabsTrigger>
+          <TabsTrigger value="terms">Legal T&C (T&C Page)</TabsTrigger>
+          <TabsTrigger value="info">Store Info</TabsTrigger>
+        </TabsList>
 
-        {/* Store Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Store Information</CardTitle>
-            <CardDescription>Key information displayed on the store page</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Restock Information</Label>
-              <Input
-                value={settings.store_restock_info}
-                onChange={(e) => setSettings((s) => ({ ...s, store_restock_info: e.target.value }))}
-                placeholder="e.g., Latest restock: 09 Dec 2025"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Delivery Information</Label>
-              <Input
-                value={settings.store_delivery_info}
-                onChange={(e) => setSettings((s) => ({ ...s, store_delivery_info: e.target.value }))}
-                placeholder="e.g., Items credited within 14 business days"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* FAQ Items */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">FAQ Items</CardTitle>
-              <CardDescription>Questions and answers shown as an accordion</CardDescription>
-            </div>
-            <Button onClick={addFAQ} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              Add FAQ
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={settings.store_terms_faq.map((_, i) => `faq-${i}`)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-3">
-                  {settings.store_terms_faq.map((faq, index) => (
-                    <SortableFAQItem
-                      key={`faq-${index}`}
-                      faq={faq}
-                      index={index}
-                      onUpdate={updateFAQ}
-                      onDelete={deleteFAQ}
-                    />
-                  ))}
+        <TabsContent value="faq" className="space-y-6">
+          {/* FAQ Items */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">FAQ Items</CardTitle>
+                <CardDescription>
+                  These questions and answers are shown on the Store page
+                </CardDescription>
+              </div>
+              <Button onClick={addFAQ} size="sm">
+                <Plus className="w-4 h-4 mr-2" />
+                Add FAQ
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={settings.store_terms_faq.map((_, i) => `faq-${i}`)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {settings.store_terms_faq.map((faq, index) => (
+                      <SortableFAQItem
+                        key={`faq-${index}`}
+                        faq={faq}
+                        index={index}
+                        onUpdate={updateFAQ}
+                        onDelete={deleteFAQ}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+              {settings.store_terms_faq.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No FAQ items yet. Click "Add FAQ" to create one.
                 </div>
-              </SortableContext>
-            </DndContext>
-            {settings.store_terms_faq.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No FAQ items yet. Click "Add FAQ" to create one.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* Footer */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Footer Section</CardTitle>
-            <CardDescription>Footer text and links shown at the bottom</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Footer Text</Label>
-              <Textarea
-                value={settings.store_terms_footer_text}
-                onChange={(e) => setSettings((s) => ({ ...s, store_terms_footer_text: e.target.value }))}
-                placeholder="Enter footer text..."
+        <TabsContent value="terms" className="space-y-6">
+          {/* Title */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">T&C Title</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Input
+                value={settings.store_terms_title}
+                onChange={(e) => setSettings((s) => ({ ...s, store_terms_title: e.target.value }))}
+                placeholder="Terms and Conditions"
               />
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label>Footer Links</Label>
-                <Button variant="outline" size="sm" onClick={addFooterLink}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Link
-                </Button>
+            </CardContent>
+          </Card>
+
+          {/* Content */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Legal Terms & Conditions Content</CardTitle>
+              <CardDescription>
+                Full legal T&C text shown on the Store Terms page. Supports HTML.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RichTextEditor
+                content={settings.store_terms_content}
+                onChange={(val) => setSettings((s) => ({ ...s, store_terms_content: val }))}
+                placeholder="Enter legal terms and conditions..."
+              />
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Footer Section</CardTitle>
+              <CardDescription>Footer text and links shown at the bottom of T&C page</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Footer Text</Label>
+                <Textarea
+                  value={settings.store_terms_footer_text}
+                  onChange={(e) => setSettings((s) => ({ ...s, store_terms_footer_text: e.target.value }))}
+                  placeholder="Enter footer text..."
+                />
               </div>
-              {settings.store_terms_footer_links.map((link, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Input
-                    value={link.label}
-                    onChange={(e) => updateFooterLink(index, "label", e.target.value)}
-                    placeholder="Link Label"
-                    className="flex-1"
-                  />
-                  <Input
-                    value={link.url}
-                    onChange={(e) => updateFooterLink(index, "url", e.target.value)}
-                    placeholder="/terms or https://..."
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => deleteFooterLink(index)}
-                  >
-                    <Trash2 className="w-4 h-4" />
+
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Footer Links</Label>
+                  <Button variant="outline" size="sm" onClick={addFooterLink}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Link
                   </Button>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                {settings.store_terms_footer_links.map((link, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <Input
+                      value={link.label}
+                      onChange={(e) => updateFooterLink(index, "label", e.target.value)}
+                      placeholder="Link Label"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={link.url}
+                      onChange={(e) => updateFooterLink(index, "url", e.target.value)}
+                      placeholder="/terms or https://..."
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => deleteFooterLink(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="info" className="space-y-6">
+          {/* Store Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Store Information</CardTitle>
+              <CardDescription>Key information displayed on the store page</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Restock Information</Label>
+                <Input
+                  value={settings.store_restock_info}
+                  onChange={(e) => setSettings((s) => ({ ...s, store_restock_info: e.target.value }))}
+                  placeholder="e.g., Latest restock: 09 Dec 2025"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Delivery Information</Label>
+                <Input
+                  value={settings.store_delivery_info}
+                  onChange={(e) => setSettings((s) => ({ ...s, store_delivery_info: e.target.value }))}
+                  placeholder="e.g., Items credited within 14 business days"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
