@@ -10,7 +10,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
+import { useChannelPoints } from "@/hooks/useChannelPoints";
+import { ChannelPointsDisplay } from "@/components/ChannelPointsDisplay";
 import { 
   Store as StoreIcon, 
   Search, 
@@ -30,7 +34,8 @@ import {
   ExternalLink,
   Wallet,
   RefreshCw,
-  Calendar
+  Calendar,
+  Link2
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -51,6 +56,9 @@ interface StoreItem {
   description: string | null;
   image_url: string | null;
   points_cost: number;
+  twitch_points_cost: number | null;
+  kick_points_cost: number | null;
+  accepted_currencies: string[];
   item_type: string;
   item_data: Record<string, unknown>;
   stock_quantity: number | null;
@@ -66,11 +74,15 @@ interface StoreRedemption {
   id: string;
   item_id: string;
   points_spent: number;
+  platform_points_spent: number;
+  currency: string;
   quantity: number;
   status: string;
   created_at: string;
   item?: StoreItem;
 }
+
+type Currency = "site" | "twitch" | "kick";
 
 const ITEM_TYPE_ICONS: Record<string, React.ElementType> = {
   merchandise: Package,
@@ -83,9 +95,11 @@ const ITEM_TYPE_ICONS: Record<string, React.ElementType> = {
 export default function Store() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
+  const { points: channelPoints, isLoading: loadingPoints, isConnected } = useChannelPoints();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState<Currency>("site");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("browse");
 
@@ -148,15 +162,16 @@ export default function Store() {
     },
   });
 
-  // Redeem mutation
+  // Redeem mutation with currency support
   const redeemMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      const { data, error } = await supabase.rpc("redeem_store_item", {
+    mutationFn: async ({ itemId, currency }: { itemId: string; currency: Currency }) => {
+      const { data, error } = await supabase.rpc("redeem_store_item_with_currency", {
         p_item_id: itemId,
         p_quantity: 1,
+        p_currency: currency,
       });
       if (error) throw error;
-      const result = data as { success: boolean; error?: string; new_balance?: number };
+      const result = data as { success: boolean; error?: string; new_balance?: number; currency?: string };
       if (!result.success) {
         throw new Error(result.error || "Redemption failed");
       }
@@ -165,13 +180,16 @@ export default function Store() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["store-items-public"] });
       queryClient.invalidateQueries({ queryKey: ["my-redemptions"] });
-      // Refresh profile to update points
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["channel-points"] });
       setIsConfirmOpen(false);
       setSelectedItem(null);
+      setSelectedCurrency("site");
+      
+      const currencyLabel = data.currency === "site" ? "site" : data.currency;
       toast({
         title: "Redemption Successful!",
-        description: `Your new balance is ${data.new_balance?.toLocaleString()} points.`,
+        description: `Your new ${currencyLabel} points balance is ${data.new_balance?.toLocaleString()}.`,
       });
     },
     onError: (error: Error) => {
@@ -183,7 +201,47 @@ export default function Store() {
     },
   });
 
-  const userPoints = profile?.points || 0;
+  // Get points for a specific currency
+  const getPointsForCurrency = (currency: Currency): number => {
+    switch (currency) {
+      case "site":
+        return profile?.points || 0;
+      case "twitch":
+        return channelPoints.twitch;
+      case "kick":
+        return channelPoints.kick;
+      default:
+        return 0;
+    }
+  };
+
+  // Get item cost for a specific currency
+  const getItemCost = (item: StoreItem, currency: Currency): number | null => {
+    switch (currency) {
+      case "site":
+        return item.points_cost;
+      case "twitch":
+        return item.twitch_points_cost;
+      case "kick":
+        return item.kick_points_cost;
+      default:
+        return null;
+    }
+  };
+
+  // Check if a currency is accepted for an item
+  const isCurrencyAccepted = (item: StoreItem, currency: Currency): boolean => {
+    return item.accepted_currencies?.includes(currency) ?? (currency === "site");
+  };
+
+  // Get available currencies for an item
+  const getAvailableCurrencies = (item: StoreItem): Currency[] => {
+    const currencies: Currency[] = [];
+    if (isCurrencyAccepted(item, "site")) currencies.push("site");
+    if (isCurrencyAccepted(item, "twitch") && item.twitch_points_cost) currencies.push("twitch");
+    if (isCurrencyAccepted(item, "kick") && item.kick_points_cost) currencies.push("kick");
+    return currencies;
+  };
 
   // Filter items
   const filteredItems = items.filter((item) => {
@@ -218,11 +276,22 @@ export default function Store() {
     }
   };
 
-  const canRedeem = (item: StoreItem) => {
+  const canRedeem = (item: StoreItem, currency: Currency = "site") => {
     if (!user) return false;
-    if (userPoints < item.points_cost) return false;
     if (item.stock_quantity !== null && item.stock_quantity <= 0) return false;
-    return true;
+    
+    const cost = getItemCost(item, currency);
+    if (cost === null) return false;
+    
+    const balance = getPointsForCurrency(currency);
+    return balance >= cost;
+  };
+
+  const canRedeemAny = (item: StoreItem) => {
+    if (!user) return false;
+    if (item.stock_quantity !== null && item.stock_quantity <= 0) return false;
+    const currencies = getAvailableCurrencies(item);
+    return currencies.some(c => canRedeem(item, c));
   };
 
   const handleRedeem = (item: StoreItem) => {
@@ -235,14 +304,20 @@ export default function Store() {
       return;
     }
     setSelectedItem(item);
+    // Default to first available currency user can afford
+    const currencies = getAvailableCurrencies(item);
+    const affordable = currencies.find(c => canRedeem(item, c));
+    setSelectedCurrency(affordable || currencies[0] || "site");
     setIsConfirmOpen(true);
   };
 
   const confirmRedeem = () => {
     if (selectedItem) {
-      redeemMutation.mutate(selectedItem.id);
+      redeemMutation.mutate({ itemId: selectedItem.id, currency: selectedCurrency });
     }
   };
+
+  const userPoints = getPointsForCurrency("site");
 
   useEffect(() => {
     document.title = "Points Store | Redeem Your Points";
@@ -466,7 +541,7 @@ export default function Store() {
                               item={item}
                               index={index}
                               userPoints={userPoints}
-                              canRedeem={canRedeem(item)}
+                              canRedeem={canRedeemAny(item)}
                               onRedeem={handleRedeem}
                               getItemTypeIcon={getItemTypeIcon}
                               isFeatured
@@ -489,7 +564,7 @@ export default function Store() {
                               item={item}
                               index={index}
                               userPoints={userPoints}
-                              canRedeem={canRedeem(item)}
+                              canRedeem={canRedeemAny(item)}
                               onRedeem={handleRedeem}
                               getItemTypeIcon={getItemTypeIcon}
                             />

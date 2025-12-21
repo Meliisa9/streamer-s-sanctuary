@@ -17,3 +17,9 @@ verify_jwt = true
 
 [functions.whitelabel-save]
 verify_jwt = true
+
+[functions.channel-points-sync]
+verify_jwt = true
+
+[functions.twitch-channel-points]
+verify_jwt = false
