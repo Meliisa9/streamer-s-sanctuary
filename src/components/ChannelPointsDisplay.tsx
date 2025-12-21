@@ -40,12 +40,18 @@ const KickIcon = ({ className }: { className?: string }) => (
 interface ChannelPointsDisplayProps {
   showConnections?: boolean;
   compact?: boolean;
+  variant?: "default" | "compact";
+  showConnectButtons?: boolean;
 }
 
 export function ChannelPointsDisplay({ 
   showConnections = true, 
-  compact = false 
+  compact = false,
+  variant = "default",
+  showConnectButtons = false,
 }: ChannelPointsDisplayProps) {
+  // If variant is compact, override compact prop
+  const isCompact = variant === "compact" || compact;
   const {
     points,
     connections,
@@ -103,12 +109,11 @@ export function ChannelPointsDisplay({
     },
   ];
 
-  if (compact) {
+  if (isCompact) {
     return (
-      <div className="flex flex-wrap gap-3">
+      <div className="inline-flex flex-wrap items-center gap-3 px-5 py-3 rounded-2xl bg-card border border-border shadow-lg">
         {platformConfigs.map((platform) => {
           const balance = points[platform.id];
-          const connection = platform.id !== "site" ? getConnection(platform.id) : null;
           const connected = platform.id === "site" || isConnected(platform.id as "twitch" | "kick");
 
           return (
@@ -119,8 +124,18 @@ export function ChannelPointsDisplay({
               {platform.icon}
               <div className="flex items-center gap-1">
                 <span className="font-bold">{balance.toLocaleString()}</span>
-                {platform.id !== "site" && !connected && (
-                  <Badge variant="outline" className="text-xs ml-1">Not connected</Badge>
+                {platform.id !== "site" && !connected && showConnectButtons && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="text-xs h-auto p-0 ml-1"
+                    onClick={platform.id === "twitch" ? connectTwitch : connectKick}
+                  >
+                    Connect
+                  </Button>
+                )}
+                {platform.id !== "site" && !connected && !showConnectButtons && (
+                  <Badge variant="outline" className="text-xs ml-1">Not linked</Badge>
                 )}
               </div>
             </div>

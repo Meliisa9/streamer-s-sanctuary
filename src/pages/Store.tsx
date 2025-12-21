@@ -352,18 +352,13 @@ export default function Store() {
                 Turn your hard-earned points into exclusive merchandise, giveaway entries, casino credits, and more!
               </p>
 
-              {/* User Points Display */}
+              {/* User Points Display with Channel Points */}
               {user && (
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-card border border-border shadow-lg"
                 >
-                  <Coins className="w-6 h-6 text-yellow-500" />
-                  <div className="text-left">
-                    <p className="text-sm text-muted-foreground">Your Balance</p>
-                    <p className="text-2xl font-bold">{userPoints.toLocaleString()} pts</p>
-                  </div>
+                  <ChannelPointsDisplay variant="compact" showConnectButtons />
                 </motion.div>
               )}
             </motion.div>
