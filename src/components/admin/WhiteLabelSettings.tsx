@@ -67,7 +67,7 @@ export function WhiteLabelSettings() {
       const { data, error } = await supabase
         .from("site_settings")
         .select("key, value")
-        .in("key", Object.keys(defaultConfig).map(k => `whitelabel_${k}`));
+        .like("key", "whitelabel_%");
 
       if (error) throw error;
 
@@ -75,11 +75,22 @@ export function WhiteLabelSettings() {
       data?.forEach((row) => {
         const key = row.key.replace("whitelabel_", "") as keyof WhiteLabelConfig;
         if (key in loadedConfig) {
-          (loadedConfig as any)[key] = row.value ?? defaultConfig[key];
+          const value = row.value;
+          // Handle boolean values properly
+          if (typeof defaultConfig[key] === "boolean") {
+            (loadedConfig as any)[key] = value === true || value === "true" || value === 1;
+          } else {
+            (loadedConfig as any)[key] = value ?? defaultConfig[key];
+          }
         }
       });
 
       setConfig(loadedConfig);
+      
+      // Apply settings on load
+      if (loadedConfig.custom_css) {
+        applyCustomCSS(loadedConfig.custom_css);
+      }
     } catch (error) {
       console.error("Error fetching white-label config:", error);
     } finally {
@@ -95,22 +106,67 @@ export function WhiteLabelSettings() {
 
     setIsSaving(true);
     try {
-      for (const [key, value] of Object.entries(config)) {
-        const { error } = await supabase
+      // Build array of upserts to execute
+      const upsertPromises = Object.entries(config).map(([key, value]) => {
+        return supabase
           .from("site_settings")
-          .upsert({ key: `whitelabel_${key}`, value }, { onConflict: "key" });
-        if (error) throw error;
+          .upsert(
+            { 
+              key: `whitelabel_${key}`, 
+              value: value as any,
+              updated_at: new Date().toISOString()
+            }, 
+            { onConflict: "key" }
+          );
+      });
+
+      const results = await Promise.all(upsertPromises);
+      const errors = results.filter(r => r.error);
+      
+      if (errors.length > 0) {
+        throw new Error(errors[0].error?.message || "Failed to save settings");
       }
 
       // Apply custom CSS immediately
       applyCustomCSS(config.custom_css);
+      
+      // Apply head/body scripts
+      if (config.custom_head_scripts) {
+        applyHeadScripts(config.custom_head_scripts);
+      }
+      if (config.custom_body_scripts) {
+        applyBodyScripts(config.custom_body_scripts);
+      }
 
-      toast({ title: "White-label settings saved" });
+      toast({ title: "White-label settings saved successfully" });
     } catch (error: any) {
+      console.error("Error saving white-label settings:", error);
       toast({ title: "Error saving settings", description: error.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const applyHeadScripts = (scripts: string) => {
+    if (!scripts) return;
+    let container = document.getElementById("custom-head-scripts");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "custom-head-scripts";
+      document.head.appendChild(container);
+    }
+    container.innerHTML = scripts;
+  };
+
+  const applyBodyScripts = (scripts: string) => {
+    if (!scripts) return;
+    let container = document.getElementById("custom-body-scripts");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "custom-body-scripts";
+      document.body.appendChild(container);
+    }
+    container.innerHTML = scripts;
   };
 
   const applyCustomCSS = (css: string) => {
