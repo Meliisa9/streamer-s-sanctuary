@@ -10,12 +10,14 @@ import { AdminLoadingState } from "@/components/admin/AdminLoadingState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { 
   Store, 
@@ -31,7 +33,22 @@ import {
   Gift,
   Coins,
   FileText,
-  CreditCard
+  CreditCard,
+  Image,
+  Settings,
+  Calendar,
+  Sparkles,
+  Box,
+  Users,
+  AlertTriangle,
+  Info,
+  Eye,
+  EyeOff,
+  Star,
+  Link2,
+  DollarSign,
+  Layers,
+  Infinity
 } from "lucide-react";
 
 interface StoreCategory {
@@ -81,14 +98,17 @@ interface StoreRedemption {
 }
 
 const ITEM_TYPES = [
-  { value: "merchandise", label: "Merchandise", icon: Package },
-  { value: "giveaway_entry", label: "Giveaway Entry", icon: Gift },
-  { value: "exclusive_content", label: "Exclusive Content", icon: FileText },
-  { value: "casino_credit", label: "Casino Credit", icon: CreditCard },
-  { value: "custom", label: "Custom", icon: Tag },
+  { value: "merchandise", label: "Merchandise", icon: Package, description: "Physical products shipped to users" },
+  { value: "giveaway_entry", label: "Giveaway Entry", icon: Gift, description: "Entry tickets for exclusive giveaways" },
+  { value: "exclusive_content", label: "Exclusive Content", icon: FileText, description: "Digital content, videos, or downloads" },
+  { value: "casino_credit", label: "Casino Credit", icon: CreditCard, description: "Credits for partner casinos" },
+  { value: "custom", label: "Custom", icon: Tag, description: "Custom reward type" },
 ];
 
 const REDEMPTION_STATUSES = ["pending", "processing", "completed", "cancelled", "refunded"];
+
+// Stock mode type for clarity
+type StockMode = "unlimited" | "limited" | "until_out";
 
 export default function AdminStore() {
   const [activeTab, setActiveTab] = useState("items");
@@ -97,6 +117,7 @@ export default function AdminStore() {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StoreItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<StoreCategory | null>(null);
+  const [dialogStep, setDialogStep] = useState<"basic" | "details" | "availability">("basic");
   const queryClient = useQueryClient();
 
   // Form states
@@ -115,6 +136,8 @@ export default function AdminStore() {
     category_id: null as string | null,
     available_from: "",
     available_until: "",
+    // New: stock mode for "available until out of stock"
+    stock_mode: "unlimited" as StockMode,
   });
 
   const [categoryForm, setCategoryForm] = useState({
@@ -206,6 +229,17 @@ export default function AdminStore() {
   const createItemMutation = useMutation({
     mutationFn: async (data: typeof itemForm) => {
       const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      
+      // Determine stock quantity based on stock mode
+      let stockQty: number | null = null;
+      if (data.stock_mode === "limited") {
+        stockQty = data.stock_quantity;
+      } else if (data.stock_mode === "until_out") {
+        // For "until out of stock", we need a stock quantity - default to 1 if not set
+        stockQty = data.stock_quantity || 1;
+      }
+      // If "unlimited", stockQty stays null
+      
       const { error } = await supabase.from("store_items").insert({
         name: data.name,
         slug,
@@ -214,13 +248,14 @@ export default function AdminStore() {
         points_cost: data.points_cost,
         item_type: data.item_type,
         item_data: data.item_data as unknown as Record<string, never>,
-        stock_quantity: data.stock_quantity,
+        stock_quantity: stockQty,
         max_per_user: data.max_per_user,
         is_active: data.is_active,
         is_featured: data.is_featured,
         category_id: data.category_id,
         available_from: data.available_from || null,
-        available_until: data.available_until || null,
+        // For "until_out" mode, we don't set available_until (item is available until stock runs out)
+        available_until: data.stock_mode === "until_out" ? null : (data.available_until || null),
       });
       if (error) throw error;
     },
@@ -237,6 +272,14 @@ export default function AdminStore() {
 
   const updateItemMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof itemForm }) => {
+      // Determine stock quantity based on stock mode
+      let stockQty: number | null = null;
+      if (data.stock_mode === "limited") {
+        stockQty = data.stock_quantity;
+      } else if (data.stock_mode === "until_out") {
+        stockQty = data.stock_quantity || 1;
+      }
+      
       const { error } = await supabase.from("store_items").update({
         name: data.name,
         slug: data.slug,
@@ -245,13 +288,13 @@ export default function AdminStore() {
         points_cost: data.points_cost,
         item_type: data.item_type,
         item_data: data.item_data as unknown as Record<string, never>,
-        stock_quantity: data.stock_quantity,
+        stock_quantity: stockQty,
         max_per_user: data.max_per_user,
         is_active: data.is_active,
         is_featured: data.is_featured,
         category_id: data.category_id,
         available_from: data.available_from || null,
-        available_until: data.available_until || null,
+        available_until: data.stock_mode === "until_out" ? null : (data.available_until || null),
       }).eq("id", id);
       if (error) throw error;
     },
@@ -365,7 +408,9 @@ export default function AdminStore() {
       category_id: null,
       available_from: "",
       available_until: "",
+      stock_mode: "unlimited",
     });
+    setDialogStep("basic");
   };
 
   const resetCategoryForm = () => {
@@ -380,6 +425,18 @@ export default function AdminStore() {
 
   const openEditItem = (item: StoreItem) => {
     setEditingItem(item);
+    
+    // Determine stock mode from existing data
+    let stockMode: StockMode = "unlimited";
+    if (item.stock_quantity !== null) {
+      // If has stock quantity but no available_until, it's "until out of stock"
+      if (!item.available_until) {
+        stockMode = "until_out";
+      } else {
+        stockMode = "limited";
+      }
+    }
+    
     setItemForm({
       name: item.name,
       slug: item.slug,
@@ -395,7 +452,9 @@ export default function AdminStore() {
       category_id: item.category_id,
       available_from: item.available_from?.slice(0, 16) || "",
       available_until: item.available_until?.slice(0, 16) || "",
+      stock_mode: stockMode,
     });
+    setDialogStep("basic");
     setIsItemDialogOpen(true);
   };
 
@@ -467,6 +526,8 @@ export default function AdminStore() {
       default: return null;
     }
   };
+
+  const selectedItemType = ITEM_TYPES.find(t => t.value === itemForm.item_type);
 
   if (loadingItems || loadingCategories || loadingRedemptions) {
     return <AdminLoadingState message="Loading store data..." />;
@@ -685,184 +746,659 @@ export default function AdminStore() {
         </TabsContent>
       </Tabs>
 
-      {/* Item Dialog */}
-      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingItem ? "Edit Item" : "Add New Item"}</DialogTitle>
+      {/* Enhanced Item Dialog */}
+      <Dialog open={isItemDialogOpen} onOpenChange={(open) => {
+        setIsItemDialogOpen(open);
+        if (!open) {
+          setDialogStep("basic");
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[95vh] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {selectedItemType && (
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <selectedItemType.icon className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div>
+                  <DialogTitle className="text-xl">
+                    {editingItem ? "Edit Store Item" : "Create New Store Item"}
+                  </DialogTitle>
+                  <DialogDescription className="mt-0.5">
+                    {editingItem ? "Update the item details below" : "Configure your new store item with all options"}
+                  </DialogDescription>
+                </div>
+              </div>
+              {itemForm.name && (
+                <Badge variant="outline" className="text-sm">
+                  {itemForm.points_cost.toLocaleString()} pts
+                </Badge>
+              )}
+            </div>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Name *</Label>
-                <Input
-                  value={itemForm.name}
-                  onChange={(e) => setItemForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Item name"
-                />
-              </div>
-              <div>
-                <Label>Slug</Label>
-                <Input
-                  value={itemForm.slug}
-                  onChange={(e) => setItemForm(f => ({ ...f, slug: e.target.value }))}
-                  placeholder="auto-generated-from-name"
-                />
-              </div>
+
+          {/* Step Navigation */}
+          <div className="flex border-b bg-background">
+            <button
+              onClick={() => setDialogStep("basic")}
+              className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors border-b-2 ${
+                dialogStep === "basic" 
+                  ? "border-primary text-primary bg-primary/5" 
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Box className="w-4 h-4" />
+              Basic Info
+            </button>
+            <button
+              onClick={() => setDialogStep("details")}
+              className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors border-b-2 ${
+                dialogStep === "details" 
+                  ? "border-primary text-primary bg-primary/5" 
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              Details & Type
+            </button>
+            <button
+              onClick={() => setDialogStep("availability")}
+              className={`flex-1 py-3 px-4 text-sm font-medium flex items-center justify-center gap-2 transition-colors border-b-2 ${
+                dialogStep === "availability" 
+                  ? "border-primary text-primary bg-primary/5" 
+                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Stock & Availability
+            </button>
+          </div>
+
+          <ScrollArea className="flex-1 max-h-[calc(95vh-220px)]">
+            <div className="p-6">
+              {/* Step 1: Basic Info */}
+              {dialogStep === "basic" && (
+                <div className="space-y-6">
+                  {/* Name & Slug */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-muted-foreground" />
+                        Item Name <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        value={itemForm.name}
+                        onChange={(e) => setItemForm(f => ({ ...f, name: e.target.value }))}
+                        placeholder="e.g., $100 Casino Credit"
+                        className="h-11"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        This will be displayed to users in the store
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Link2 className="w-4 h-4 text-muted-foreground" />
+                        URL Slug
+                      </Label>
+                      <Input
+                        value={itemForm.slug}
+                        onChange={(e) => setItemForm(f => ({ ...f, slug: e.target.value }))}
+                        placeholder="auto-generated-from-name"
+                        className="h-11"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Leave empty to auto-generate from name
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      Description
+                    </Label>
+                    <Textarea
+                      value={itemForm.description}
+                      onChange={(e) => setItemForm(f => ({ ...f, description: e.target.value }))}
+                      placeholder="Describe what users will receive when they redeem this item..."
+                      className="min-h-[100px] resize-none"
+                    />
+                  </div>
+
+                  {/* Image URL with Preview */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Image className="w-4 h-4 text-muted-foreground" />
+                      Image URL
+                    </Label>
+                    <div className="flex gap-4">
+                      <div className="flex-1">
+                        <Input
+                          value={itemForm.image_url}
+                          onChange={(e) => setItemForm(f => ({ ...f, image_url: e.target.value }))}
+                          placeholder="https://example.com/image.jpg"
+                          className="h-11"
+                        />
+                      </div>
+                      {itemForm.image_url && (
+                        <div className="w-24 h-24 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
+                          <img 
+                            src={itemForm.image_url} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Points Cost & Category */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-yellow-500" />
+                        Points Cost <span className="text-destructive">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          value={itemForm.points_cost}
+                          onChange={(e) => setItemForm(f => ({ ...f, points_cost: parseInt(e.target.value) || 0 }))}
+                          min={1}
+                          className="h-11 pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          pts
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-muted-foreground" />
+                        Category
+                      </Label>
+                      <Select
+                        value={itemForm.category_id || "none"}
+                        onValueChange={(v) => setItemForm(f => ({ ...f, category_id: v === "none" ? null : v }))}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Category</SelectItem>
+                          {categories.map(cat => (
+                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Visibility Toggles */}
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <h4 className="font-medium mb-4 flex items-center gap-2">
+                      <Eye className="w-4 h-4" />
+                      Visibility Settings
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                        <div className="flex items-center gap-3">
+                          {itemForm.is_active ? (
+                            <Eye className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <EyeOff className="w-5 h-5 text-muted-foreground" />
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">Active</p>
+                            <p className="text-xs text-muted-foreground">Show in store</p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={itemForm.is_active}
+                          onCheckedChange={(v) => setItemForm(f => ({ ...f, is_active: v }))}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg border bg-background">
+                        <div className="flex items-center gap-3">
+                          <Star className={`w-5 h-5 ${itemForm.is_featured ? "text-yellow-500" : "text-muted-foreground"}`} />
+                          <div>
+                            <p className="font-medium text-sm">Featured</p>
+                            <p className="text-xs text-muted-foreground">Highlight item</p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={itemForm.is_featured}
+                          onCheckedChange={(v) => setItemForm(f => ({ ...f, is_featured: v }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Details & Type */}
+              {dialogStep === "details" && (
+                <div className="space-y-6">
+                  {/* Item Type Selection */}
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                      Item Type <span className="text-destructive">*</span>
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {ITEM_TYPES.map((type) => {
+                        const isSelected = itemForm.item_type === type.value;
+                        return (
+                          <button
+                            key={type.value}
+                            type="button"
+                            onClick={() => setItemForm(f => ({ ...f, item_type: type.value }))}
+                            className={`p-4 rounded-lg border-2 text-left transition-all ${
+                              isSelected 
+                                ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className={`p-2 rounded-lg ${isSelected ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                                <type.icon className="w-5 h-5" />
+                              </div>
+                              <span className="font-medium">{type.label}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{type.description}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Type-specific fields */}
+                  {itemForm.item_type === "casino_credit" && (
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <CreditCard className="w-4 h-4" />
+                        Casino Credit Settings
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Casino Name</Label>
+                          <Input
+                            value={(itemForm.item_data.casino_name as string) || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              item_data: { ...f.item_data, casino_name: e.target.value } 
+                            }))}
+                            placeholder="e.g., Stake, Roobet"
+                            className="h-11"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Credit Amount</Label>
+                          <Input
+                            value={(itemForm.item_data.credit_amount as string) || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              item_data: { ...f.item_data, credit_amount: e.target.value } 
+                            }))}
+                            placeholder="e.g., $100"
+                            className="h-11"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {itemForm.item_type === "exclusive_content" && (
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Exclusive Content Settings
+                      </h4>
+                      <div className="space-y-2">
+                        <Label>Content URL / Download Link</Label>
+                        <Input
+                          value={(itemForm.item_data.content_url as string) || ""}
+                          onChange={(e) => setItemForm(f => ({ 
+                            ...f, 
+                            item_data: { ...f.item_data, content_url: e.target.value } 
+                          }))}
+                          placeholder="https://..."
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Content Type</Label>
+                        <Select
+                          value={(itemForm.item_data.content_type as string) || "video"}
+                          onValueChange={(v) => setItemForm(f => ({ 
+                            ...f, 
+                            item_data: { ...f.item_data, content_type: v } 
+                          }))}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="video">Video</SelectItem>
+                            <SelectItem value="download">Downloadable File</SelectItem>
+                            <SelectItem value="access">Access Link</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+
+                  {itemForm.item_type === "merchandise" && (
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        Merchandise Settings
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Size Options (comma-separated)</Label>
+                          <Input
+                            value={(itemForm.item_data.sizes as string) || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              item_data: { ...f.item_data, sizes: e.target.value } 
+                            }))}
+                            placeholder="S, M, L, XL"
+                            className="h-11"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Color Options (comma-separated)</Label>
+                          <Input
+                            value={(itemForm.item_data.colors as string) || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              item_data: { ...f.item_data, colors: e.target.value } 
+                            }))}
+                            placeholder="Black, White, Red"
+                            className="h-11"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                        <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                        <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                          Physical items require manual fulfillment after redemption
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {itemForm.item_type === "giveaway_entry" && (
+                    <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Gift className="w-4 h-4" />
+                        Giveaway Entry Settings
+                      </h4>
+                      <div className="space-y-2">
+                        <Label>Linked Giveaway (optional)</Label>
+                        <Input
+                          value={(itemForm.item_data.giveaway_id as string) || ""}
+                          onChange={(e) => setItemForm(f => ({ 
+                            ...f, 
+                            item_data: { ...f.item_data, giveaway_id: e.target.value } 
+                          }))}
+                          placeholder="Giveaway ID or leave empty"
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                        <Info className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                          Each redemption counts as one entry into the giveaway
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Max Per User */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      Max Redemptions Per User
+                    </Label>
+                    <Input
+                      type="number"
+                      value={itemForm.max_per_user ?? ""}
+                      onChange={(e) => setItemForm(f => ({ 
+                        ...f, 
+                        max_per_user: e.target.value ? parseInt(e.target.value) : null 
+                      }))}
+                      min={1}
+                      placeholder="Unlimited"
+                      className="h-11 max-w-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Leave empty for unlimited redemptions per user
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Stock & Availability */}
+              {dialogStep === "availability" && (
+                <div className="space-y-6">
+                  {/* Stock Mode Selection */}
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Box className="w-4 h-4 text-muted-foreground" />
+                      Stock Management
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setItemForm(f => ({ ...f, stock_mode: "unlimited" }))}
+                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                          itemForm.stock_mode === "unlimited" 
+                            ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <Infinity className="w-5 h-5 text-primary" />
+                          <span className="font-medium">Unlimited</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          No stock limit, always available
+                        </p>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setItemForm(f => ({ ...f, stock_mode: "limited" }))}
+                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                          itemForm.stock_mode === "limited" 
+                            ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <Package className="w-5 h-5 text-primary" />
+                          <span className="font-medium">Limited Stock</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Set a specific quantity
+                        </p>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setItemForm(f => ({ ...f, stock_mode: "until_out" }))}
+                        className={`p-4 rounded-lg border-2 text-left transition-all ${
+                          itemForm.stock_mode === "until_out" 
+                            ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <AlertTriangle className="w-5 h-5 text-orange-500" />
+                          <span className="font-medium">Until Out of Stock</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Available until stock depletes, no end date
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stock Quantity (for limited or until_out modes) */}
+                  {(itemForm.stock_mode === "limited" || itemForm.stock_mode === "until_out") && (
+                    <div className="p-4 rounded-lg border bg-muted/30 space-y-4">
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <Package className="w-4 h-4 text-muted-foreground" />
+                          Stock Quantity
+                        </Label>
+                        <Input
+                          type="number"
+                          value={itemForm.stock_quantity ?? ""}
+                          onChange={(e) => setItemForm(f => ({ 
+                            ...f, 
+                            stock_quantity: e.target.value ? parseInt(e.target.value) : null 
+                          }))}
+                          min={1}
+                          placeholder="Enter quantity"
+                          className="h-11 max-w-xs"
+                        />
+                        {itemForm.stock_mode === "until_out" && (
+                          <p className="text-xs text-muted-foreground">
+                            Item will remain available until this stock is depleted
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Date Range Availability */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        Availability Schedule
+                      </Label>
+                      {itemForm.stock_mode === "until_out" && (
+                        <Badge variant="outline" className="text-orange-500 border-orange-500/50">
+                          End date disabled (stock-based)
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm text-muted-foreground">Available From</Label>
+                        <Input
+                          type="datetime-local"
+                          value={itemForm.available_from}
+                          onChange={(e) => setItemForm(f => ({ ...f, available_from: e.target.value }))}
+                          className="h-11"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Leave empty to be available immediately
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm text-muted-foreground">Available Until</Label>
+                        <Input
+                          type="datetime-local"
+                          value={itemForm.available_until}
+                          onChange={(e) => setItemForm(f => ({ ...f, available_until: e.target.value }))}
+                          className="h-11"
+                          disabled={itemForm.stock_mode === "until_out"}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {itemForm.stock_mode === "until_out" 
+                            ? "Availability based on stock, not date" 
+                            : "Leave empty for no end date"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Box */}
+                  <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      Item Summary
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Status</p>
+                        <p className="font-medium">{itemForm.is_active ? "Active" : "Inactive"}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Stock</p>
+                        <p className="font-medium">
+                          {itemForm.stock_mode === "unlimited" ? "Unlimited" : 
+                           itemForm.stock_mode === "until_out" ? `${itemForm.stock_quantity || 0} (until depleted)` :
+                           `${itemForm.stock_quantity || 0} units`}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Type</p>
+                        <p className="font-medium capitalize">{itemForm.item_type.replace("_", " ")}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Cost</p>
+                        <p className="font-medium">{itemForm.points_cost.toLocaleString()} pts</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={itemForm.description}
-                onChange={(e) => setItemForm(f => ({ ...f, description: e.target.value }))}
-                placeholder="Item description"
-              />
-            </div>
-            <div>
-              <Label>Image URL</Label>
-              <Input
-                value={itemForm.image_url}
-                onChange={(e) => setItemForm(f => ({ ...f, image_url: e.target.value }))}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Points Cost *</Label>
-                <Input
-                  type="number"
-                  value={itemForm.points_cost}
-                  onChange={(e) => setItemForm(f => ({ ...f, points_cost: parseInt(e.target.value) || 0 }))}
-                  min={1}
-                />
-              </div>
-              <div>
-                <Label>Category</Label>
-                <Select
-                  value={itemForm.category_id || "none"}
-                  onValueChange={(v) => setItemForm(f => ({ ...f, category_id: v === "none" ? null : v }))}
+          </ScrollArea>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-4 px-6 py-4 border-t bg-muted/30">
+            <div className="flex gap-2">
+              {dialogStep !== "basic" && (
+                <Button
+                  variant="ghost"
+                  onClick={() => setDialogStep(dialogStep === "availability" ? "details" : "basic")}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No Category</SelectItem>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  Back
+                </Button>
+              )}
             </div>
-            <div>
-              <Label>Item Type</Label>
-              <Select
-                value={itemForm.item_type}
-                onValueChange={(v) => setItemForm(f => ({ ...f, item_type: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ITEM_TYPES.map(type => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {itemForm.item_type === "casino_credit" && (
-              <div>
-                <Label>Casino Name</Label>
-                <Input
-                  value={(itemForm.item_data.casino_name as string) || ""}
-                  onChange={(e) => setItemForm(f => ({ 
-                    ...f, 
-                    item_data: { ...f.item_data, casino_name: e.target.value } 
-                  }))}
-                  placeholder="e.g., Stake, Roobet"
-                />
-              </div>
-            )}
-            {itemForm.item_type === "exclusive_content" && (
-              <div>
-                <Label>Content URL</Label>
-                <Input
-                  value={(itemForm.item_data.content_url as string) || ""}
-                  onChange={(e) => setItemForm(f => ({ 
-                    ...f, 
-                    item_data: { ...f.item_data, content_url: e.target.value } 
-                  }))}
-                  placeholder="https://..."
-                />
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Stock Quantity (empty = unlimited)</Label>
-                <Input
-                  type="number"
-                  value={itemForm.stock_quantity ?? ""}
-                  onChange={(e) => setItemForm(f => ({ 
-                    ...f, 
-                    stock_quantity: e.target.value ? parseInt(e.target.value) : null 
-                  }))}
-                  min={0}
-                  placeholder="Unlimited"
-                />
-              </div>
-              <div>
-                <Label>Max Per User (empty = unlimited)</Label>
-                <Input
-                  type="number"
-                  value={itemForm.max_per_user ?? ""}
-                  onChange={(e) => setItemForm(f => ({ 
-                    ...f, 
-                    max_per_user: e.target.value ? parseInt(e.target.value) : null 
-                  }))}
-                  min={1}
-                  placeholder="Unlimited"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Available From</Label>
-                <Input
-                  type="datetime-local"
-                  value={itemForm.available_from}
-                  onChange={(e) => setItemForm(f => ({ ...f, available_from: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>Available Until</Label>
-                <Input
-                  type="datetime-local"
-                  value={itemForm.available_until}
-                  onChange={(e) => setItemForm(f => ({ ...f, available_until: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={itemForm.is_active}
-                  onCheckedChange={(v) => setItemForm(f => ({ ...f, is_active: v }))}
-                />
-                <Label>Active</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={itemForm.is_featured}
-                  onCheckedChange={(v) => setItemForm(f => ({ ...f, is_featured: v }))}
-                />
-                <Label>Featured</Label>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSubmitItem}>
-                {editingItem ? "Update Item" : "Create Item"}
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>
+                Cancel
               </Button>
+              {dialogStep !== "availability" ? (
+                <Button onClick={() => setDialogStep(dialogStep === "basic" ? "details" : "availability")}>
+                  Next
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSubmitItem}
+                  disabled={createItemMutation.isPending || updateItemMutation.isPending}
+                >
+                  {createItemMutation.isPending || updateItemMutation.isPending ? (
+                    "Saving..."
+                  ) : editingItem ? (
+                    "Update Item"
+                  ) : (
+                    "Create Item"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>

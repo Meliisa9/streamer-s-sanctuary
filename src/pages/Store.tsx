@@ -566,15 +566,11 @@ function ItemCard({
           )}
         </CardHeader>
         <CardContent className="flex-1 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="outline" className="gap-1">
-              {getItemTypeIcon(item.item_type)}
-              {item.item_type.replace("_", " ")}
-            </Badge>
-            {item.category?.name && (
+          {item.category?.name && (
+            <div className="flex items-center gap-2 mb-2">
               <Badge variant="secondary">{item.category.name}</Badge>
-            )}
-          </div>
+            </div>
+          )}
           <h3 className="font-semibold text-lg mb-1">{item.name}</h3>
           <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
             {item.description || "No description available"}
