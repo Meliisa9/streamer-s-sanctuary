@@ -47,6 +47,63 @@ interface UserActivity {
   pageViews: number;
 }
 
+interface ContentDistribution {
+  type: string;
+  count: number;
+  percentage: number;
+  color: string;
+}
+
+function ContentDistributionStats() {
+  const [distribution, setDistribution] = useState<ContentDistribution[]>([]);
+  
+  useEffect(() => {
+    fetchDistribution();
+  }, []);
+  
+  const fetchDistribution = async () => {
+    const { count: videoCount } = await supabase.from("videos").select("*", { count: "exact", head: true });
+    const { count: articleCount } = await supabase.from("news_articles").select("*", { count: "exact", head: true });
+    const { count: giveawayCount } = await supabase.from("giveaways").select("*", { count: "exact", head: true });
+    const { count: eventCount } = await supabase.from("events").select("*", { count: "exact", head: true });
+    const { count: pollCount } = await supabase.from("polls").select("*", { count: "exact", head: true });
+    
+    const total = (videoCount || 0) + (articleCount || 0) + (giveawayCount || 0) + (eventCount || 0) + (pollCount || 0);
+    
+    if (total === 0) {
+      setDistribution([]);
+      return;
+    }
+    
+    setDistribution([
+      { type: "Videos", count: videoCount || 0, percentage: Math.round(((videoCount || 0) / total) * 100), color: "bg-purple-500" },
+      { type: "Articles", count: articleCount || 0, percentage: Math.round(((articleCount || 0) / total) * 100), color: "bg-blue-500" },
+      { type: "Giveaways", count: giveawayCount || 0, percentage: Math.round(((giveawayCount || 0) / total) * 100), color: "bg-green-500" },
+      { type: "Events", count: eventCount || 0, percentage: Math.round(((eventCount || 0) / total) * 100), color: "bg-amber-500" },
+      { type: "Polls", count: pollCount || 0, percentage: Math.round(((pollCount || 0) / total) * 100), color: "bg-pink-500" },
+    ]);
+  };
+  
+  return (
+    <div className="space-y-4">
+      {distribution.map((item) => (
+        <div key={item.type} className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>{item.type}</span>
+            <span className="text-muted-foreground">{item.count} ({item.percentage}%)</span>
+          </div>
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+            <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.percentage}%` }} />
+          </div>
+        </div>
+      ))}
+      {distribution.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">No content yet</p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminEngagement() {
   const [metrics, setMetrics] = useState<EngagementMetrics>({
     totalUsers: 0,
@@ -376,25 +433,7 @@ export default function AdminEngagement() {
               className="glass rounded-2xl p-6 border border-border/50"
             >
               <h3 className="text-lg font-semibold mb-4">Content Distribution</h3>
-              <div className="space-y-4">
-                {[
-                  { type: "Videos", count: 45, percentage: 40, color: "bg-purple-500" },
-                  { type: "Articles", count: 32, percentage: 28, color: "bg-blue-500" },
-                  { type: "Giveaways", count: 18, percentage: 16, color: "bg-green-500" },
-                  { type: "Events", count: 12, percentage: 11, color: "bg-amber-500" },
-                  { type: "Polls", count: 6, percentage: 5, color: "bg-pink-500" },
-                ].map((item) => (
-                  <div key={item.type} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{item.type}</span>
-                      <span className="text-muted-foreground">{item.count} ({item.percentage}%)</span>
-                    </div>
-                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                      <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.percentage}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ContentDistributionStats />
             </motion.div>
 
             <motion.div
@@ -409,7 +448,6 @@ export default function AdminEngagement() {
                   { type: "Likes", value: metrics.totalLikes, icon: Heart, color: "text-red-500" },
                   { type: "Comments", value: metrics.totalComments, icon: MessageCircle, color: "text-blue-500" },
                   { type: "Views", value: metrics.totalViews, icon: Eye, color: "text-green-500" },
-                  { type: "Shares", value: 234, icon: Zap, color: "text-purple-500" },
                 ].map((item) => (
                   <div key={item.type} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30">
                     <item.icon className={`w-5 h-5 ${item.color}`} />

@@ -248,8 +248,8 @@ export function EnhancedEventForm({ open, onOpenChange, editingEvent, onSuccess,
           </FormField>
         </FormRow>
 
-        {streamers.length > 0 && (
-          <FormField label="Streamer">
+        {(formData.event_type === "Stream" || formData.event_type === "Collab") && streamers.length > 0 && (
+          <FormField label="Assign Streamer" hint="Link this stream to a streamer">
             <div className="relative">
               <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <select
@@ -257,7 +257,7 @@ export function EnhancedEventForm({ open, onOpenChange, editingEvent, onSuccess,
                 onChange={(e) => setFormData({ ...formData, streamer_id: e.target.value })}
                 className="w-full pl-10 pr-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
               >
-                <option value="">No streamer</option>
+                <option value="">No streamer assigned</option>
                 {streamers.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}

@@ -1005,7 +1005,7 @@ export default function AdminStream() {
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Streaming Platforms */}
+                {/* Streaming Platforms - Filter based on configured platform */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                     <Monitor className="w-4 h-4" />
@@ -1013,33 +1013,37 @@ export default function AdminStream() {
                   </h4>
                   
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-                        </svg>
-                        Twitch
-                      </Label>
-                      <Input
-                        value={linkSettings.twitch_url}
-                        onChange={(e) => setLinkSettings({ ...linkSettings, twitch_url: e.target.value })}
-                        placeholder="https://twitch.tv/username"
-                        className="h-11"
-                      />
-                    </div>
+                    {(settings.stream_platform === "twitch" || !settings.stream_platform) && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <svg className="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                          </svg>
+                          Twitch
+                        </Label>
+                        <Input
+                          value={linkSettings.twitch_url}
+                          onChange={(e) => setLinkSettings({ ...linkSettings, twitch_url: e.target.value })}
+                          placeholder="https://twitch.tv/username"
+                          className="h-11"
+                        />
+                      </div>
+                    )}
 
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <span className="text-green-400 font-bold text-sm">K</span>
-                        Kick
-                      </Label>
-                      <Input
-                        value={linkSettings.kick_url}
-                        onChange={(e) => setLinkSettings({ ...linkSettings, kick_url: e.target.value })}
-                        placeholder="https://kick.com/username"
-                        className="h-11"
-                      />
-                    </div>
+                    {(settings.stream_platform === "kick" || !settings.stream_platform) && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
+                          <span className="text-green-400 font-bold text-sm">K</span>
+                          Kick
+                        </Label>
+                        <Input
+                          value={linkSettings.kick_url}
+                          onChange={(e) => setLinkSettings({ ...linkSettings, kick_url: e.target.value })}
+                          placeholder="https://kick.com/username"
+                          className="h-11"
+                        />
+                      </div>
+                    )}
 
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
