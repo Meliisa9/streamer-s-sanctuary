@@ -178,25 +178,25 @@ export default function AdminStore() {
   // Stats
   const stats = [
     { 
-      title: "Total Items", 
+      label: "Total Items", 
       value: items.length, 
       icon: Package, 
-      trend: { value: items.filter(i => i.is_active).length, label: "active" } 
+      trendLabel: `${items.filter(i => i.is_active).length} active`
     },
     { 
-      title: "Categories", 
+      label: "Categories", 
       value: categories.length, 
       icon: Tag,
-      trend: { value: categories.filter(c => c.is_active).length, label: "active" }
+      trendLabel: `${categories.filter(c => c.is_active).length} active`
     },
     { 
-      title: "Pending Orders", 
+      label: "Pending Orders", 
       value: redemptions.filter(r => r.status === "pending").length, 
       icon: Clock,
-      trend: { value: redemptions.filter(r => r.status === "processing").length, label: "processing" }
+      trendLabel: `${redemptions.filter(r => r.status === "processing").length} processing`
     },
     { 
-      title: "Points Redeemed", 
+      label: "Points Redeemed", 
       value: redemptions.filter(r => r.status === "completed").reduce((acc, r) => acc + r.points_spent, 0).toLocaleString(), 
       icon: Coins,
     },
@@ -207,11 +207,20 @@ export default function AdminStore() {
     mutationFn: async (data: typeof itemForm) => {
       const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
       const { error } = await supabase.from("store_items").insert({
-        ...data,
+        name: data.name,
         slug,
+        description: data.description || null,
+        image_url: data.image_url || null,
+        points_cost: data.points_cost,
+        item_type: data.item_type,
+        item_data: data.item_data as unknown as Record<string, never>,
+        stock_quantity: data.stock_quantity,
+        max_per_user: data.max_per_user,
+        is_active: data.is_active,
+        is_featured: data.is_featured,
+        category_id: data.category_id,
         available_from: data.available_from || null,
         available_until: data.available_until || null,
-        item_data: data.item_data,
       });
       if (error) throw error;
     },
@@ -229,10 +238,20 @@ export default function AdminStore() {
   const updateItemMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof itemForm }) => {
       const { error } = await supabase.from("store_items").update({
-        ...data,
+        name: data.name,
+        slug: data.slug,
+        description: data.description || null,
+        image_url: data.image_url || null,
+        points_cost: data.points_cost,
+        item_type: data.item_type,
+        item_data: data.item_data as unknown as Record<string, never>,
+        stock_quantity: data.stock_quantity,
+        max_per_user: data.max_per_user,
+        is_active: data.is_active,
+        is_featured: data.is_featured,
+        category_id: data.category_id,
         available_from: data.available_from || null,
         available_until: data.available_until || null,
-        item_data: data.item_data,
       }).eq("id", id);
       if (error) throw error;
     },
@@ -498,8 +517,7 @@ export default function AdminStore() {
               icon={Package}
               title="No store items"
               description="Create your first store item to get started"
-              actionLabel="Add Item"
-              onAction={() => { resetItemForm(); setEditingItem(null); setIsItemDialogOpen(true); }}
+              action={{ label: "Add Item", onClick: () => { resetItemForm(); setEditingItem(null); setIsItemDialogOpen(true); } }}
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -561,8 +579,7 @@ export default function AdminStore() {
               icon={Tag}
               title="No categories"
               description="Create categories to organize your store items"
-              actionLabel="Add Category"
-              onAction={() => { resetCategoryForm(); setEditingCategory(null); setIsCategoryDialogOpen(true); }}
+              action={{ label: "Add Category", onClick: () => { resetCategoryForm(); setEditingCategory(null); setIsCategoryDialogOpen(true); } }}
             />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

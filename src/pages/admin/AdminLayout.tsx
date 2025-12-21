@@ -38,6 +38,7 @@ import {
   Ban,
   Tag,
   Navigation,
+  Store,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -114,6 +115,7 @@ const navSections: NavSection[] = [
       { icon: BarChart3, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
       { icon: Target, label: "Predictions", path: "/admin/predictions", roles: ["admin", "moderator"] },
       { icon: Trophy, label: "Win Gallery", path: "/admin/win-gallery", roles: ["admin", "moderator"] },
+      { icon: Store, label: "Points Store", path: "/admin/store", roles: ["admin"] },
     ],
   },
   {

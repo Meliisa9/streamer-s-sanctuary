@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +10,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Helmet } from "react-helmet";
 import { 
   Store as StoreIcon, 
   Search, 
@@ -225,14 +224,12 @@ export default function Store() {
     }
   };
 
-  return (
-    <>
-      <Helmet>
-        <title>Points Store | Redeem Your Points</title>
-        <meta name="description" content="Redeem your points for exclusive merchandise, giveaway entries, casino credits, and more!" />
-      </Helmet>
+  useEffect(() => {
+    document.title = "Points Store | Redeem Your Points";
+  }, []);
 
-      <div className="min-h-screen">
+  return (
+    <div className="min-h-screen">
         {/* Hero Section */}
         <section className="relative py-16 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
@@ -442,10 +439,9 @@ export default function Store() {
             </TabsContent>
           </Tabs>
         </section>
-      </div>
 
-      {/* Confirmation Dialog */}
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        {/* Confirmation Dialog */}
+        <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Redemption</DialogTitle>
@@ -513,7 +509,7 @@ export default function Store() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
 

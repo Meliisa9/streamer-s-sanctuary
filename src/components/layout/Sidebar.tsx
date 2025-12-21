@@ -45,7 +45,7 @@ const mainNavItems: NavItem[] = [
   { icon: Twitch, label: "Stream", path: "/stream", settingKey: "nav_stream_visible" },
 ];
 
-import { BarChart, Info } from "lucide-react";
+import { BarChart, Info, Store } from "lucide-react";
 
 const communityNavItems: NavItem[] = [
   { icon: Calendar, label: "Events", path: "/events", settingKey: "nav_events_visible" },
@@ -56,6 +56,7 @@ const communityNavItems: NavItem[] = [
   { icon: BarChart, label: "Streamer Stats", path: "/streamer-stats", settingKey: "nav_streamer_stats_visible" },
   { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },
   { icon: BarChart, label: "Polls", path: "/polls", settingKey: "nav_polls_visible" },
+  { icon: Store, label: "Store", path: "/store", settingKey: "nav_store_visible" },
   { icon: Info, label: "About", path: "/about", settingKey: "nav_about_visible" },
 ];
 
