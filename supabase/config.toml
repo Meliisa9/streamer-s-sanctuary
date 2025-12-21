@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.check-stream-status]
 verify_jwt = false
+
+[functions.whitelabel-save]
+verify_jwt = false

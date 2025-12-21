@@ -46,3 +46,8 @@ jobs:
         run: supabase functions deploy event-notifications
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy whitelabel-save function
+        run: supabase functions deploy whitelabel-save
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
