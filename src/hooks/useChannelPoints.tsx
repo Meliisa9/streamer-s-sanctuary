@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-
 export interface ChannelPointsData {
   site: number;
   twitch: number;
@@ -325,21 +324,48 @@ export function useChannelPoints() {
   const points = pointsData?.points || { site: profile?.points || 0, twitch: 0, kick: 0 };
   const connections = pointsData?.connections || [];
 
+  // Create merged connections that also include profile-based connections (from OAuth login)
+  const mergedConnections = useMemo(() => {
+    const result = [...connections];
+    
+    // Check if user logged in via Twitch but doesn't have a channel points connection
+    if (profile?.twitch_username && !connections.some(c => c.platform === "twitch")) {
+      result.push({
+        platform: "twitch" as const,
+        username: profile.twitch_username,
+        connected: true, // They're connected via OAuth login
+        lastSynced: null,
+      });
+    }
+    
+    // Check if user has kick_username set but no channel points connection
+    if (profile?.kick_username && !connections.some(c => c.platform === "kick")) {
+      result.push({
+        platform: "kick" as const,
+        username: profile.kick_username,
+        connected: true,
+        lastSynced: null,
+      });
+    }
+    
+    return result;
+  }, [connections, profile?.twitch_username, profile?.kick_username]);
+
   const getTotalPoints = useCallback(() => {
     return points.site + points.twitch + points.kick;
   }, [points]);
 
   const getConnection = useCallback((platform: "twitch" | "kick") => {
-    return connections.find(c => c.platform === platform);
-  }, [connections]);
+    return mergedConnections.find(c => c.platform === platform);
+  }, [mergedConnections]);
 
   const isConnected = useCallback((platform: "twitch" | "kick") => {
-    return connections.some(c => c.platform === platform && c.connected);
-  }, [connections]);
+    return mergedConnections.some(c => c.platform === platform && c.connected);
+  }, [mergedConnections]);
 
   return {
     points,
-    connections,
+    connections: mergedConnections,
     isLoading,
     getTotalPoints,
     getConnection,
