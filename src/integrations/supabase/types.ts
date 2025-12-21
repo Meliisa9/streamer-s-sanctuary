@@ -489,6 +489,48 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_point_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          description: string | null
+          id: string
+          platform: string
+          reference_id: string | null
+          reference_type: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          platform: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          platform?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       comment_likes: {
         Row: {
           comment_id: string
@@ -1542,6 +1584,7 @@ export type Database = {
       }
       store_items: {
         Row: {
+          accepted_currencies: string[] | null
           available_from: string | null
           available_until: string | null
           category_id: string | null
@@ -1554,14 +1597,17 @@ export type Database = {
           is_featured: boolean | null
           item_data: Json | null
           item_type: string
+          kick_points_cost: number | null
           max_per_user: number | null
           name: string
           points_cost: number
           slug: string
           stock_quantity: number | null
+          twitch_points_cost: number | null
           updated_at: string
         }
         Insert: {
+          accepted_currencies?: string[] | null
           available_from?: string | null
           available_until?: string | null
           category_id?: string | null
@@ -1574,14 +1620,17 @@ export type Database = {
           is_featured?: boolean | null
           item_data?: Json | null
           item_type?: string
+          kick_points_cost?: number | null
           max_per_user?: number | null
           name: string
           points_cost: number
           slug: string
           stock_quantity?: number | null
+          twitch_points_cost?: number | null
           updated_at?: string
         }
         Update: {
+          accepted_currencies?: string[] | null
           available_from?: string | null
           available_until?: string | null
           category_id?: string | null
@@ -1594,11 +1643,13 @@ export type Database = {
           is_featured?: boolean | null
           item_data?: Json | null
           item_type?: string
+          kick_points_cost?: number | null
           max_per_user?: number | null
           name?: string
           points_cost?: number
           slug?: string
           stock_quantity?: number | null
+          twitch_points_cost?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1614,10 +1665,12 @@ export type Database = {
       store_redemptions: {
         Row: {
           created_at: string
+          currency: string | null
           fulfillment_data: Json | null
           id: string
           item_id: string
           notes: string | null
+          platform_points_spent: number | null
           points_spent: number
           processed_at: string | null
           processed_by: string | null
@@ -1628,10 +1681,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          currency?: string | null
           fulfillment_data?: Json | null
           id?: string
           item_id: string
           notes?: string | null
+          platform_points_spent?: number | null
           points_spent: number
           processed_at?: string | null
           processed_by?: string | null
@@ -1642,10 +1697,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          currency?: string | null
           fulfillment_data?: Json | null
           id?: string
           item_id?: string
           notes?: string | null
+          platform_points_spent?: number | null
           points_spent?: number
           processed_at?: string | null
           processed_by?: string | null
@@ -2010,6 +2067,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_channel_points: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          platform: string
+          platform_user_id: string | null
+          platform_username: string | null
+          points_balance: number
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          platform: string
+          platform_user_id?: string | null
+          platform_username?: string | null
+          points_balance?: number
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          platform?: string
+          platform_user_id?: string | null
+          platform_username?: string | null
+          points_balance?: number
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_custom_roles: {
         Row: {
           assigned_by: string | null
@@ -2335,6 +2437,10 @@ export type Database = {
       is_admin_or_mod: { Args: { _user_id: string }; Returns: boolean }
       redeem_store_item: {
         Args: { p_item_id: string; p_quantity?: number }
+        Returns: Json
+      }
+      redeem_store_item_with_currency: {
+        Args: { p_currency?: string; p_item_id: string; p_quantity?: number }
         Returns: Json
       }
     }
