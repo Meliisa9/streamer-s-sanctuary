@@ -69,22 +69,45 @@ interface UserCustomRole {
 }
 
 const allPermissions = [
-  { key: "manage_videos", label: "Manage Videos", description: "Create, edit, delete videos" },
-  { key: "manage_articles", label: "Manage Articles", description: "Create, edit, delete news articles" },
-  { key: "manage_giveaways", label: "Manage Giveaways", description: "Create and manage giveaways" },
-  { key: "manage_events", label: "Manage Events", description: "Create and manage events" },
-  { key: "manage_polls", label: "Manage Polls", description: "Create and manage polls" },
-  { key: "manage_bonuses", label: "Manage Bonuses", description: "Create and manage casino bonuses" },
-  { key: "manage_users", label: "Manage Users", description: "View and moderate user accounts" },
-  { key: "manage_settings", label: "Manage Settings", description: "Access site settings" },
-  { key: "manage_streamers", label: "Manage Streamers", description: "Manage streamer profiles" },
-  { key: "view_analytics", label: "View Analytics", description: "Access analytics dashboard" },
-  { key: "view_audit_log", label: "View Audit Log", description: "View audit log entries" },
-  { key: "send_notifications", label: "Send Notifications", description: "Send notifications to users" },
-  { key: "moderate_content", label: "Moderate Content", description: "Review and moderate content" },
-  { key: "manage_bans", label: "Manage Bans", description: "Ban and unban users" },
-  { key: "view_dev_diagnostics", label: "View Dev Diagnostics", description: "Access developer diagnostics overlay" },
-  { key: "manage_webhooks", label: "Manage Webhooks", description: "Configure webhook notifications" },
+  // Content Management
+  { key: "create_articles", label: "Create Articles", description: "Can create new news articles", category: "Content" },
+  { key: "edit_own_articles", label: "Edit Own Articles", description: "Can edit articles they authored", category: "Content" },
+  { key: "delete_own_articles", label: "Delete Own Articles", description: "Can delete articles they authored", category: "Content" },
+  { key: "manage_videos", label: "Manage Videos", description: "Can add, edit, and delete videos", category: "Content" },
+  { key: "manage_bonuses", label: "Manage Bonuses", description: "Can manage casino bonuses", category: "Content" },
+  { key: "moderate_comments", label: "Moderate Comments", description: "Can moderate user comments", category: "Content" },
+  { key: "manage_content_flags", label: "Manage Content Flags", description: "Can review flagged content", category: "Content" },
+  
+  // Community & Engagement
+  { key: "manage_giveaways", label: "Manage Giveaways", description: "Can create and manage giveaways", category: "Community" },
+  { key: "manage_events", label: "Manage Events", description: "Can create and manage events", category: "Community" },
+  { key: "manage_gtw", label: "Manage Guess The Win", description: "Can manage GTW sessions", category: "Community" },
+  { key: "manage_polls", label: "Manage Polls", description: "Can create and manage polls", category: "Community" },
+  { key: "manage_bonus_hunt", label: "Manage Bonus Hunt", description: "Can manage bonus hunt sessions", category: "Community" },
+  { key: "send_notifications", label: "Send Notifications", description: "Can send notifications to users", category: "Community" },
+  
+  // Stream & Streamers
+  { key: "change_live_status", label: "Change Live Status", description: "Can toggle stream live status", category: "Streaming" },
+  { key: "manage_streamers", label: "Manage Streamers", description: "Can manage streamer profiles", category: "Streaming" },
+  
+  // User Management
+  { key: "manage_users", label: "Manage Users", description: "Can manage user accounts and roles", category: "Users" },
+  { key: "view_user_details", label: "View User Details", description: "Can view detailed user information", category: "Users" },
+  
+  // System & Settings
+  { key: "manage_settings", label: "Manage Settings", description: "Can change site settings", category: "System" },
+  { key: "manage_branding", label: "Manage Branding", description: "Can configure white-label branding", category: "System" },
+  { key: "manage_legal_pages", label: "Manage Legal Pages", description: "Can edit legal pages and policies", category: "System" },
+  { key: "manage_webhooks", label: "Manage Webhooks", description: "Can configure webhook integrations", category: "System" },
+  { key: "bulk_actions", label: "Bulk Actions", description: "Can perform bulk operations", category: "System" },
+  
+  // Analytics & Monitoring
+  { key: "view_audit_logs", label: "View Audit Logs", description: "Can view system audit logs", category: "Analytics" },
+  { key: "view_own_analytics", label: "View Own Analytics", description: "Can view their own analytics", category: "Analytics" },
+  { key: "view_dev_diagnostics", label: "View Dev Diagnostics", description: "Can access developer diagnostics", category: "Analytics" },
+  
+  // Access Control
+  { key: "bypass_maintenance", label: "Bypass Maintenance", description: "Can access site during maintenance", category: "Access" },
 ];
 
 const builtInRoles = ["admin", "moderator", "writer", "user"];
