@@ -335,14 +335,24 @@ export default function UserProfile() {
       {/* Hero Banner with Gradient Overlay */}
       <div className="relative">
         <div 
-          className={`h-48 md:h-64 relative ${!(profile as any)?.cover_url ? `bg-gradient-to-br ${levelInfo.gradient}` : ''}`}
-          style={(profile as any)?.cover_url ? {
-            backgroundImage: `url(${(profile as any).cover_url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          } : undefined}
+          className="h-48 md:h-64 lg:h-72 relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          {/* Background */}
+          {(profile as any)?.cover_url ? (
+            <img 
+              src={(profile as any).cover_url} 
+              alt="Profile cover" 
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className={`absolute inset-0 bg-gradient-to-br ${levelInfo.gradient}`}>
+              <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10" />
+              <div className="absolute top-0 left-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 right-1/4 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+            </div>
+          )}
+          {/* Overlay gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/20" />
           
           {/* Back Button */}
           <motion.div

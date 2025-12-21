@@ -385,18 +385,22 @@ export default function Profile() {
       {/* Hero Section with Profile Card */}
       <div className="relative">
         {/* Cover Photo Background */}
-        <div 
-          className="h-56 md:h-72 relative"
-          style={(profile as any)?.cover_url ? { 
-            backgroundImage: `url(${(profile as any).cover_url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          } : undefined}
-        >
-          {!(profile as any)?.cover_url && (
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/20 to-accent/30" />
+        <div className="h-56 md:h-72 lg:h-80 relative overflow-hidden">
+          {(profile as any)?.cover_url ? (
+            <img 
+              src={(profile as any).cover_url} 
+              alt="Profile cover" 
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-primary/20 to-accent/30">
+              <div className="absolute inset-0 bg-gradient-to-r from-black/5 via-transparent to-black/5" />
+              <div className="absolute top-0 left-1/4 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 right-1/3 w-64 h-64 bg-accent/10 rounded-full blur-2xl" />
+            </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          {/* Overlay gradient for smooth transition */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/10" />
           
           {/* Floating Action Buttons */}
           <div className="absolute top-4 right-4 flex gap-2 z-10">
