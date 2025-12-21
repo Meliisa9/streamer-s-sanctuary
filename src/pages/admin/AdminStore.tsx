@@ -69,6 +69,9 @@ interface StoreItem {
   description: string | null;
   image_url: string | null;
   points_cost: number;
+  twitch_points_cost: number | null;
+  kick_points_cost: number | null;
+  accepted_currencies: string[] | null;
   item_type: string;
   item_data: Record<string, unknown>;
   stock_quantity: number | null;
@@ -127,6 +130,9 @@ export default function AdminStore() {
     description: "",
     image_url: "",
     points_cost: 100,
+    twitch_points_cost: null as number | null,
+    kick_points_cost: null as number | null,
+    accepted_currencies: ["site"] as string[],
     item_type: "merchandise",
     item_data: {} as Record<string, unknown>,
     stock_quantity: null as number | null,
@@ -246,6 +252,9 @@ export default function AdminStore() {
         description: data.description || null,
         image_url: data.image_url || null,
         points_cost: data.points_cost,
+        twitch_points_cost: data.twitch_points_cost,
+        kick_points_cost: data.kick_points_cost,
+        accepted_currencies: data.accepted_currencies,
         item_type: data.item_type,
         item_data: data.item_data as unknown as Record<string, never>,
         stock_quantity: stockQty,
@@ -286,6 +295,9 @@ export default function AdminStore() {
         description: data.description || null,
         image_url: data.image_url || null,
         points_cost: data.points_cost,
+        twitch_points_cost: data.twitch_points_cost,
+        kick_points_cost: data.kick_points_cost,
+        accepted_currencies: data.accepted_currencies,
         item_type: data.item_type,
         item_data: data.item_data as unknown as Record<string, never>,
         stock_quantity: stockQty,
@@ -399,6 +411,9 @@ export default function AdminStore() {
       description: "",
       image_url: "",
       points_cost: 100,
+      twitch_points_cost: null,
+      kick_points_cost: null,
+      accepted_currencies: ["site"],
       item_type: "merchandise",
       item_data: {},
       stock_quantity: null,
@@ -443,6 +458,9 @@ export default function AdminStore() {
       description: item.description || "",
       image_url: item.image_url || "",
       points_cost: item.points_cost,
+      twitch_points_cost: item.twitch_points_cost,
+      kick_points_cost: item.kick_points_cost,
+      accepted_currencies: item.accepted_currencies || ["site"],
       item_type: item.item_type,
       item_data: item.item_data || {},
       stock_quantity: item.stock_quantity,
@@ -979,7 +997,108 @@ export default function AdminStore() {
                     </div>
                   </div>
 
-                  {/* Visibility Toggles */}
+                  {/* Multi-Currency Pricing */}
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <h4 className="font-medium mb-4 flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Channel Points Pricing (Optional)
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Allow users to redeem with Twitch or Kick channel points in addition to site points.
+                    </p>
+                    
+                    {/* Accepted Currencies */}
+                    <div className="mb-4">
+                      <Label className="text-sm mb-2 block">Accepted Currencies</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {["site", "twitch", "kick"].map((currency) => {
+                          const isSelected = itemForm.accepted_currencies.includes(currency);
+                          const labels: Record<string, string> = {
+                            site: "Site Points",
+                            twitch: "Twitch Points",
+                            kick: "Kick Points",
+                          };
+                          const colors: Record<string, string> = {
+                            site: "bg-yellow-500/20 border-yellow-500/40 text-yellow-700",
+                            twitch: "bg-purple-500/20 border-purple-500/40 text-purple-700",
+                            kick: "bg-green-500/20 border-green-500/40 text-green-700",
+                          };
+                          return (
+                            <button
+                              key={currency}
+                              type="button"
+                              onClick={() => {
+                                if (currency === "site") return; // Site is always required
+                                setItemForm(f => ({
+                                  ...f,
+                                  accepted_currencies: isSelected
+                                    ? f.accepted_currencies.filter(c => c !== currency)
+                                    : [...f.accepted_currencies, currency],
+                                }));
+                              }}
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                                isSelected ? colors[currency] : "bg-muted border-border text-muted-foreground"
+                              } ${currency === "site" ? "opacity-75 cursor-not-allowed" : "cursor-pointer hover:opacity-80"}`}
+                            >
+                              {labels[currency]}
+                              {isSelected && " ✓"}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Twitch Points Cost */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-purple-600">
+                          Twitch Points Cost
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={itemForm.twitch_points_cost || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              twitch_points_cost: e.target.value ? parseInt(e.target.value) : null 
+                            }))}
+                            min={0}
+                            placeholder="Leave empty to disable"
+                            className="h-11 pr-12"
+                            disabled={!itemForm.accepted_currencies.includes("twitch")}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                            pts
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Kick Points Cost */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-green-600">
+                          Kick Points Cost
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={itemForm.kick_points_cost || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              kick_points_cost: e.target.value ? parseInt(e.target.value) : null 
+                            }))}
+                            min={0}
+                            placeholder="Leave empty to disable"
+                            className="h-11 pr-12"
+                            disabled={!itemForm.accepted_currencies.includes("kick")}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                            pts
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="rounded-lg border bg-muted/30 p-4">
                     <h4 className="font-medium mb-4 flex items-center gap-2">
                       <Eye className="w-4 h-4" />
