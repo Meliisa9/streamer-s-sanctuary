@@ -122,8 +122,17 @@ export function useChannelPoints() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
+    const twitchSuccess = params.get("twitch_success");
+    const twitchError = params.get("twitch_error");
+    const kickSuccess = params.get("kick_success");
+    const kickError = params.get("kick_error");
+
+    if (twitchSuccess || twitchError || kickSuccess || kickError) {
+      sessionStorage.removeItem("oauth_in_progress");
+    }
+
     // Check for Twitch success
-    if (params.get("twitch_success") === "true") {
+    if (twitchSuccess === "true") {
       const username = params.get("twitch_username");
       toast({
         title: "Twitch Connected!",
@@ -136,17 +145,17 @@ export function useChannelPoints() {
     }
 
     // Check for Twitch error
-    if (params.get("twitch_error")) {
+    if (twitchError) {
       toast({
         title: "Twitch Connection Failed",
-        description: params.get("twitch_error") || "Failed to connect",
+        description: twitchError || "Failed to connect",
         variant: "destructive",
       });
       window.history.replaceState({}, "", window.location.pathname);
     }
 
     // Check for Kick success
-    if (params.get("kick_success") === "true") {
+    if (kickSuccess === "true") {
       const username = params.get("kick_username");
       toast({
         title: "Kick Connected!",
@@ -157,10 +166,10 @@ export function useChannelPoints() {
     }
 
     // Check for Kick error
-    if (params.get("kick_error")) {
+    if (kickError) {
       toast({
         title: "Kick Connection Failed",
-        description: params.get("kick_error") || "Failed to connect",
+        description: kickError || "Failed to connect",
         variant: "destructive",
       });
       window.history.replaceState({}, "", window.location.pathname);
@@ -224,6 +233,9 @@ export function useChannelPoints() {
         throw new Error("No authorization URL returned");
       }
 
+      // Prevent temporary-session cleanup from logging the user out during the OAuth hop
+      sessionStorage.setItem("oauth_in_progress", "true");
+
       // Redirect to Twitch OAuth
       window.location.href = data.authUrl;
     } catch (error: any) {
@@ -266,6 +278,9 @@ export function useChannelPoints() {
       if (!authUrl) {
         throw new Error("No authorization URL returned");
       }
+
+      // Prevent temporary-session cleanup from logging the user out during the OAuth hop
+      sessionStorage.setItem("oauth_in_progress", "true");
 
       // Redirect to Kick OAuth
       window.location.href = authUrl;
