@@ -203,15 +203,11 @@ function AdminNavItem({ item, isActive, collapsed, isSubItem = false }: { item: 
     <NavLink to={item.path}>
       <div
         className={cn(
-          "flex items-center gap-3 rounded-xl transition-all duration-200 group",
-          isSubItem ? "px-3 py-2 ml-2 border-l-2" : "px-3 py-2.5",
+          "flex items-center gap-3 rounded-lg transition-all duration-200 group",
+          isSubItem ? "px-3 py-2 ml-6" : "px-3 py-2.5",
           isActive
-            ? isSubItem 
-              ? "bg-primary/10 text-primary border-l-primary"
-              : "bg-primary/15 text-primary shadow-sm"
-            : isSubItem
-              ? "text-muted-foreground hover:bg-secondary/50 hover:text-foreground border-l-border"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:bg-secondary hover:text-foreground"
         )}
       >
         <Icon className={cn(
