@@ -146,7 +146,6 @@ const navSections: NavSection[] = [
     items: [
       { icon: Settings, label: "General Settings", path: "/admin/settings", roles: ["admin"] },
       { icon: Palette, label: "Branding", path: "/admin/settings/branding", roles: ["admin"] },
-      { icon: Palette, label: "White Label", path: "/admin/settings/white-label", roles: ["admin"] },
       { icon: Navigation, label: "Navigation", path: "/admin/settings/navigation", roles: ["admin"] },
       { icon: FileText, label: "Language", path: "/admin/settings/language", roles: ["admin"] },
       { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin"] },
