@@ -1507,6 +1507,163 @@ export type Database = {
         }
         Relationships: []
       }
+      store_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      store_items: {
+        Row: {
+          available_from: string | null
+          available_until: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          is_featured: boolean | null
+          item_data: Json | null
+          item_type: string
+          max_per_user: number | null
+          name: string
+          points_cost: number
+          slug: string
+          stock_quantity: number | null
+          updated_at: string
+        }
+        Insert: {
+          available_from?: string | null
+          available_until?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          item_data?: Json | null
+          item_type?: string
+          max_per_user?: number | null
+          name: string
+          points_cost: number
+          slug: string
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Update: {
+          available_from?: string | null
+          available_until?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          item_data?: Json | null
+          item_type?: string
+          max_per_user?: number | null
+          name?: string
+          points_cost?: number
+          slug?: string
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "store_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_redemptions: {
+        Row: {
+          created_at: string
+          fulfillment_data: Json | null
+          id: string
+          item_id: string
+          notes: string | null
+          points_spent: number
+          processed_at: string | null
+          processed_by: string | null
+          quantity: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fulfillment_data?: Json | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          points_spent: number
+          processed_at?: string | null
+          processed_by?: string | null
+          quantity?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fulfillment_data?: Json | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          points_spent?: number
+          processed_at?: string | null
+          processed_by?: string | null
+          quantity?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_redemptions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "store_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stream_predictions: {
         Row: {
           created_at: string
@@ -2176,6 +2333,10 @@ export type Database = {
       }
       has_writer_role: { Args: { _user_id: string }; Returns: boolean }
       is_admin_or_mod: { Args: { _user_id: string }; Returns: boolean }
+      redeem_store_item: {
+        Args: { p_item_id: string; p_quantity?: number }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "user" | "moderator" | "admin" | "writer"
