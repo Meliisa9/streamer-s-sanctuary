@@ -22,7 +22,8 @@ import {
   Bell,
   FileText,
   RefreshCw,
-  Radio
+  Radio,
+  Sparkles
 } from "lucide-react";
 import { LiveStreamStatus } from "@/components/admin/LiveStreamStatus";
 import { SystemMonitor } from "@/components/admin/SystemMonitor";
@@ -40,6 +41,8 @@ import {
   AdminQuickAction 
 } from "@/components/admin";
 import { useAuth } from "@/contexts/AuthContext";
+import SetupWizard from "@/components/SetupWizard";
+import { useSetupStatus } from "@/hooks/useSetupStatus";
 
 interface Stats {
   totalVideos: number;
@@ -77,6 +80,8 @@ interface RecentContent {
 
 export default function AdminDashboard() {
   const { isAdmin } = useAuth();
+  const { isSetupComplete, isLoading: setupLoading, refetch: refetchSetup } = useSetupStatus();
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
   const [stats, setStats] = useState<Stats>({
     totalVideos: 0,
     totalArticles: 0,
@@ -95,6 +100,13 @@ export default function AdminDashboard() {
   const [recentContent, setRecentContent] = useState<RecentContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-show setup wizard for first-time setup
+  useEffect(() => {
+    if (!setupLoading && isSetupComplete === false) {
+      setShowSetupWizard(true);
+    }
+  }, [setupLoading, isSetupComplete]);
 
   useEffect(() => {
     fetchAllData();
@@ -262,17 +274,56 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Setup Wizard */}
+      <SetupWizard
+        open={showSetupWizard}
+        onClose={() => setShowSetupWizard(false)}
+        onComplete={() => {
+          setShowSetupWizard(false);
+          refetchSetup();
+        }}
+      />
+
       <AdminPageHeader
         title="Dashboard"
         description="Welcome back! Here's an overview of your site."
         icon={Activity}
         actions={
-          <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            {isSetupComplete === false && (
+              <Button variant="outline" onClick={() => setShowSetupWizard(true)} className="gap-2">
+                <Sparkles className="w-4 h-4" />
+                Setup Wizard
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing} className="gap-2">
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
         }
       />
+
+      {/* Setup Banner */}
+      {isSetupComplete === false && !showSetupWizard && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20"
+        >
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-primary" />
+            <div>
+              <p className="font-medium text-primary">Complete your site setup</p>
+              <p className="text-sm text-muted-foreground">Configure your branding, features, and security settings</p>
+            </div>
+          </div>
+          <Button onClick={() => setShowSetupWizard(true)} className="gap-2">
+            Start Setup
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </motion.div>
+      )}
 
       {/* Alert Banner */}
       {stats.pendingFlags > 0 && (
