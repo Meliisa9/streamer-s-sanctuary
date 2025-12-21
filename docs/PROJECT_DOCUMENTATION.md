@@ -808,10 +808,38 @@ StreamerX represents a **mature, production-ready web application** with:
 - ✅ **Gamification System**: Points, achievements, leaderboards
 - ✅ **White-label Ready**: Full customization support
 - ✅ **Documentation**: Comprehensive technical documentation
+- ✅ **Quick Setup Wizard**: 6-step guided configuration (v2.0)
 
 The platform is suitable for **immediate production deployment** and can serve as the foundation for a thriving streaming community platform.
 
 ---
 
-*Documentation Version: 1.2.0*
+## 📝 Version History
+
+### v2.0.0 (December 2024)
+- Added Quick Setup Wizard with 6-step guided configuration
+- Merged Language settings into Branding page
+- Enhanced cover photo/banner components
+- Fixed visual bugs across Store, Profile pages
+- Comprehensive security audit completed
+- Updated documentation
+
+### v1.1.0 (December 2024)
+- Added comprehensive input validation library
+- Added security utilities library
+- Enhanced HTML sanitization with iframe source validation
+- Added rate limiting to edge functions
+- Error boundary improvements
+- CSS injection protection
+
+### v1.0.0 (Initial Release)
+- Full platform launch
+- 65+ pages, 100+ components
+- Complete admin panel (40 pages)
+- Authentication system
+- Gamification features
+
+---
+
+*Documentation Version: 2.0.0*
 *Last Updated: December 2024*
