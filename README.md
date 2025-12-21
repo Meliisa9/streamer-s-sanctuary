@@ -551,6 +551,31 @@ This project is licensed under the **MIT License** - you can use it for anything
 
 ## 📝 Changelog
 
+### v2.0.0 (December 2024)
+
+- **Quick Setup Wizard:**
+  - New 6-step interactive wizard for first-time setup
+  - Guides through branding, social links, features, and security configuration
+  - Auto-detects setup completion status
+  - Beautiful step-by-step UI with validation
+
+- **Admin Panel Improvements:**
+  - Merged Language settings into Branding page for simplified navigation
+  - Enhanced cover photo/banner components across Store, Profile, and UserProfile pages
+  - Fixed visual bugs with gradient overlays and image scaling
+
+- **UI/UX Enhancements:**
+  - Improved hero sections with proper layered gradients
+  - Better cover photo handling with proper object-fit
+  - Added decorative blur elements for visual depth
+  - Responsive design improvements across all pages
+
+- **Code Quality:**
+  - Comprehensive security audit completed
+  - Enhanced error handling throughout
+  - Improved code organization and component structure
+  - Added additional security utilities
+
 ### v1.1.0 (December 2024)
 - **Security Improvements:**
   - Added comprehensive input validation library (`src/lib/validation.ts`)
@@ -574,6 +599,73 @@ This project is licensed under the **MIT License** - you can use it for anything
   - Updated README with security details
   - Updated API documentation with white-label endpoint
   - Comprehensive PROJECT_DOCUMENTATION for value assessment
+
+---
+
+## 🚀 Quick Setup After Installation
+
+After completing the installation steps above, follow this quick setup guide:
+
+### Step 1: Run the Setup Wizard
+
+1. Log in to your website
+2. Navigate to the Admin panel (`/admin`)
+3. If this is your first time, the **Setup Wizard** will appear automatically
+4. Follow the 6-step wizard:
+   - **Step 1**: Welcome & Introduction
+   - **Step 2**: Configure site name, logo, colors
+   - **Step 3**: Add your social media links
+   - **Step 4**: Enable/disable platform features
+   - **Step 5**: Review security settings
+   - **Step 6**: Complete setup!
+
+### Step 2: Configure Essential Settings
+
+After the wizard, customize these settings in the Admin panel:
+
+| Setting Area | What to Configure |
+|--------------|-------------------|
+| **Branding** | Logo URL, site name, primary colors, typography |
+| **Navigation** | Show/hide menu items for your needs |
+| **Stream** | Twitch/Kick channel URLs, auto-detect settings |
+| **Statistics** | Homepage stat values and labels |
+
+### Step 3: Add Your Content
+
+1. **Add Casino Bonuses** - Go to Admin → Bonuses
+2. **Create Your First Giveaway** - Admin → Giveaways
+3. **Upload Videos** - Admin → Videos
+4. **Post News** - Admin → News
+5. **Add Streamers** - Admin → Streamers
+
+---
+
+## 📋 Environment Variables Reference
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | ✅ Yes | Your Supabase project URL |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ Yes | Your Supabase anon/public key |
+| `VITE_SUPABASE_PROJECT_ID` | ✅ Yes | Your Supabase project ID |
+| `KICK_CLIENT_ID` | ❌ Optional | For Kick OAuth integration |
+| `KICK_CLIENT_SECRET` | ❌ Optional | For Kick OAuth integration |
+
+---
+
+## 🔧 Database Scripts Reference
+
+Located in `scripts/database/`:
+
+| Script | Purpose | When to Run |
+|--------|---------|-------------|
+| `00-run-all.sql` | Runs all setup scripts in order | Initial setup |
+| `01-extensions.sql` | Enables PostgreSQL extensions | Initial setup |
+| `02-storage-buckets.sql` | Creates storage buckets | Initial setup |
+| `03-site-settings.sql` | Default site configuration | Initial setup |
+| `04-role-permissions.sql` | Permission matrix setup | Initial setup |
+| `05-video-categories.sql` | Default video categories | Initial setup |
+| `06-cron-jobs.sql` | Scheduled automation tasks | After updating URLs |
+| `07-admin-setup.sql` | Grant admin access | After first user signup |
 
 ---
 
