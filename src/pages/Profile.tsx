@@ -587,20 +587,20 @@ export default function Profile() {
           transition={{ delay: 0.1 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full justify-start mb-6 bg-card/50 backdrop-blur-sm p-1.5 rounded-xl border border-border/50 flex-wrap gap-1">
-              <TabsTrigger value="profile" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+            <TabsList className="w-full justify-start mb-6 bg-card/50 backdrop-blur-sm p-1.5 rounded-xl border border-border/50 flex flex-nowrap overflow-x-auto scrollbar-none gap-1">
+              <TabsTrigger value="profile" className="shrink-0 gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <User className="w-4 h-4" />Profile
               </TabsTrigger>
-              <TabsTrigger value="bookmarks" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+              <TabsTrigger value="bookmarks" className="shrink-0 gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <Bookmark className="w-4 h-4" />Bookmarks
               </TabsTrigger>
-              <TabsTrigger value="achievements" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+              <TabsTrigger value="achievements" className="shrink-0 gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <Award className="w-4 h-4" />Achievements
               </TabsTrigger>
-              <TabsTrigger value="activity" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+              <TabsTrigger value="activity" className="shrink-0 gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <TrendingUp className="w-4 h-4" />Activity
               </TabsTrigger>
-              <TabsTrigger value="settings" className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
+              <TabsTrigger value="settings" className="shrink-0 gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-lg">
                 <Settings className="w-4 h-4" />Settings
               </TabsTrigger>
             </TabsList>

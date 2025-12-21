@@ -24,7 +24,7 @@ import {
   Flame, Dice1, Dice2, Dice3, Dice4, Dice5, Dice6,
   MapPin, Clock, CheckCircle2, Sparkles, Copy
 } from "lucide-react";
-import { LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
+import { ACHIEVEMENTS, LEVEL_THRESHOLDS } from "@/hooks/useAchievements";
 import { ReportDialog } from "@/components/ReportDialog";
 
 export default function UserProfile() {
@@ -142,6 +142,21 @@ export default function UserProfile() {
         .eq("user_id", resolvedUserId);
       if (error) throw error;
       return count || 0;
+    },
+    enabled: !!resolvedUserId,
+  });
+
+  const { data: unlockedAchievements } = useQuery({
+    queryKey: ["user-achievements", resolvedUserId],
+    queryFn: async () => {
+      if (!resolvedUserId) return [] as Array<{ achievement_key: string; unlocked_at: string }>;
+      const { data, error } = await supabase
+        .from("user_achievements")
+        .select("achievement_key, unlocked_at")
+        .eq("user_id", resolvedUserId)
+        .order("unlocked_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as Array<{ achievement_key: string; unlocked_at: string }>;
     },
     enabled: !!resolvedUserId,
   });
