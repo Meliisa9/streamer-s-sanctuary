@@ -15,12 +15,18 @@ Deno.serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization") || "";
 
+    console.log("[whitelabel-save] request", {
+      method: req.method,
+      hasAuthHeader: !!authHeader,
+    });
+
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: userData, error: userError } = await userClient.auth.getUser();
     if (userError || !userData?.user) {
+      console.log("[whitelabel-save] unauthorized", { userError: userError?.message });
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -46,6 +52,10 @@ Deno.serve(async (req) => {
     );
 
     if (permError || !isAdminOrMod) {
+      console.log("[whitelabel-save] forbidden", {
+        userId: userData.user.id,
+        permError: permError?.message,
+      });
       return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -62,12 +72,21 @@ Deno.serve(async (req) => {
       .from("site_settings")
       .upsert(rows, { onConflict: "key" });
 
-    if (upsertError) throw upsertError;
+    if (upsertError) {
+      console.log("[whitelabel-save] upsert error", { message: upsertError.message });
+      throw upsertError;
+    }
+
+    console.log("[whitelabel-save] saved", { count: rows.length, userId: userData.user.id });
 
     return new Response(JSON.stringify({ ok: true, saved: rows.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
+    console.log("[whitelabel-save] unhandled error", {
+      message: error?.message || "Unknown error",
+    });
+
     return new Response(JSON.stringify({ error: error?.message || "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -120,17 +120,23 @@ export function WhiteLabelSettings() {
 
     setIsSaving(true);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error("You must be logged in to save settings");
+      }
+
       const { data, error } = await supabase.functions.invoke("whitelabel-save", {
         body: { config },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (!data?.ok) {
-        throw new Error(data?.error || "Failed to save settings");
-      }
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Failed to save settings");
 
       // Apply immediately for instant feedback
       applyCustomCSS(config.custom_css);
@@ -145,7 +151,10 @@ export function WhiteLabelSettings() {
       console.error("Error saving white-label settings:", error);
       toast({
         title: "Error saving settings",
-        description: error?.message || "Failed to save settings",
+        description:
+          error?.message ||
+          error?.context?.body ||
+          (typeof error === "string" ? error : "Failed to save settings"),
         variant: "destructive",
       });
     } finally {
