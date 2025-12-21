@@ -120,13 +120,24 @@ export default function Profile() {
 
   // Handle Twitch/Kick OAuth callback
   useEffect(() => {
-    // Handle Twitch callback
-    const twitchUsername = searchParams.get("twitch_username");
+    // Returning from Twitch/Kick OAuth is a full-page navigation; clear the in-progress guard.
     const twitchSuccess = searchParams.get("twitch_success");
     const twitchError = searchParams.get("twitch_error");
+    const kickSuccess = searchParams.get("kick_success");
+    const kickError = searchParams.get("kick_error");
+
+    if (twitchSuccess || twitchError || kickSuccess || kickError) {
+      sessionStorage.removeItem("oauth_in_progress");
+    }
+
+    // Handle Twitch callback
+    const twitchUsername = searchParams.get("twitch_username");
 
     if (twitchSuccess === "true" && user) {
-      toast({ title: "Twitch account connected!", description: twitchUsername ? `Linked as ${twitchUsername}` : "Connected successfully" });
+      toast({
+        title: "Twitch account connected!",
+        description: twitchUsername ? `Linked as ${twitchUsername}` : "Connected successfully",
+      });
       refreshProfile();
       // Clean up URL params
       const newParams = new URLSearchParams(searchParams);
@@ -142,11 +153,12 @@ export default function Profile() {
 
     // Handle Kick callback
     const kickUsername = searchParams.get("kick_username");
-    const kickSuccess = searchParams.get("kick_success");
-    const kickError = searchParams.get("kick_error");
 
     if (kickSuccess === "true" && user) {
-      toast({ title: "Kick account connected!", description: kickUsername ? `Linked as ${kickUsername}` : "Connected successfully" });
+      toast({
+        title: "Kick account connected!",
+        description: kickUsername ? `Linked as ${kickUsername}` : "Connected successfully",
+      });
       refreshProfile();
       // Clean up URL params
       const newParams = new URLSearchParams(searchParams);
@@ -350,6 +362,9 @@ export default function Profile() {
         throw new Error("No authorization URL returned");
       }
 
+      // Prevent temporary-session cleanup from logging the user out during the OAuth hop
+      sessionStorage.setItem("oauth_in_progress", "true");
+
       window.location.href = data.authUrl;
     } catch (error: any) {
       toast({
@@ -396,6 +411,9 @@ export default function Profile() {
       if (!authUrl) {
         throw new Error("No authorization URL returned");
       }
+
+      // Prevent temporary-session cleanup from logging the user out during the OAuth hop
+      sessionStorage.setItem("oauth_in_progress", "true");
 
       window.location.href = authUrl;
     } catch (error: any) {

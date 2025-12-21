@@ -203,8 +203,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     // Handle browser/tab close for temporary sessions
+    // NOTE: OAuth flows (Twitch/Kick) use a full-page redirect. That triggers beforeunload/visibilitychange
+    // but should NOT log the user out.
+    const isOAuthInProgress = () => sessionStorage.getItem("oauth_in_progress") === "true";
+
     const handleBeforeUnload = () => {
-      if (sessionStorage.getItem('session_temporary') === 'true') {
+      if (isOAuthInProgress()) return;
+      if (sessionStorage.getItem("session_temporary") === "true") {
         // Sign out on browser close - this won't complete but clears local state
         supabase.auth.signOut();
       }
@@ -212,10 +217,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Use visibilitychange + unload pattern for more reliable cleanup
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && sessionStorage.getItem('session_temporary') === 'true') {
+      if (isOAuthInProgress()) return;
+      if (document.visibilityState === "hidden" && sessionStorage.getItem("session_temporary") === "true") {
         // When tab becomes hidden, check if all tabs are closing
         // This is a backup for beforeunload
-        navigator.sendBeacon && sessionStorage.setItem('session_pending_cleanup', 'true');
+        navigator.sendBeacon && sessionStorage.setItem("session_pending_cleanup", "true");
       }
     };
 
