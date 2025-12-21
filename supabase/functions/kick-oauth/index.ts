@@ -8,101 +8,95 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    
+    // Support both URL params (for OAuth callback) and JSON body (for API calls)
+    let action = url.searchParams.get("action");
+    let bodyData: Record<string, unknown> = {};
+    
+    // If action not in URL, try to parse from body
+    if (!action && req.method === "POST") {
+      try {
+        bodyData = await req.json();
+        action = bodyData.action as string;
+      } catch {
+        // No body or invalid JSON
+      }
+    }
 
     const KICK_CLIENT_ID = (Deno.env.get("KICK_CLIENT_ID") || "").trim();
     const KICK_CLIENT_SECRET = (Deno.env.get("KICK_CLIENT_SECRET") || "").trim();
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+    console.log("kick-oauth action:", action, "method:", req.method);
+
     if (!KICK_CLIENT_ID || !KICK_CLIENT_SECRET) {
       return new Response(
         JSON.stringify({
-          error:
-            "Kick OAuth not configured (missing client id/secret). Please verify your backend secrets.",
+          error: "Kick OAuth not configured (missing client id/secret). Please verify your backend secrets.",
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "authorize") {
-      // Step 1: Generate Kick authorize URL
-      const frontendUrl = url.searchParams.get("frontend_url") || "http://localhost:8080";
+      // Get frontend URL from body or query params
+      const frontendUrl = (bodyData.frontend_url as string) || 
+                          url.searchParams.get("frontend_url") || 
+                          req.headers.get("origin") ||
+                          "http://localhost:8080";
+      const state = (bodyData.state as string) || url.searchParams.get("state") || "";
 
-      // Allow overriding the callback base (useful for local dev via an HTTPS tunnel).
-      // If not provided, we default to this function's own origin.
-      const callbackBaseRaw = (url.searchParams.get("callback_base") || "").trim();
+      // Use the Supabase function URL as the callback
+      const functionUrl = `${SUPABASE_URL}/functions/v1/kick-oauth`;
+      const callbackUrl = `${functionUrl}?action=callback`;
 
-      let callbackOrigin = url.origin;
-      if (callbackBaseRaw) {
-        try {
-          const parsed = new URL(callbackBaseRaw);
-          if (parsed.protocol !== "https:") {
-            return new Response(
-              JSON.stringify({ error: "callback_base must be https://" }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          if (/localhost|127\.0\.0\.1/.test(parsed.hostname)) {
-            return new Response(
-              JSON.stringify({ error: "callback_base cannot be localhost." }),
-              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          callbackOrigin = parsed.origin;
-        } catch {
-          return new Response(
-            JSON.stringify({ error: "Invalid callback_base URL." }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
+      console.log("Kick authorize", { frontendUrl, callbackUrl, state });
 
-      const callbackUrl = `${callbackOrigin}/functions/v1/kick-oauth?action=callback`;
-      console.log("Kick authorize", { frontendUrl, callbackUrl, callbackOrigin, functionOrigin: url.origin });
-
-      // Encode frontend URL in state so we can redirect back after OAuth
-      const state = btoa(JSON.stringify({ frontend_url: frontendUrl }));
+      // Encode frontend URL and user state for redirect back after OAuth
+      const stateData = btoa(JSON.stringify({ frontend_url: frontendUrl, user_id: state }));
 
       const kickAuthUrl = new URL("https://id.kick.com/oauth/authorize");
       kickAuthUrl.searchParams.set("client_id", KICK_CLIENT_ID);
       kickAuthUrl.searchParams.set("redirect_uri", callbackUrl);
       kickAuthUrl.searchParams.set("response_type", "code");
       kickAuthUrl.searchParams.set("scope", "user:read");
-      kickAuthUrl.searchParams.set("state", state);
+      kickAuthUrl.searchParams.set("state", stateData);
 
       const authorizeUrl = kickAuthUrl.toString();
 
-      console.log("Authorize URL generated:", authorizeUrl);
+      console.log("Kick authorize URL generated:", authorizeUrl);
       return new Response(
-        JSON.stringify({ authorize_url: authorizeUrl, state, callback_url: callbackUrl }),
+        JSON.stringify({ authUrl: authorizeUrl, authorize_url: authorizeUrl }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (action === "callback") {
-      // Step 2: Handle Kick OAuth callback
+      // Handle Kick OAuth callback (GET request from Kick)
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state");
       const error = url.searchParams.get("error");
 
-      // Decode frontend URL from state
+      // Decode frontend URL and user_id from state
       let frontendUrl = "http://localhost:8080";
+      let userId = "";
       try {
         if (state) {
           const stateData = JSON.parse(atob(state));
           frontendUrl = stateData.frontend_url || frontendUrl;
+          userId = stateData.user_id || "";
         }
       } catch (e) {
         console.error("Failed to parse state:", e);
       }
 
-      console.log("Callback received, frontend_url:", frontendUrl);
+      console.log("Callback received, frontend_url:", frontendUrl, "userId:", userId);
 
       if (error) {
         return new Response(null, {
@@ -118,9 +112,8 @@ serve(async (req) => {
         });
       }
 
-      // IMPORTANT: redirect_uri must match what was used in the authorize step.
-      // Using url.origin ensures the token exchange matches the actual callback host.
-      const callbackUrl = `${url.origin}/functions/v1/kick-oauth?action=callback`;
+      // Use the same callback URL that was registered
+      const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
 
       // Exchange code for token
       console.log("Exchanging code for token...", { callbackUrl });
@@ -147,6 +140,8 @@ serve(async (req) => {
 
       const tokenData = await tokenResponse.json();
       const accessToken = tokenData.access_token;
+      const refreshToken = tokenData.refresh_token;
+      const expiresIn = tokenData.expires_in || 3600;
       console.log("Token obtained successfully");
 
       // Get Kick user info
@@ -165,13 +160,50 @@ serve(async (req) => {
 
       const userData = await userResponse.json();
       console.log("User data received:", JSON.stringify(userData));
-      const kickUsername = userData.data?.[0]?.username || userData.username;
+      
+      const kickUser = userData.data?.[0] || userData;
+      const kickUsername = kickUser.username;
+      const kickUserId = kickUser.user_id || kickUser.id;
 
       if (!kickUsername) {
         return new Response(null, {
           status: 302,
           headers: { Location: `${frontendUrl}/profile?kick_error=no_username` },
         });
+      }
+
+      // If we have a user_id, save the connection to the database
+      if (userId && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        
+        // Store or update Kick connection in user_channel_points
+        const { error: upsertError } = await supabase
+          .from("user_channel_points")
+          .upsert({
+            user_id: userId,
+            platform: "kick",
+            platform_user_id: kickUserId?.toString() || kickUsername,
+            platform_username: kickUsername,
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+            last_synced_at: new Date().toISOString(),
+            points_balance: 0,
+          }, {
+            onConflict: "user_id,platform",
+          });
+
+        if (upsertError) {
+          console.error("Failed to save Kick connection:", upsertError);
+        } else {
+          console.log("Kick connection saved successfully");
+        }
+
+        // Update profile with Kick username
+        await supabase
+          .from("profiles")
+          .update({ kick_username: kickUsername })
+          .eq("user_id", userId);
       }
 
       console.log("Kick username:", kickUsername);
@@ -193,7 +225,7 @@ serve(async (req) => {
         );
       }
 
-      const { kick_username, user_id } = await req.json();
+      const { kick_username, user_id } = bodyData;
 
       if (!kick_username || !user_id) {
         return new Response(
