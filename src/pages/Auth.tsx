@@ -62,15 +62,35 @@ function Auth() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isModerator } = useAuth();
   const { settings: wl } = useWhiteLabelSettings();
   const { toast } = useToast();
 
+  const isMaintenanceMode = !!wl.maintenance_mode;
+  const isAdminLogin = searchParams.get("admin") === "true";
+
+  // During maintenance, force login mode only (no signup)
+  useEffect(() => {
+    if (isMaintenanceMode && mode === "signup") {
+      setMode("login");
+    }
+  }, [isMaintenanceMode, mode]);
+
   useEffect(() => {
     if (user) {
+      // If maintenance mode is on, only allow admin/mod users
+      if (isMaintenanceMode && !isModerator) {
+        supabase.auth.signOut();
+        toast({
+          title: "Access Denied",
+          description: "Only administrators and moderators can access the site during maintenance.",
+          variant: "destructive",
+        });
+        return;
+      }
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, isModerator, isMaintenanceMode, navigate, toast]);
 
   // Check for password reset mode from URL
   useEffect(() => {
@@ -81,6 +101,8 @@ function Auth() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (isMaintenanceMode) return; // Skip sidebar detection in maintenance mode
+    
     const checkSidebarState = () => {
       const sidebar = document.querySelector("aside");
       if (sidebar) {
@@ -95,7 +117,7 @@ function Auth() {
     }
 
     return () => observer.disconnect();
-  }, []);
+  }, [isMaintenanceMode]);
 
   // Safety: if an auth request gets stuck, auto-unlock the UI
   useEffect(() => {
@@ -363,6 +385,138 @@ function Auth() {
   };
 
   const strengthColors = ["bg-destructive", "bg-orange-500", "bg-yellow-500", "bg-lime-500", "bg-green-500"];
+
+  // Maintenance mode layout (no sidebar, simplified)
+  if (isMaintenanceMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        {/* Modal Overlay */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+            style={
+              wl.login_background_url
+                ? {
+                    backgroundImage: `url(${wl.login_background_url})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }
+                : undefined
+            }
+          >
+            {wl.login_background_url && (
+              <div className="absolute inset-0 bg-background/70" />
+            )}
+          </div>
+          
+          {/* Auth Popup - Maintenance Mode */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative z-10 w-full max-w-md mx-4"
+          >
+            {/* Form Card */}
+            <div className="bg-card/95 backdrop-blur-xl rounded-3xl p-8 border border-border/50 shadow-2xl shadow-black/20">
+              {/* Back Button */}
+              <button
+                onClick={() => navigate("/")}
+                className="absolute top-4 left-4 p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-secondary/50 transition-colors flex items-center gap-2"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div className="text-center mb-8 mt-4">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-4 shadow-lg shadow-orange-500/20 overflow-hidden">
+                  {wl.login_logo_url ? (
+                    <img
+                      src={wl.login_logo_url}
+                      alt="Login logo"
+                      className="w-full h-full object-contain p-2"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <Lock className="w-8 h-8 text-white" />
+                  )}
+                </div>
+                <h1 className="text-2xl font-bold mb-2">Staff Login</h1>
+                <p className="text-muted-foreground text-sm">
+                  Site is under maintenance. Only admins and moderators can access.
+                </p>
+              </div>
+
+              {/* Email/Password Form Only */}
+              <form onSubmit={handleEmailAuth} className="space-y-4">
+                {/* Email Field */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type="email"
+                      placeholder="Email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setErrors({}); }}
+                      className="w-full pl-11 pr-4 py-3 bg-secondary/50 border border-border/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {errors.email && (
+                    <p className="text-destructive text-xs flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password Field */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setErrors({}); }}
+                      className="w-full pl-11 pr-12 py-3 bg-secondary/50 border border-border/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-destructive text-xs flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                {/* Login Button */}
+                <Button
+                  type="submit"
+                  className="w-full py-6 text-lg font-medium rounded-xl"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    "Sign In"
+                  )}
+                </Button>
+              </form>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
