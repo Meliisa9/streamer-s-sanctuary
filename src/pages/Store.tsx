@@ -565,7 +565,7 @@ export default function Store() {
                               key={item.id}
                               item={item}
                               index={index}
-                              userPoints={userPoints}
+                              channelPoints={channelPoints}
                               canRedeem={canRedeemAny(item)}
                               onRedeem={handleRedeem}
                               getItemTypeIcon={getItemTypeIcon}
@@ -588,7 +588,7 @@ export default function Store() {
                               key={item.id}
                               item={item}
                               index={index}
-                              userPoints={userPoints}
+                              channelPoints={channelPoints}
                               canRedeem={canRedeemAny(item)}
                               onRedeem={handleRedeem}
                               getItemTypeIcon={getItemTypeIcon}
@@ -710,19 +710,78 @@ export default function Store() {
                   <p className="text-muted-foreground">{selectedItem.description}</p>
                 </div>
               </div>
+              
+              {/* Currency Selection */}
+              {getAvailableCurrencies(selectedItem).length > 1 && (
+                <div className="mb-4">
+                  <Label className="text-sm font-medium mb-2 block">Pay with:</Label>
+                  <RadioGroup
+                    value={selectedCurrency}
+                    onValueChange={(val) => setSelectedCurrency(val as Currency)}
+                    className="grid grid-cols-3 gap-2"
+                  >
+                    {isCurrencyAccepted(selectedItem, "site") && selectedItem.points_cost > 0 && (
+                      <Label
+                        htmlFor="currency-site"
+                        className={`flex flex-col items-center gap-1 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedCurrency === "site" ? "border-primary bg-primary/10" : "border-border"
+                        } ${!canRedeem(selectedItem, "site") ? "opacity-50" : ""}`}
+                      >
+                        <RadioGroupItem value="site" id="currency-site" className="sr-only" />
+                        <Coins className="w-5 h-5 text-yellow-500" />
+                        <span className="text-xs font-medium">Site</span>
+                        <span className="text-xs text-muted-foreground">{selectedItem.points_cost.toLocaleString()}</span>
+                      </Label>
+                    )}
+                    {isCurrencyAccepted(selectedItem, "twitch") && (selectedItem.twitch_points_cost ?? 0) > 0 && (
+                      <Label
+                        htmlFor="currency-twitch"
+                        className={`flex flex-col items-center gap-1 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedCurrency === "twitch" ? "border-purple-500 bg-purple-500/10" : "border-border"
+                        } ${!canRedeem(selectedItem, "twitch") ? "opacity-50" : ""}`}
+                      >
+                        <RadioGroupItem value="twitch" id="currency-twitch" className="sr-only" />
+                        <svg className="w-5 h-5 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                        </svg>
+                        <span className="text-xs font-medium">Twitch</span>
+                        <span className="text-xs text-muted-foreground">{(selectedItem.twitch_points_cost ?? 0).toLocaleString()}</span>
+                      </Label>
+                    )}
+                    {isCurrencyAccepted(selectedItem, "kick") && (selectedItem.kick_points_cost ?? 0) > 0 && (
+                      <Label
+                        htmlFor="currency-kick"
+                        className={`flex flex-col items-center gap-1 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedCurrency === "kick" ? "border-green-500 bg-green-500/10" : "border-border"
+                        } ${!canRedeem(selectedItem, "kick") ? "opacity-50" : ""}`}
+                      >
+                        <RadioGroupItem value="kick" id="currency-kick" className="sr-only" />
+                        <svg className="w-5 h-5 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M1.333 0v24h5.334v-8l2.666 2.667L16 24h6.667l-9.334-9.333L22.667 0H16l-6.667 8V0z"/>
+                        </svg>
+                        <span className="text-xs font-medium">Kick</span>
+                        <span className="text-xs text-muted-foreground">{(selectedItem.kick_points_cost ?? 0).toLocaleString()}</span>
+                      </Label>
+                    )}
+                  </RadioGroup>
+                </div>
+              )}
+              
               <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cost:</span>
-                  <span className="font-semibold">{selectedItem.points_cost.toLocaleString()} pts</span>
+                  <span className="font-semibold">
+                    {(getItemCost(selectedItem, selectedCurrency) ?? 0).toLocaleString()} {selectedCurrency} pts
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Your Balance:</span>
-                  <span className="font-semibold">{userPoints.toLocaleString()} pts</span>
+                  <span className="text-muted-foreground">Your {selectedCurrency} Balance:</span>
+                  <span className="font-semibold">{getPointsForCurrency(selectedCurrency).toLocaleString()} pts</span>
                 </div>
                 <div className="border-t pt-2 flex justify-between">
                   <span className="text-muted-foreground">After Redemption:</span>
                   <span className="font-semibold text-primary">
-                    {(userPoints - selectedItem.points_cost).toLocaleString()} pts
+                    {(getPointsForCurrency(selectedCurrency) - (getItemCost(selectedItem, selectedCurrency) ?? 0)).toLocaleString()} pts
                   </span>
                 </div>
               </div>
@@ -734,7 +793,7 @@ export default function Store() {
             </Button>
             <Button 
               onClick={confirmRedeem} 
-              disabled={redeemMutation.isPending}
+              disabled={redeemMutation.isPending || !canRedeem(selectedItem!, selectedCurrency)}
             >
               {redeemMutation.isPending ? (
                 <>
@@ -755,11 +814,24 @@ export default function Store() {
   );
 }
 
+// SVG Icons for platforms
+const TwitchIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+  </svg>
+);
+
+const KickIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M1.333 0v24h5.334v-8l2.666 2.667L16 24h6.667l-9.334-9.333L22.667 0H16l-6.667 8V0z"/>
+  </svg>
+);
+
 // Item Card Component
 function ItemCard({
   item,
   index,
-  userPoints,
+  channelPoints,
   canRedeem,
   onRedeem,
   getItemTypeIcon,
@@ -767,14 +839,25 @@ function ItemCard({
 }: {
   item: StoreItem;
   index: number;
-  userPoints: number;
+  channelPoints: { site: number; twitch: number; kick: number };
   canRedeem: boolean;
   onRedeem: (item: StoreItem) => void;
   getItemTypeIcon: (type: string) => React.ReactNode;
   isFeatured?: boolean;
 }) {
   const isOutOfStock = item.stock_quantity !== null && item.stock_quantity <= 0;
-  const notEnoughPoints = userPoints < item.points_cost;
+  
+  // Get accepted currencies and their costs
+  const acceptedCurrencies = item.accepted_currencies || ["site"];
+  const hasSite = acceptedCurrencies.includes("site") && item.points_cost > 0;
+  const hasTwitch = acceptedCurrencies.includes("twitch") && (item.twitch_points_cost ?? 0) > 0;
+  const hasKick = acceptedCurrencies.includes("kick") && (item.kick_points_cost ?? 0) > 0;
+
+  // Calculate if user can afford with any currency
+  const canAffordSite = hasSite && channelPoints.site >= item.points_cost;
+  const canAffordTwitch = hasTwitch && channelPoints.twitch >= (item.twitch_points_cost ?? 0);
+  const canAffordKick = hasKick && channelPoints.kick >= (item.kick_points_cost ?? 0);
+  const canAffordAny = canAffordSite || canAffordTwitch || canAffordKick;
 
   return (
     <motion.div
@@ -818,18 +901,52 @@ function ItemCard({
           <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
             {item.description || "No description available"}
           </p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Coins className="w-5 h-5 text-yellow-500" />
-              <span className="font-bold text-lg">{item.points_cost.toLocaleString()}</span>
-              <span className="text-sm text-muted-foreground">pts</span>
-            </div>
-            {item.stock_quantity !== null && !isOutOfStock && (
-              <span className="text-sm text-muted-foreground">
-                {item.stock_quantity} left
-              </span>
+          
+          {/* Display all accepted currency costs */}
+          <div className="space-y-2">
+            {hasSite && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-4 h-4 text-yellow-500" />
+                  <span className="font-bold">{item.points_cost.toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground">Site pts</span>
+                </div>
+                {canAffordSite && (
+                  <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">✓</Badge>
+                )}
+              </div>
+            )}
+            {hasTwitch && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-purple-500"><TwitchIcon /></span>
+                  <span className="font-bold">{(item.twitch_points_cost ?? 0).toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground">Twitch pts</span>
+                </div>
+                {canAffordTwitch && (
+                  <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">✓</Badge>
+                )}
+              </div>
+            )}
+            {hasKick && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-500"><KickIcon /></span>
+                  <span className="font-bold">{(item.kick_points_cost ?? 0).toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground">Kick pts</span>
+                </div>
+                {canAffordKick && (
+                  <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">✓</Badge>
+                )}
+              </div>
             )}
           </div>
+          
+          {item.stock_quantity !== null && !isOutOfStock && (
+            <span className="text-sm text-muted-foreground block mt-2">
+              {item.stock_quantity} left
+            </span>
+          )}
         </CardContent>
         <CardFooter className="p-4 pt-0">
           <Button
@@ -839,8 +956,8 @@ function ItemCard({
           >
             {isOutOfStock ? (
               "Out of Stock"
-            ) : notEnoughPoints ? (
-              `Need ${(item.points_cost - userPoints).toLocaleString()} more pts`
+            ) : !canAffordAny ? (
+              "Not Enough Points"
             ) : (
               <>
                 <ShoppingCart className="w-4 h-4 mr-2" />
