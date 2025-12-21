@@ -28,8 +28,24 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = (Deno.env.get('SUPABASE_URL') || '').trim();
+    const supabaseAnonKey = (Deno.env.get('SUPABASE_ANON_KEY') || '').trim();
+    const supabaseServiceKey = (Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '').trim();
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+      console.error('[admin-code] missing env', {
+        hasUrl: !!supabaseUrl,
+        hasAnonKey: !!supabaseAnonKey,
+        hasServiceKey: !!supabaseServiceKey,
+      });
+      return new Response(
+        JSON.stringify({
+          error:
+            'Backend is missing required environment variables for admin-code. If you are running locally, start your backend and ensure it injects SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY into functions.',
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Create admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
@@ -44,8 +60,8 @@ serve(async (req) => {
     }
 
     // Verify the user's JWT
-    const supabaseClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } }
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
     });
 
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
