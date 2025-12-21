@@ -30,8 +30,10 @@ serve(async (req) => {
 
     const KICK_CLIENT_ID = (Deno.env.get("KICK_CLIENT_ID") || "").trim();
     const KICK_CLIENT_SECRET = (Deno.env.get("KICK_CLIENT_SECRET") || "").trim();
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const reqOrigin = new URL(req.url).origin;
+    const SUPABASE_URL = ((Deno.env.get("SUPABASE_URL") || reqOrigin) as string).trim();
+    const SUPABASE_SERVICE_ROLE_KEY = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
 
     console.log("kick-oauth action:", action, "method:", req.method);
 
@@ -52,7 +54,7 @@ serve(async (req) => {
                           "http://localhost:8080";
       const state = (bodyData.state as string) || url.searchParams.get("state") || "";
 
-      // Use the Supabase function URL as the callback
+      // Use the function's origin as the callback base (works locally + in production)
       const functionUrl = `${SUPABASE_URL}/functions/v1/kick-oauth`;
       const callbackUrl = `${functionUrl}?action=callback`;
 
@@ -112,7 +114,7 @@ serve(async (req) => {
         });
       }
 
-      // Use the same callback URL that was registered
+      // Use the same callback URL that was used in authorization
       const callbackUrl = `${SUPABASE_URL}/functions/v1/kick-oauth?action=callback`;
 
       // Exchange code for token
@@ -173,37 +175,52 @@ serve(async (req) => {
       }
 
       // If we have a user_id, save the connection to the database
-      if (userId && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+      if (userId) {
+        if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+          console.error("Missing backend env for saving Kick connection", {
+            hasUrl: !!SUPABASE_URL,
+            hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY,
+          });
+          return new Response(null, {
+            status: 302,
+            headers: { Location: `${frontendUrl}/profile?kick_error=backend_not_configured` },
+          });
+        }
+
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-        
+
         // Store or update Kick connection in user_channel_points
         const { error: upsertError } = await supabase
           .from("user_channel_points")
-          .upsert({
-            user_id: userId,
-            platform: "kick",
-            platform_user_id: kickUserId?.toString() || kickUsername,
-            platform_username: kickUsername,
-            access_token: accessToken,
-            refresh_token: refreshToken,
-            token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
-            last_synced_at: new Date().toISOString(),
-            points_balance: 0,
-          }, {
-            onConflict: "user_id,platform",
-          });
+          .upsert(
+            {
+              user_id: userId,
+              platform: "kick",
+              platform_user_id: kickUserId?.toString() || kickUsername,
+              platform_username: kickUsername,
+              access_token: accessToken,
+              refresh_token: refreshToken,
+              token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+              last_synced_at: new Date().toISOString(),
+              points_balance: 0,
+            },
+            {
+              onConflict: "user_id,platform",
+            }
+          );
 
         if (upsertError) {
           console.error("Failed to save Kick connection:", upsertError);
-        } else {
-          console.log("Kick connection saved successfully");
+          return new Response(null, {
+            status: 302,
+            headers: { Location: `${frontendUrl}/profile?kick_error=save_failed` },
+          });
         }
 
         // Update profile with Kick username
-        await supabase
-          .from("profiles")
-          .update({ kick_username: kickUsername })
-          .eq("user_id", userId);
+        await supabase.from("profiles").update({ kick_username: kickUsername }).eq("user_id", userId);
+
+        console.log("Kick connection saved successfully");
       }
 
       console.log("Kick username:", kickUsername);
