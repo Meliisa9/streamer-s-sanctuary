@@ -7,6 +7,7 @@ export function usePushNotifications() {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [notificationIcon, setNotificationIcon] = useState<string>("/favicon.ico");
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -20,7 +21,27 @@ export function usePushNotifications() {
     } else {
       setIsLoading(false);
     }
+    
+    // Fetch custom notification icon
+    fetchNotificationIcon();
   }, [user]);
+
+  const fetchNotificationIcon = async () => {
+    try {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "notification_icon_url")
+        .single();
+      
+      if (data?.value && typeof data.value === "string") {
+        setNotificationIcon(data.value);
+      }
+    } catch (error) {
+      // Use default favicon if no custom icon is set
+      console.log("Using default notification icon");
+    }
+  };
 
   const checkSubscription = async () => {
     if (!user) {
@@ -170,19 +191,19 @@ export function usePushNotifications() {
       try {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(title, {
-          icon: "/favicon.ico",
-          badge: "/favicon.ico",
+          icon: notificationIcon,
+          badge: notificationIcon,
           ...options,
         });
       } catch {
         // Fallback to regular notification
         new Notification(title, {
-          icon: "/favicon.ico",
+          icon: notificationIcon,
           ...options,
         });
       }
     }
-  }, [isSupported, isSubscribed]);
+  }, [isSupported, isSubscribed, notificationIcon]);
 
   return {
     isSupported,
