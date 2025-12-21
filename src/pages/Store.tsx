@@ -289,7 +289,7 @@ export default function Store() {
         </section>
 
         {/* Stats/Info Boxes */}
-        <section className="container pb-8">
+        <section className="container py-12">
           <div className={`grid gap-6 ${user && profile ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
             {/* User Info Box */}
             {user && profile && (

@@ -191,7 +191,7 @@ const App = () => (
                     <Route path="streamer-stats" element={<AdminStreamerStats />} />
                     <Route path="settings/language" element={<AdminLanguage />} />
                     <Route path="store" element={<AdminStore />} />
-                    <Route path="store/terms" element={<AdminStoreTerms />} />
+                    <Route path="settings/store-terms" element={<AdminStoreTerms />} />
                     <Route path="audit" element={<AdminAuditLog />} />
                     <Route path="activity" element={<AdminActivityLog />} />
                   </Route>
