@@ -489,10 +489,32 @@ export default function AdminStore() {
   };
 
   const handleSubmitItem = () => {
-    if (!itemForm.name || itemForm.points_cost <= 0) {
-      toast({ title: "Please fill in required fields", variant: "destructive" });
+    // Validate name
+    if (!itemForm.name) {
+      toast({ title: "Please enter an item name", variant: "destructive" });
       return;
     }
+    
+    // Validate at least one currency is selected
+    if (itemForm.accepted_currencies.length === 0) {
+      toast({ title: "Please select at least one currency", variant: "destructive" });
+      return;
+    }
+    
+    // Validate each selected currency has a valid cost
+    if (itemForm.accepted_currencies.includes("site") && (!itemForm.points_cost || itemForm.points_cost <= 0)) {
+      toast({ title: "Please set a valid Site Points cost", variant: "destructive" });
+      return;
+    }
+    if (itemForm.accepted_currencies.includes("twitch") && (!itemForm.twitch_points_cost || itemForm.twitch_points_cost <= 0)) {
+      toast({ title: "Please set a valid Twitch Points cost", variant: "destructive" });
+      return;
+    }
+    if (itemForm.accepted_currencies.includes("kick") && (!itemForm.kick_points_cost || itemForm.kick_points_cost <= 0)) {
+      toast({ title: "Please set a valid Kick Points cost", variant: "destructive" });
+      return;
+    }
+    
     if (editingItem) {
       updateItemMutation.mutate({ id: editingItem.id, data: itemForm });
     } else {
@@ -955,61 +977,41 @@ export default function AdminStore() {
                     </Tabs>
                   </div>
 
-                  {/* Points Cost & Category */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Coins className="w-4 h-4 text-yellow-500" />
-                        Points Cost <span className="text-destructive">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          value={itemForm.points_cost}
-                          onChange={(e) => setItemForm(f => ({ ...f, points_cost: parseInt(e.target.value) || 0 }))}
-                          min={1}
-                          className="h-11 pr-12"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                          pts
-                        </span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-muted-foreground" />
-                        Category
-                      </Label>
-                      <Select
-                        value={itemForm.category_id || "none"}
-                        onValueChange={(v) => setItemForm(f => ({ ...f, category_id: v === "none" ? null : v }))}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No Category</SelectItem>
-                          {categories.map(cat => (
-                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  {/* Category */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-muted-foreground" />
+                      Category
+                    </Label>
+                    <Select
+                      value={itemForm.category_id || "none"}
+                      onValueChange={(v) => setItemForm(f => ({ ...f, category_id: v === "none" ? null : v }))}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Category</SelectItem>
+                        {categories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Multi-Currency Pricing */}
                   <div className="rounded-lg border bg-muted/30 p-4">
                     <h4 className="font-medium mb-4 flex items-center gap-2">
                       <DollarSign className="w-4 h-4" />
-                      Channel Points Pricing (Optional)
+                      Pricing & Currencies
                     </h4>
                     <p className="text-sm text-muted-foreground mb-4">
-                      Allow users to redeem with Twitch or Kick channel points in addition to site points.
+                      Select which currencies can be used to redeem this item. You can enable any combination - items can be redeemable with only Twitch/Kick points if desired.
                     </p>
                     
                     {/* Accepted Currencies */}
                     <div className="mb-4">
-                      <Label className="text-sm mb-2 block">Accepted Currencies</Label>
+                      <Label className="text-sm mb-2 block">Accepted Currencies <span className="text-muted-foreground">(select at least one)</span></Label>
                       <div className="flex flex-wrap gap-2">
                         {["site", "twitch", "kick"].map((currency) => {
                           const isSelected = itemForm.accepted_currencies.includes(currency);
@@ -1019,16 +1021,18 @@ export default function AdminStore() {
                             kick: "Kick Points",
                           };
                           const colors: Record<string, string> = {
-                            site: "bg-yellow-500/20 border-yellow-500/40 text-yellow-700",
-                            twitch: "bg-purple-500/20 border-purple-500/40 text-purple-700",
-                            kick: "bg-green-500/20 border-green-500/40 text-green-700",
+                            site: "bg-yellow-500/20 border-yellow-500/40 text-yellow-700 dark:text-yellow-400",
+                            twitch: "bg-purple-500/20 border-purple-500/40 text-purple-700 dark:text-purple-400",
+                            kick: "bg-green-500/20 border-green-500/40 text-green-700 dark:text-green-400",
                           };
+                          // Prevent deselecting last currency
+                          const isLastSelected = isSelected && itemForm.accepted_currencies.length === 1;
                           return (
                             <button
                               key={currency}
                               type="button"
                               onClick={() => {
-                                if (currency === "site") return; // Site is always required
+                                if (isLastSelected) return; // Can't deselect the last one
                                 setItemForm(f => ({
                                   ...f,
                                   accepted_currencies: isSelected
@@ -1038,7 +1042,7 @@ export default function AdminStore() {
                               }}
                               className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
                                 isSelected ? colors[currency] : "bg-muted border-border text-muted-foreground"
-                              } ${currency === "site" ? "opacity-75 cursor-not-allowed" : "cursor-pointer hover:opacity-80"}`}
+                              } ${isLastSelected ? "opacity-75 cursor-not-allowed" : "cursor-pointer hover:opacity-80"}`}
                             >
                               {labels[currency]}
                               {isSelected && " ✓"}
@@ -1046,12 +1050,46 @@ export default function AdminStore() {
                           );
                         })}
                       </div>
+                      {itemForm.accepted_currencies.length === 0 && (
+                        <p className="text-sm text-destructive mt-2">Please select at least one currency</p>
+                      )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Site Points Cost */}
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+                          <Coins className="w-4 h-4" />
+                          Site Points Cost
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            value={itemForm.points_cost || ""}
+                            onChange={(e) => setItemForm(f => ({ 
+                              ...f, 
+                              points_cost: e.target.value ? parseInt(e.target.value) : 0 
+                            }))}
+                            min={1}
+                            placeholder="Enter cost"
+                            className="h-11 pr-12"
+                            disabled={!itemForm.accepted_currencies.includes("site")}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                            pts
+                          </span>
+                        </div>
+                        {!itemForm.accepted_currencies.includes("site") && (
+                          <p className="text-xs text-muted-foreground">Enable Site Points above</p>
+                        )}
+                      </div>
+
                       {/* Twitch Points Cost */}
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-2 text-purple-600">
+                        <Label className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                          </svg>
                           Twitch Points Cost
                         </Label>
                         <div className="relative">
@@ -1062,8 +1100,8 @@ export default function AdminStore() {
                               ...f, 
                               twitch_points_cost: e.target.value ? parseInt(e.target.value) : null 
                             }))}
-                            min={0}
-                            placeholder="Leave empty to disable"
+                            min={1}
+                            placeholder="Enter cost"
                             className="h-11 pr-12"
                             disabled={!itemForm.accepted_currencies.includes("twitch")}
                           />
@@ -1071,11 +1109,17 @@ export default function AdminStore() {
                             pts
                           </span>
                         </div>
+                        {!itemForm.accepted_currencies.includes("twitch") && (
+                          <p className="text-xs text-muted-foreground">Enable Twitch Points above</p>
+                        )}
                       </div>
 
                       {/* Kick Points Cost */}
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-2 text-green-600">
+                        <Label className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
+                            <path d="M1.333 0v24h21.334V0H1.333Zm17.067 18.133h-4.267L9.6 12.8v5.333H6.4V5.867h3.2v5.066l4.267-5.066h4.267l-4.8 5.6 5.066 6.666Z" />
+                          </svg>
                           Kick Points Cost
                         </Label>
                         <div className="relative">
@@ -1086,8 +1130,8 @@ export default function AdminStore() {
                               ...f, 
                               kick_points_cost: e.target.value ? parseInt(e.target.value) : null 
                             }))}
-                            min={0}
-                            placeholder="Leave empty to disable"
+                            min={1}
+                            placeholder="Enter cost"
                             className="h-11 pr-12"
                             disabled={!itemForm.accepted_currencies.includes("kick")}
                           />
@@ -1095,6 +1139,9 @@ export default function AdminStore() {
                             pts
                           </span>
                         </div>
+                        {!itemForm.accepted_currencies.includes("kick") && (
+                          <p className="text-xs text-muted-foreground">Enable Kick Points above</p>
+                        )}
                       </div>
                     </div>
                   </div>
