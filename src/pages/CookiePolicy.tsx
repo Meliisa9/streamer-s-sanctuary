@@ -6,6 +6,7 @@ import { Cookie, Settings, BarChart3, Shield, Zap, ChevronRight } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { useAnchorHighlight } from "@/hooks/useAnchorHighlight";
 
 const quickLinks = [
   { icon: Cookie, label: "What Are Cookies", id: "what-are-cookies" },
@@ -15,40 +16,41 @@ const quickLinks = [
 ];
 
 const cookieTypes = [
-  { 
-    name: "Essential", 
-    description: "Required for basic website functionality", 
+  {
+    name: "Essential",
+    description: "Required for basic website functionality",
     icon: Shield,
     color: "text-green-400",
-    bgColor: "bg-green-500/10 border-green-500/20"
+    bgColor: "bg-green-500/10 border-green-500/20",
   },
-  { 
-    name: "Analytics", 
-    description: "Help us understand how you use our site", 
+  {
+    name: "Analytics",
+    description: "Help us understand how you use our site",
     icon: BarChart3,
     color: "text-blue-400",
-    bgColor: "bg-blue-500/10 border-blue-500/20"
+    bgColor: "bg-blue-500/10 border-blue-500/20",
   },
-  { 
-    name: "Functional", 
-    description: "Remember your preferences and settings", 
+  {
+    name: "Functional",
+    description: "Remember your preferences and settings",
     icon: Settings,
     color: "text-purple-400",
-    bgColor: "bg-purple-500/10 border-purple-500/20"
+    bgColor: "bg-purple-500/10 border-purple-500/20",
   },
-  { 
-    name: "Third-Party", 
-    description: "Set by external services like embedded players", 
+  {
+    name: "Third-Party",
+    description: "Set by external services like embedded players",
     icon: Zap,
     color: "text-amber-400",
-    bgColor: "bg-amber-500/10 border-amber-500/20"
+    bgColor: "bg-amber-500/10 border-amber-500/20",
   },
 ];
 
 export default function CookiePolicy() {
   const location = useLocation();
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  
+  const { handleAnchorClick, findElement, highlightElement } = useAnchorHighlight();
+
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-cookies"],
     queryFn: async () => {
@@ -62,41 +64,21 @@ export default function CookiePolicy() {
     },
   });
 
-  // Handle anchor scrolling after content loads
+  // Ensure hash navigation works after async content loads
   useEffect(() => {
-    if (!isLoading && location.hash) {
-      const id = location.hash.replace("#", "");
-      setTimeout(() => {
-        const element = sectionRefs.current[id] || document.getElementById(id);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 100);
-    }
-  }, [isLoading, location.hash]);
+    if (isLoading || !location.hash) return;
+    const id = location.hash.replace("#", "");
 
-  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault();
-    // Try refs first, then fall back to getElementById for content loaded via dangerouslySetInnerHTML
-    const element = sectionRefs.current[id] || document.getElementById(id) || document.querySelector(`[id="${id}"]`);
-    
-    // If still not found, try to find by text content in headings
-    if (!element) {
-      const headings = document.querySelectorAll('h2, h3');
-      for (const heading of headings) {
-        if (heading.textContent?.toLowerCase().includes(id.replace(/-/g, ' '))) {
-          heading.scrollIntoView({ behavior: "smooth", block: "start" });
-          window.history.pushState(null, "", `#${id}`);
-          return;
-        }
-      }
-    }
-    
-    if (element) {
+    // Prefer the wrapper sections we control; fall back to global lookup for DB HTML.
+    const element = sectionRefs.current[id] || findElement(id);
+    if (!element) return;
+
+    setTimeout(() => {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", `#${id}`);
-    }
-  };
+      setTimeout(() => highlightElement(element), 350);
+    }, 150);
+  }, [isLoading, location.hash, findElement, highlightElement]);
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">

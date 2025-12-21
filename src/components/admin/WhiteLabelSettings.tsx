@@ -1,8 +1,20 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  Palette, Code, Mail, LogIn, Save, Loader2, Eye, Copy, Check,
-  RefreshCw, Wand2, FileCode, Layout, Shield
+import {
+  Palette,
+  Code,
+  Mail,
+  LogIn,
+  Save,
+  Loader2,
+  Eye,
+  Copy,
+  Check,
+  RefreshCw,
+  Wand2,
+  FileCode,
+  Layout,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useWhiteLabelSettings } from "@/hooks/useWhiteLabelSettings";
 
 interface WhiteLabelConfig {
   custom_css: string;
@@ -57,6 +70,7 @@ export function WhiteLabelSettings() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
+  const { refetch: refetchWhiteLabel } = useWhiteLabelSettings();
 
   useEffect(() => {
     fetchConfig();
@@ -122,6 +136,9 @@ export function WhiteLabelSettings() {
       applyCustomCSS(config.custom_css);
       if (config.custom_head_scripts) applyHeadScripts(config.custom_head_scripts);
       if (config.custom_body_scripts) applyBodyScripts(config.custom_body_scripts);
+
+      // Critical: ensure the global provider state refreshes immediately (avoids "stuck" maintenance mode)
+      await Promise.resolve(refetchWhiteLabel());
 
       toast({ title: "White-label settings saved successfully" });
     } catch (error: any) {

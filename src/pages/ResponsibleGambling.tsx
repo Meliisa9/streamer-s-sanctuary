@@ -2,11 +2,23 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { AlertTriangle, Heart, Phone, Clock, DollarSign, HelpCircle, ChevronRight, ExternalLink, ShieldAlert, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Heart,
+  Phone,
+  Clock,
+  DollarSign,
+  HelpCircle,
+  ChevronRight,
+  ExternalLink,
+  ShieldAlert,
+  Users,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { Button } from "@/components/ui/button";
+import { useAnchorHighlight } from "@/hooks/useAnchorHighlight";
 
 const quickLinks = [
   { icon: DollarSign, label: "Set Limits", id: "set-limits" },
@@ -16,36 +28,37 @@ const quickLinks = [
 ];
 
 const helpResources = [
-  { 
-    name: "Gamblers Anonymous", 
-    url: "https://www.gamblersanonymous.org", 
+  {
+    name: "Gamblers Anonymous",
+    url: "https://www.gamblersanonymous.org",
     description: "Worldwide fellowship of people who share their experience",
-    region: "Worldwide"
+    region: "Worldwide",
   },
-  { 
-    name: "National Problem Gambling Helpline", 
-    url: "tel:1-800-522-4700", 
+  {
+    name: "National Problem Gambling Helpline",
+    url: "tel:1-800-522-4700",
     description: "24/7 confidential helpline",
-    region: "USA"
+    region: "USA",
   },
-  { 
-    name: "GamCare", 
-    url: "https://www.gamcare.org.uk", 
+  {
+    name: "GamCare",
+    url: "https://www.gamcare.org.uk",
     description: "Free information, support and counselling",
-    region: "UK"
+    region: "UK",
   },
-  { 
-    name: "BeGambleAware", 
-    url: "https://www.begambleaware.org", 
+  {
+    name: "BeGambleAware",
+    url: "https://www.begambleaware.org",
     description: "Advice and support for gambling problems",
-    region: "UK"
+    region: "UK",
   },
 ];
 
 export default function ResponsibleGambling() {
   const location = useLocation();
   const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  
+  const { handleAnchorClick, findElement, highlightElement } = useAnchorHighlight();
+
   const { data: content, isLoading } = useQuery({
     queryKey: ["legal-gambling"],
     queryFn: async () => {
@@ -59,41 +72,20 @@ export default function ResponsibleGambling() {
     },
   });
 
-  // Handle anchor scrolling after content loads
+  // Ensure hash navigation works after async content loads
   useEffect(() => {
-    if (!isLoading && location.hash) {
-      const id = location.hash.replace("#", "");
-      setTimeout(() => {
-        const element = sectionRefs.current[id] || document.getElementById(id);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 100);
-    }
-  }, [isLoading, location.hash]);
+    if (isLoading || !location.hash) return;
+    const id = location.hash.replace("#", "");
 
-  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault();
-    // Try refs first, then fall back to getElementById for content loaded via dangerouslySetInnerHTML
-    const element = sectionRefs.current[id] || document.getElementById(id) || document.querySelector(`[id="${id}"]`);
-    
-    // If still not found, try to find by text content in headings
-    if (!element) {
-      const headings = document.querySelectorAll('h2, h3');
-      for (const heading of headings) {
-        if (heading.textContent?.toLowerCase().includes(id.replace(/-/g, ' '))) {
-          heading.scrollIntoView({ behavior: "smooth", block: "start" });
-          window.history.pushState(null, "", `#${id}`);
-          return;
-        }
-      }
-    }
-    
-    if (element) {
+    const element = sectionRefs.current[id] || findElement(id);
+    if (!element) return;
+
+    setTimeout(() => {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.pushState(null, "", `#${id}`);
-    }
-  };
+      setTimeout(() => highlightElement(element), 350);
+    }, 150);
+  }, [isLoading, location.hash, findElement, highlightElement]);
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
