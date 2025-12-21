@@ -29,6 +29,7 @@ const permissionLabels: Record<string, { label: string; description: string }> =
   manage_settings: { label: "Manage Settings", description: "Can change site settings" },
   change_live_status: { label: "Change Live Status", description: "Can toggle stream live status" },
   manage_polls: { label: "Manage Polls", description: "Can create and manage polls" },
+  bypass_maintenance: { label: "Bypass Maintenance Mode", description: "Can access the site during maintenance mode" },
 };
 
 const roleColors: Record<string, string> = {

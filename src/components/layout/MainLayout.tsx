@@ -37,21 +37,8 @@ export function MainLayout() {
 
   if (!isWhiteLabelLoading && !isAuthLoading && isMaintenanceOn && !isModerator && !isAuthRoute) {
     return (
-      <div className="min-h-screen flex">
-        <Sidebar />
-        <motion.main
-          className="flex-1 flex flex-col min-h-screen"
-          animate={{ marginLeft: sidebarCollapsed ? 80 : 260 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-        >
-          <div className="flex items-center gap-4 p-4">
-            <div className="flex-1 flex justify-center">
-              <GlobalSearch />
-            </div>
-          </div>
-          <MaintenanceScreen message={settings.maintenance_message} />
-          <Footer />
-        </motion.main>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <MaintenanceScreen message={settings.maintenance_message} />
       </div>
     );
   }
