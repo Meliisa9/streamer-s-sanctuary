@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { OnlinePresenceProvider } from "@/contexts/OnlinePresenceContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SiteSettingsProvider } from "@/hooks/useSiteSettings";
+import { WhiteLabelProvider } from "@/hooks/useWhiteLabelSettings";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { DailyRewardsManager } from "@/components/DailyRewardsManager";
 import { DailyRewardPopup } from "@/components/DailyRewardPopup";
@@ -100,6 +101,7 @@ const App = () => (
           <DevDiagnosticsOverlay />
           <OnlinePresenceProvider>
             <SiteSettingsProvider>
+              <WhiteLabelProvider>
               <LanguageProvider>
                 <TooltipProvider>
                   <DailyRewardsManager />
@@ -190,6 +192,7 @@ const App = () => (
                 </Routes>
                 </TooltipProvider>
               </LanguageProvider>
+              </WhiteLabelProvider>
             </SiteSettingsProvider>
           </OnlinePresenceProvider>
         </AuthProvider>
