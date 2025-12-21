@@ -6,6 +6,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to get channel settings from site_settings
+async function getChannelSettings(supabase: any) {
+  const { data, error } = await supabase
+    .from("site_settings")
+    .select("key, value")
+    .in("key", ["twitch_channel", "kick_channel"]);
+
+  if (error) {
+    console.error("Error fetching channel settings:", error);
+    return { twitchChannel: null, kickChannel: null };
+  }
+
+  const settings: Record<string, string> = {};
+  data?.forEach((row: any) => {
+    settings[row.key] = row.value;
+  });
+
+  return {
+    twitchChannel: settings.twitch_channel || null,
+    kickChannel: settings.kick_channel || null,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,9 +45,14 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+    
+    // Service client for reading site_settings (which may have restricted access)
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -35,6 +63,10 @@ serve(async (req) => {
     }
 
     const { action, platform } = await req.json();
+
+    // Get channel settings for context
+    const channelSettings = await getChannelSettings(supabaseService);
+    console.log("Channel settings:", channelSettings);
 
     if (action === "get_all_points") {
       // Get all channel points for the user
@@ -65,6 +97,10 @@ serve(async (req) => {
           connected: !!p.platform_user_id,
           lastSynced: p.last_synced_at,
         })) || [],
+        channelSettings: {
+          twitchChannel: channelSettings.twitchChannel,
+          kickChannel: channelSettings.kickChannel,
+        },
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -93,8 +129,13 @@ serve(async (req) => {
       let errorMessage = null;
 
       if (platform === "twitch") {
-        // Sync Twitch channel points
-        const result = await syncTwitchPoints(connection, supabase, user.id);
+        // Sync Twitch channel points using the configured channel
+        const result = await syncTwitchPoints(
+          connection, 
+          supabaseService, 
+          user.id, 
+          channelSettings.twitchChannel
+        );
         if (result.success) {
           newBalance = result.balance;
           syncSuccess = true;
@@ -102,8 +143,13 @@ serve(async (req) => {
           errorMessage = result.error;
         }
       } else if (platform === "kick") {
-        // Sync Kick points (using their API if available)
-        const result = await syncKickPoints(connection, supabase, user.id);
+        // Sync Kick points using the configured channel
+        const result = await syncKickPoints(
+          connection, 
+          supabaseService, 
+          user.id, 
+          channelSettings.kickChannel
+        );
         if (result.success) {
           newBalance = result.balance;
           syncSuccess = true;
@@ -126,6 +172,7 @@ serve(async (req) => {
         platform,
         balance: newBalance,
         lastSynced: new Date().toISOString(),
+        channel: platform === "twitch" ? channelSettings.twitchChannel : channelSettings.kickChannel,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -145,6 +192,15 @@ serve(async (req) => {
       });
     }
 
+    if (action === "get_channel_settings") {
+      return new Response(JSON.stringify({
+        success: true,
+        channelSettings,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -160,7 +216,12 @@ serve(async (req) => {
   }
 });
 
-async function syncTwitchPoints(connection: any, supabase: any, userId: string) {
+async function syncTwitchPoints(
+  connection: any, 
+  supabase: any, 
+  userId: string, 
+  channelName: string | null
+) {
   try {
     const clientId = Deno.env.get("TWITCH_CLIENT_ID");
     const clientSecret = Deno.env.get("TWITCH_CLIENT_SECRET");
@@ -168,6 +229,12 @@ async function syncTwitchPoints(connection: any, supabase: any, userId: string) 
     if (!clientId || !clientSecret) {
       return { success: false, error: "Twitch API not configured" };
     }
+
+    if (!channelName) {
+      return { success: false, error: "Twitch channel not configured in Stream Config" };
+    }
+
+    console.log(`Syncing Twitch points for user ${userId} on channel ${channelName}`);
 
     let accessToken = connection.access_token;
     
@@ -191,21 +258,22 @@ async function syncTwitchPoints(connection: any, supabase: any, userId: string) 
         .eq("platform", "twitch");
     }
 
-    // Get user's channel points from Twitch
     // Note: Twitch doesn't have a direct API for channel points balance for viewers
-    // We would need EventSub for real-time updates or use a workaround
-    // For now, we'll use a placeholder that requires manual sync via Twitch events
+    // The points need to be synced via EventSub webhooks or broadcaster-initiated updates
+    // For now, we update the last synced time and return the current balance
     
     const oldBalance = connection.points_balance;
     
-    // Update last synced time
+    // Update last synced time with channel info
     await supabase
       .from("user_channel_points")
-      .update({ last_synced_at: new Date().toISOString() })
+      .update({ 
+        last_synced_at: new Date().toISOString(),
+      })
       .eq("user_id", userId)
       .eq("platform", "twitch");
 
-    return { success: true, balance: oldBalance };
+    return { success: true, balance: oldBalance, channel: channelName };
   } catch (error: unknown) {
     console.error("Error syncing Twitch points:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
@@ -242,22 +310,34 @@ async function refreshTwitchToken(refreshToken: string, clientId: string, client
   }
 }
 
-async function syncKickPoints(connection: any, supabase: any, userId: string) {
+async function syncKickPoints(
+  connection: any, 
+  supabase: any, 
+  userId: string, 
+  channelName: string | null
+) {
   try {
+    if (!channelName) {
+      return { success: false, error: "Kick channel not configured in Stream Config" };
+    }
+
+    console.log(`Syncing Kick points for user ${userId} on channel ${channelName}`);
+
     // Kick doesn't have a public API for channel points
-    // This is a placeholder for when/if they add one
-    // For now, points would need to be synced manually or via webhooks
+    // Points would need to be synced manually or via webhooks when available
     
     const oldBalance = connection.points_balance;
     
     // Update last synced time
     await supabase
       .from("user_channel_points")
-      .update({ last_synced_at: new Date().toISOString() })
+      .update({ 
+        last_synced_at: new Date().toISOString(),
+      })
       .eq("user_id", userId)
       .eq("platform", "kick");
 
-    return { success: true, balance: oldBalance };
+    return { success: true, balance: oldBalance, channel: channelName };
   } catch (error: unknown) {
     console.error("Error syncing Kick points:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
