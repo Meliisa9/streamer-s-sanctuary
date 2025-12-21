@@ -147,7 +147,6 @@ const navSections: NavSection[] = [
       { icon: Settings, label: "General Settings", path: "/admin/settings", roles: ["admin"] },
       { icon: Palette, label: "Branding", path: "/admin/settings/branding", roles: ["admin"] },
       { icon: Navigation, label: "Navigation", path: "/admin/settings/navigation", roles: ["admin"] },
-      { icon: FileText, label: "Language", path: "/admin/settings/language", roles: ["admin"] },
       { icon: FileText, label: "Legal Pages", path: "/admin/legal", roles: ["admin"] },
       { icon: Send, label: "Send Notifications", path: "/admin/settings/notifications", roles: ["admin"] },
       { icon: Webhook, label: "Webhooks", path: "/admin/webhooks", roles: ["admin"] },

@@ -4,7 +4,8 @@ import {
   Save, Upload, Loader2, Type, Globe, Palette, RotateCcw, Plus, Trash2, Link, 
   Eye, Sparkles, Image, Monitor, Smartphone, Copy, Check, 
   Layers, PaintBucket, Wand2, Code, Mail, LogIn, FileCode, Shield,
-  Settings2, Zap, RefreshCw, ChevronRight, Sun, Moon, Brush, Layout
+  Settings2, Zap, RefreshCw, ChevronRight, Sun, Moon, Brush, Layout,
+  Languages, Edit2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,6 +81,48 @@ interface SocialLink {
   icon: string;
   customIcon?: string;
 }
+
+type SupportedLanguage = "en" | "de" | "es" | "fr" | "pt" | "it" | "nl" | "sv" | "no" | "fi" | "da" | "pl" | "ru" | "ja" | "ko" | "zh";
+
+const availableLanguages: { code: SupportedLanguage; name: string; nativeName: string }[] = [
+  { code: "en", name: "English", nativeName: "English" },
+  { code: "de", name: "German", nativeName: "Deutsch" },
+  { code: "es", name: "Spanish", nativeName: "Español" },
+  { code: "fr", name: "French", nativeName: "Français" },
+  { code: "pt", name: "Portuguese", nativeName: "Português" },
+  { code: "it", name: "Italian", nativeName: "Italiano" },
+  { code: "nl", name: "Dutch", nativeName: "Nederlands" },
+  { code: "sv", name: "Swedish", nativeName: "Svenska" },
+  { code: "no", name: "Norwegian", nativeName: "Norsk" },
+  { code: "fi", name: "Finnish", nativeName: "Suomi" },
+  { code: "da", name: "Danish", nativeName: "Dansk" },
+  { code: "pl", name: "Polish", nativeName: "Polski" },
+  { code: "ru", name: "Russian", nativeName: "Русский" },
+  { code: "ja", name: "Japanese", nativeName: "日本語" },
+  { code: "ko", name: "Korean", nativeName: "한국어" },
+  { code: "zh", name: "Chinese", nativeName: "中文" },
+];
+
+const defaultTranslationKeys = [
+  { key: "nav.home", defaultValue: "Home" },
+  { key: "nav.videos", defaultValue: "Videos" },
+  { key: "nav.bonuses", defaultValue: "Bonuses" },
+  { key: "nav.news", defaultValue: "News" },
+  { key: "nav.giveaways", defaultValue: "Giveaways" },
+  { key: "nav.events", defaultValue: "Events" },
+  { key: "nav.leaderboard", defaultValue: "Leaderboard" },
+  { key: "nav.polls", defaultValue: "Polls" },
+  { key: "nav.about", defaultValue: "About" },
+  { key: "nav.predictions", defaultValue: "Predictions" },
+  { key: "nav.wins", defaultValue: "Win Gallery" },
+  { key: "auth.login", defaultValue: "Login" },
+  { key: "auth.signup", defaultValue: "Sign Up" },
+  { key: "auth.logout", defaultValue: "Logout" },
+  { key: "common.save", defaultValue: "Save" },
+  { key: "common.cancel", defaultValue: "Cancel" },
+  { key: "common.delete", defaultValue: "Delete" },
+  { key: "common.search", defaultValue: "Search" },
+];
 
 // ===== DEFAULTS =====
 const defaultBranding: BrandingSettings = {
@@ -183,6 +228,14 @@ export default function AdminBranding() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
+  // Language states
+  const [defaultLanguage, setDefaultLanguage] = useState<SupportedLanguage>("en");
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>("en");
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+  const [customKeys, setCustomKeys] = useState<{ key: string; defaultValue: string }[]>([]);
+  const [newKeyDialog, setNewKeyDialog] = useState(false);
+  const [newKey, setNewKey] = useState({ key: "", defaultValue: "" });
+  
   const { toast } = useToast();
   const { isAdmin } = useAuth();
   const { refetch: refetchWhiteLabel } = useWhiteLabelSettings();
@@ -204,6 +257,18 @@ export default function AdminBranding() {
         // Handle social links
         if (row.key === "footer_social_links" && row.value) {
           loadedSocialLinks = Array.isArray(row.value) ? (row.value as unknown as SocialLink[]) : [];
+          return;
+        }
+        
+        // Handle default language
+        if (row.key === "default_language" && row.value) {
+          setDefaultLanguage(row.value as SupportedLanguage);
+          return;
+        }
+        
+        // Handle custom translation keys
+        if (row.key === "custom_translation_keys" && row.value && Array.isArray(row.value)) {
+          setCustomKeys(row.value as { key: string; defaultValue: string }[]);
           return;
         }
         
@@ -417,6 +482,93 @@ export default function AdminBranding() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  // ===== LANGUAGE FUNCTIONS =====
+  const fetchTranslations = async (lang: SupportedLanguage) => {
+    try {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", `translations_${lang}`)
+        .single();
+
+      if (data?.value && typeof data.value === "object") {
+        setTranslations(data.value as Record<string, string>);
+      } else {
+        setTranslations({});
+      }
+    } catch (error) {
+      setTranslations({});
+    }
+  };
+
+  useEffect(() => {
+    if (selectedLanguage) {
+      fetchTranslations(selectedLanguage);
+    }
+  }, [selectedLanguage]);
+
+  const saveDefaultLanguage = async () => {
+    setIsSaving(true);
+    try {
+      await supabase
+        .from("site_settings")
+        .upsert({ key: "default_language", value: defaultLanguage }, { onConflict: "key" });
+      toast({ title: "Default language saved" });
+    } catch (error) {
+      toast({ title: "Error saving", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const saveTranslations = async () => {
+    setIsSaving(true);
+    try {
+      await supabase
+        .from("site_settings")
+        .upsert(
+          { key: `translations_${selectedLanguage}`, value: translations },
+          { onConflict: "key" }
+        );
+      toast({ title: `${availableLanguages.find((l) => l.code === selectedLanguage)?.name} translations saved` });
+    } catch (error) {
+      toast({ title: "Error saving", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addCustomKey = async () => {
+    if (!newKey.key || !newKey.defaultValue) {
+      toast({ title: "Please fill in both fields", variant: "destructive" });
+      return;
+    }
+
+    const updatedKeys = [...customKeys, newKey];
+    setCustomKeys(updatedKeys);
+
+    await supabase
+      .from("site_settings")
+      .upsert({ key: "custom_translation_keys", value: updatedKeys }, { onConflict: "key" });
+
+    setNewKey({ key: "", defaultValue: "" });
+    setNewKeyDialog(false);
+    toast({ title: "Custom key added" });
+  };
+
+  const removeCustomKey = async (keyToRemove: string) => {
+    const updatedKeys = customKeys.filter((k) => k.key !== keyToRemove);
+    setCustomKeys(updatedKeys);
+
+    await supabase
+      .from("site_settings")
+      .upsert({ key: "custom_translation_keys", value: updatedKeys }, { onConflict: "key" });
+
+    toast({ title: "Custom key removed" });
+  };
+
+  const allTranslationKeys = [...defaultTranslationKeys, ...customKeys];
+
   // ===== SAVE ALL SETTINGS =====
   const saveAllSettings = async () => {
     if (!isAdmin) {
@@ -515,6 +667,7 @@ export default function AdminBranding() {
     { id: "brand", label: "Brand Identity", icon: Sparkles },
     { id: "theme", label: "Theme & Colors", icon: Palette },
     { id: "typography", label: "Typography", icon: Type },
+    { id: "language", label: "Language", icon: Languages },
     { id: "login", label: "Login Page", icon: LogIn },
     { id: "seo", label: "SEO & Meta", icon: Globe },
     { id: "social", label: "Social Links", icon: Link },
@@ -886,6 +1039,180 @@ export default function AdminBranding() {
                     <p className="mt-2" style={{ fontFamily: `"${branding.font_body}", sans-serif` }}>
                       The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
                     </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Language Section */}
+            {activeSection === "language" && (
+              <motion.div
+                key="language"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* Default Language */}
+                <div className="glass rounded-2xl p-6 border border-border/50">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Languages className="w-5 h-5 text-primary" />
+                    Default Language
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <Select value={defaultLanguage} onValueChange={(v: SupportedLanguage) => setDefaultLanguage(v)}>
+                      <SelectTrigger className="w-64">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableLanguages.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code}>
+                            <span className="flex items-center gap-2">
+                              {lang.nativeName} ({lang.name})
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={saveDefaultLanguage} disabled={isSaving} className="gap-2">
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                      Save
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    This is the default language visitors will see when they first visit your site.
+                  </p>
+                </div>
+
+                {/* Custom Translation Keys */}
+                <div className="glass rounded-2xl p-6 border border-border/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Plus className="w-5 h-5 text-primary" />
+                      Custom Translation Keys
+                    </h3>
+                    <Dialog open={newKeyDialog} onOpenChange={setNewKeyDialog}>
+                      <Button size="sm" variant="outline" onClick={() => setNewKeyDialog(true)} className="gap-2">
+                        <Plus className="w-4 h-4" />
+                        Add Key
+                      </Button>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Custom Translation Key</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Key (e.g., custom.myLabel)</Label>
+                            <Input
+                              value={newKey.key}
+                              onChange={(e) => setNewKey({ ...newKey, key: e.target.value })}
+                              placeholder="custom.myLabel"
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label>Default Value (English)</Label>
+                            <Input
+                              value={newKey.defaultValue}
+                              onChange={(e) => setNewKey({ ...newKey, defaultValue: e.target.value })}
+                              placeholder="My Label"
+                              className="mt-1"
+                            />
+                          </div>
+                          <Button onClick={addCustomKey} className="w-full">
+                            Add Key
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  {customKeys.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No custom keys added yet</p>
+                  ) : (
+                    <div className="rounded-xl border border-border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Key</TableHead>
+                            <TableHead>Default Value</TableHead>
+                            <TableHead className="w-20">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {customKeys.map((key) => (
+                            <TableRow key={key.key}>
+                              <TableCell className="font-mono text-sm">{key.key}</TableCell>
+                              <TableCell>{key.defaultValue}</TableCell>
+                              <TableCell>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => removeCustomKey(key.key)}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Edit Translations */}
+                <div className="glass rounded-2xl p-6 border border-border/50">
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Edit2 className="w-5 h-5 text-primary" />
+                      Edit Translations
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <Select value={selectedLanguage} onValueChange={(v: SupportedLanguage) => setSelectedLanguage(v)}>
+                        <SelectTrigger className="w-48">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableLanguages.map((lang) => (
+                            <SelectItem key={lang.code} value={lang.code}>
+                              {lang.nativeName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button onClick={saveTranslations} disabled={isSaving} className="gap-2">
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="max-h-[500px] overflow-y-auto rounded-xl border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-48">Key</TableHead>
+                          <TableHead className="w-48">Default (English)</TableHead>
+                          <TableHead>Translation</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {allTranslationKeys.map((item) => (
+                          <TableRow key={item.key}>
+                            <TableCell className="font-mono text-sm">{item.key}</TableCell>
+                            <TableCell className="text-muted-foreground">{item.defaultValue}</TableCell>
+                            <TableCell>
+                              <Input
+                                value={translations[item.key] || ""}
+                                onChange={(e) =>
+                                  setTranslations({ ...translations, [item.key]: e.target.value })
+                                }
+                                placeholder={item.defaultValue}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </motion.div>
