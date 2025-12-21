@@ -5,7 +5,7 @@ import {
   Eye, Sparkles, Image, Monitor, Smartphone, Copy, Check, 
   Layers, PaintBucket, Wand2, Code, Mail, LogIn, FileCode, Shield,
   Settings2, Zap, RefreshCw, ChevronRight, Sun, Moon, Brush, Layout,
-  Languages, Edit2
+  Languages, Edit2, Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ interface BrandingSettings {
   site_title: string;
   favicon_url: string | null;
   logo_url: string | null;
+  notification_icon_url: string | null;
   footer_copyright: string;
   theme_primary: string;
   theme_background: string;
@@ -131,6 +132,7 @@ const defaultBranding: BrandingSettings = {
   site_title: "StreamerX - Casino Streams",
   favicon_url: null,
   logo_url: null,
+  notification_icon_url: null,
   footer_copyright: "",
   theme_primary: "262 83% 58%",
   theme_background: "240 10% 4%",
@@ -221,6 +223,8 @@ export default function AdminBranding() {
   const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
   const [ogImageFile, setOgImageFile] = useState<File | null>(null);
   const [ogImagePreview, setOgImagePreview] = useState<string | null>(null);
+  const [notificationIconFile, setNotificationIconFile] = useState<File | null>(null);
+  const [notificationIconPreview, setNotificationIconPreview] = useState<string | null>(null);
   
   // UI states
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -304,6 +308,7 @@ export default function AdminBranding() {
       if (loadedBranding.logo_url) setLogoPreview(loadedBranding.logo_url);
       if (loadedBranding.favicon_url) setFaviconPreview(loadedBranding.favicon_url);
       if (loadedBranding.og_image) setOgImagePreview(loadedBranding.og_image);
+      if (loadedBranding.notification_icon_url) setNotificationIconPreview(loadedBranding.notification_icon_url);
 
       applyThemeColors(loadedBranding);
       if (loadedWhiteLabel.custom_css) applyCustomCSS(loadedWhiteLabel.custom_css);
@@ -582,6 +587,7 @@ export default function AdminBranding() {
       let logoUrl = branding.logo_url;
       let faviconUrl = branding.favicon_url;
       let ogImageUrl = branding.og_image;
+      let notificationIconUrl = branding.notification_icon_url;
 
       // Upload files
       if (logoFile) {
@@ -611,8 +617,17 @@ export default function AdminBranding() {
         ogImageUrl = publicUrl;
       }
 
+      if (notificationIconFile) {
+        const fileExt = notificationIconFile.name.split(".").pop();
+        const fileName = `notification-icon-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage.from("media").upload(fileName, notificationIconFile, { upsert: true });
+        if (uploadError) throw uploadError;
+        const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName);
+        notificationIconUrl = publicUrl;
+      }
+
       // Save branding settings
-      const brandingToSave = { ...branding, logo_url: logoUrl, favicon_url: faviconUrl, og_image: ogImageUrl };
+      const brandingToSave = { ...branding, logo_url: logoUrl, favicon_url: faviconUrl, og_image: ogImageUrl, notification_icon_url: notificationIconUrl };
       for (const [key, value] of Object.entries(brandingToSave)) {
         const { error } = await supabase.from("site_settings").upsert({ key, value }, { onConflict: "key" });
         if (error) throw error;
@@ -645,6 +660,7 @@ export default function AdminBranding() {
       setLogoFile(null);
       setFaviconFile(null);
       setOgImageFile(null);
+      setNotificationIconFile(null);
       
       toast({ title: "All settings saved successfully" });
     } catch (error: any) {
@@ -834,6 +850,32 @@ export default function AdminBranding() {
                           </label>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">Recommended: 32x32 or 64x64 PNG/ICO</p>
+                      </div>
+                      <div>
+                        <Label>Push Notification Icon</Label>
+                        <div className="mt-2 flex items-center gap-4">
+                          {notificationIconPreview ? (
+                            <img src={notificationIconPreview} alt="Notification Icon" className="w-16 h-16 rounded-xl object-cover border border-border" />
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center border border-border">
+                              <Bell className="w-6 h-6 text-muted-foreground" />
+                            </div>
+                          )}
+                          <div className="flex flex-col gap-2">
+                            <label className="cursor-pointer">
+                              <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, setNotificationIconFile, setNotificationIconPreview)} className="hidden" />
+                              <Button variant="outline" type="button" asChild size="sm">
+                                <span><Upload className="w-4 h-4 mr-2" />Upload</span>
+                              </Button>
+                            </label>
+                            {notificationIconPreview && (
+                              <Button variant="ghost" size="sm" onClick={() => { setNotificationIconPreview(null); setNotificationIconFile(null); setBranding({ ...branding, notification_icon_url: null }); setHasUnsavedChanges(true); }} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-1" />Remove
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">Shown in browser push notifications. Recommended: 192x192 PNG</p>
                       </div>
                     </div>
                   </div>

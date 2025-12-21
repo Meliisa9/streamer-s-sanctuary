@@ -14,16 +14,25 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   console.log('Push notification received:', event);
   
+  // Default icon - will be overridden by payload if custom icon is set
+  const defaultIcon = '/favicon.ico';
+  
   let data = {
     title: 'New Notification',
     body: 'You have a new notification',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: defaultIcon,
+    badge: defaultIcon,
   };
 
   if (event.data) {
     try {
-      data = { ...data, ...event.data.json() };
+      const payload = event.data.json();
+      data = { ...data, ...payload };
+      // Use custom icon from payload if available
+      if (payload.icon) {
+        data.icon = payload.icon;
+        data.badge = payload.icon;
+      }
     } catch (e) {
       data.body = event.data.text();
     }
