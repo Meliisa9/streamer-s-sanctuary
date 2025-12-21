@@ -86,12 +86,21 @@ export default function AdminUsers() {
       if (action === "add") {
         const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
         if (error) throw error;
+        // Immediately update local state
+        setRoles(prevRoles => ({
+          ...prevRoles,
+          [userId]: [...(prevRoles[userId] || []), role],
+        }));
       } else {
         const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
         if (error) throw error;
+        // Immediately update local state
+        setRoles(prevRoles => ({
+          ...prevRoles,
+          [userId]: (prevRoles[userId] || []).filter(r => r !== role),
+        }));
       }
       toast({ title: `Role ${action === "add" ? "added" : "removed"}` });
-      fetchUsers();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -107,15 +116,22 @@ export default function AdminUsers() {
     const user = users.find((u) => u.user_id === userId);
     if (!user) return;
 
+    const newPoints = (user.points || 0) + amount;
+
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ points: (user.points || 0) + amount })
+        .update({ points: newPoints })
         .eq("user_id", userId);
 
       if (error) throw error;
+      
+      // Immediately update local state
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.user_id === userId ? { ...u, points: newPoints } : u
+      ));
+      
       toast({ title: `${amount > 0 ? 'Added' : 'Removed'} ${Math.abs(amount)} points` });
-      fetchUsers();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -131,13 +147,14 @@ export default function AdminUsers() {
       return;
     }
 
+    const userIdToDelete = userToDelete.user_id;
     setIsDeletingUser(true);
 
     try {
       const response = await supabase.functions.invoke("create-user", {
         body: {
           action: "delete",
-          user_id: userToDelete.user_id,
+          user_id: userIdToDelete,
         },
       });
 
@@ -149,9 +166,16 @@ export default function AdminUsers() {
         throw new Error(response.data.error);
       }
 
+      // Immediately update local state to remove the user
+      setUsers(prevUsers => prevUsers.filter(u => u.user_id !== userIdToDelete));
+      setRoles(prevRoles => {
+        const newRoles = { ...prevRoles };
+        delete newRoles[userIdToDelete];
+        return newRoles;
+      });
+
       toast({ title: "User deleted successfully" });
       setUserToDelete(null);
-      fetchUsers();
     } catch (error: any) {
       toast({ title: "Error deleting user", description: error.message, variant: "destructive" });
     } finally {
