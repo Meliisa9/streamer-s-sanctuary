@@ -339,6 +339,7 @@ export default function Profile() {
         body: {
           action: "authorize",
           state: user.id,
+          frontend_url: window.location.origin,
         },
         headers,
       });
