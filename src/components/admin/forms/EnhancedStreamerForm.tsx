@@ -181,13 +181,6 @@ export function EnhancedStreamerForm({ open, onOpenChange, editingStreamer, onSu
                   <option value="team_member">Team Member</option>
                 </select>
               </FormField>
-              <FormField label="Sort Order">
-                <Input
-                  type="number"
-                  value={formData.sort_order}
-                  onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                />
-              </FormField>
             </FormRow>
           </div>
         </div>

@@ -387,6 +387,7 @@ export default function AdminEvents() {
         open={isDialogOpen}
         onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}
         editingEvent={editingEvent}
+        streamers={streamers || []}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["admin-events"] });
           setIsDialogOpen(false);

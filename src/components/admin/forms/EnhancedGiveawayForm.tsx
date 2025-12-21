@@ -24,6 +24,7 @@ export function EnhancedGiveawayForm({ open, onOpenChange, editingGiveaway, onSu
     description: "",
     prize: "",
     prize_type: "Cash",
+    currency: "USD",
     image_url: "",
     max_entries: "",
     winners_count: 1,
@@ -42,6 +43,7 @@ export function EnhancedGiveawayForm({ open, onOpenChange, editingGiveaway, onSu
         description: editingGiveaway.description || "",
         prize: editingGiveaway.prize,
         prize_type: editingGiveaway.prize_type || "Cash",
+        currency: editingGiveaway.currency || "USD",
         image_url: editingGiveaway.image_url || "",
         max_entries: editingGiveaway.max_entries?.toString() || "",
         winners_count: editingGiveaway.winners_count || 1,
@@ -64,6 +66,7 @@ export function EnhancedGiveawayForm({ open, onOpenChange, editingGiveaway, onSu
       description: "",
       prize: "",
       prize_type: "Cash",
+      currency: "USD",
       image_url: "",
       max_entries: "",
       winners_count: 1,
@@ -92,6 +95,7 @@ export function EnhancedGiveawayForm({ open, onOpenChange, editingGiveaway, onSu
         description: formData.description || null,
         prize: formData.prize,
         prize_type: formData.prize_type,
+        currency: formData.prize_type === "Cash" ? formData.currency : null,
         image_url: formData.image_url || null,
         max_entries: finalMaxEntries,
         winners_count: formData.winners_count,
@@ -166,14 +170,14 @@ export function EnhancedGiveawayForm({ open, onOpenChange, editingGiveaway, onSu
 
       {/* Prize Details */}
       <FormSection title="Prize Information" icon={<Trophy className="w-4 h-4" />}>
-        <FormRow>
+        <FormRow cols={3}>
           <FormField label="Prize Value" required>
             <div className="relative">
               <Trophy className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 value={formData.prize}
                 onChange={(e) => setFormData({ ...formData, prize: e.target.value })}
-                placeholder="$10,000"
+                placeholder="10,000"
                 required
                 className="pl-10"
               />
@@ -191,6 +195,22 @@ export function EnhancedGiveawayForm({ open, onOpenChange, editingGiveaway, onSu
               <option value="Other">Other</option>
             </select>
           </FormField>
+          {formData.prize_type === "Cash" && (
+            <FormField label="Currency">
+              <select
+                value={formData.currency}
+                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                className="w-full px-4 py-2 bg-secondary border border-border rounded-xl focus:outline-none focus:border-primary"
+              >
+                <option value="USD">$ USD</option>
+                <option value="EUR">€ EUR</option>
+                <option value="GBP">£ GBP</option>
+                <option value="CAD">C$ CAD</option>
+                <option value="AUD">A$ AUD</option>
+                <option value="SEK">kr SEK</option>
+              </select>
+            </FormField>
+          )}
         </FormRow>
       </FormSection>
 

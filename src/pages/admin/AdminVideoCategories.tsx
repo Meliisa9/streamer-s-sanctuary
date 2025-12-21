@@ -132,6 +132,19 @@ export default function AdminVideoCategories() {
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const slug = data.slug || data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      
+      // Check if slug already exists
+      const { data: existing } = await supabase
+        .from("video_categories")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+      
+      if (existing) {
+        throw new Error(`A category with slug "${slug}" already exists. Please use a different name or slug.`);
+      }
+      
+      // Auto-calculate sort_order
       const maxOrder = categories.reduce((max, c) => Math.max(max, c.sort_order || 0), 0);
       
       const { error } = await supabase.from("video_categories").insert({

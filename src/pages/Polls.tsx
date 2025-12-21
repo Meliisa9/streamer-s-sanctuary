@@ -56,6 +56,7 @@ export default function Polls() {
     title: "",
     description: "",
     options: ["", ""],
+    is_multiple_choice: false,
   });
 
   // Fetch active official polls (approved or non-community, not expired)
@@ -221,7 +222,7 @@ export default function Polls() {
         description: data.description || null,
         options: filteredOptions,
         is_active: true,
-        is_multiple_choice: false,
+        is_multiple_choice: data.is_multiple_choice || false,
         is_community: true,
         is_approved: false,
         created_by: user.id,
@@ -232,7 +233,7 @@ export default function Polls() {
       queryClient.invalidateQueries({ queryKey: ["pending-polls"] });
       toast({ title: "Poll submitted!", description: "Your poll is pending moderator approval." });
       setIsCreateDialogOpen(false);
-      setNewPollData({ title: "", description: "", options: ["", ""] });
+      setNewPollData({ title: "", description: "", options: ["", ""], is_multiple_choice: false });
     },
     onError: (error: any) => {
       toast({ title: "Error creating poll", description: error.message, variant: "destructive" });
@@ -669,6 +670,18 @@ export default function Polls() {
                                 Add Option
                               </Button>
                             )}
+                          </div>
+                          <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg">
+                            <div>
+                              <p className="text-sm font-medium">Allow Multiple Choices</p>
+                              <p className="text-xs text-muted-foreground">Let voters select more than one option</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={newPollData.is_multiple_choice}
+                              onChange={(e) => setNewPollData({ ...newPollData, is_multiple_choice: e.target.checked })}
+                              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                            />
                           </div>
                           <Button
                             className="w-full"

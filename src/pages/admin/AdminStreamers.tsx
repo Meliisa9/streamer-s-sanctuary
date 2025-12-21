@@ -223,6 +223,7 @@ export default function AdminStreamers() {
         open={isDialogOpen}
         onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}
         editingStreamer={editingStreamer}
+        users={users || []}
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ["admin-streamers"] });
           setIsDialogOpen(false);
