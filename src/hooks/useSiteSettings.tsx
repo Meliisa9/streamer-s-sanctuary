@@ -12,17 +12,27 @@ export interface SiteSettings {
   is_live: boolean;
   live_platform: "twitch" | "kick";
   stream_channel: string;
+
+  // Navigation visibility flags
+  nav_home_visible: boolean;
   nav_videos_visible: boolean;
   nav_bonuses_visible: boolean;
   nav_news_visible: boolean;
   nav_giveaways_visible: boolean;
+  nav_streamers_visible: boolean;
+  nav_stream_visible: boolean;
+  nav_store_visible: boolean;
   nav_events_visible: boolean;
+  nav_bonus_hunt_visible: boolean;
   nav_gtw_visible: boolean;
+  nav_avgx_visible: boolean;
+  nav_wins_visible: boolean;
+  nav_streamer_stats_visible: boolean;
   nav_leaderboard_visible: boolean;
   nav_polls_visible: boolean;
   nav_about_visible: boolean;
-  nav_streamers_visible: boolean;
-  nav_stream_visible: boolean;
+
+  // Other settings
   stat_community_value: string;
   stat_community_label: string;
   stat_wins_value: string;
@@ -51,17 +61,25 @@ const defaultSettings: SiteSettings = {
   is_live: false,
   live_platform: "twitch",
   stream_channel: "",
+
+  nav_home_visible: true,
   nav_videos_visible: true,
   nav_bonuses_visible: true,
   nav_news_visible: true,
   nav_giveaways_visible: true,
+  nav_streamers_visible: true,
+  nav_stream_visible: true,
+  nav_store_visible: true,
   nav_events_visible: true,
+  nav_bonus_hunt_visible: true,
   nav_gtw_visible: true,
+  nav_avgx_visible: true,
+  nav_wins_visible: true,
+  nav_streamer_stats_visible: true,
   nav_leaderboard_visible: true,
   nav_polls_visible: true,
   nav_about_visible: true,
-  nav_streamers_visible: true,
-  nav_stream_visible: true,
+
   stat_community_value: "150K+",
   stat_community_label: "Community Members",
   stat_wins_value: "$2.5M",
