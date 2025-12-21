@@ -130,6 +130,46 @@ serve(async (req) => {
         await supabaseAdmin.from("video_likes").delete().eq("user_id", user_id);
         // Delete news comments
         await supabaseAdmin.from("news_comments").delete().eq("user_id", user_id);
+        // Delete Twitch/Kick channel point connections
+        await supabaseAdmin.from("user_channel_points").delete().eq("user_id", user_id);
+        // Delete channel point transactions
+        await supabaseAdmin.from("channel_point_transactions").delete().eq("user_id", user_id);
+        // Delete user badges
+        await supabaseAdmin.from("user_badges").delete().eq("user_id", user_id);
+        // Delete user follows (both as follower and following)
+        await supabaseAdmin.from("user_follows").delete().eq("follower_id", user_id);
+        await supabaseAdmin.from("user_follows").delete().eq("following_id", user_id);
+        // Delete daily sign-ins
+        await supabaseAdmin.from("daily_sign_ins").delete().eq("user_id", user_id);
+        // Delete bonus hunt guesses
+        await supabaseAdmin.from("bonus_hunt_guesses").delete().eq("user_id", user_id);
+        // Delete avgx guesses
+        await supabaseAdmin.from("bonus_hunt_avgx_guesses").delete().eq("user_id", user_id);
+        // Delete prediction bets
+        await supabaseAdmin.from("prediction_bets").delete().eq("user_id", user_id);
+        // Delete big wins
+        await supabaseAdmin.from("big_wins").delete().eq("user_id", user_id);
+        // Delete profile comments (both as author and on their profile)
+        await supabaseAdmin.from("profile_comments").delete().eq("author_id", user_id);
+        await supabaseAdmin.from("profile_comments").delete().eq("profile_user_id", user_id);
+        // Delete store redemptions
+        await supabaseAdmin.from("store_redemptions").delete().eq("user_id", user_id);
+        // Delete user bookmarks
+        await supabaseAdmin.from("user_bookmarks").delete().eq("user_id", user_id);
+        // Delete user custom roles
+        await supabaseAdmin.from("user_custom_roles").delete().eq("user_id", user_id);
+        // Delete user bans
+        await supabaseAdmin.from("user_bans").delete().eq("user_id", user_id);
+        // Delete user restrictions
+        await supabaseAdmin.from("user_restrictions").delete().eq("user_id", user_id);
+        // Delete user warnings
+        await supabaseAdmin.from("user_warnings").delete().eq("user_id", user_id);
+        // Delete content flags
+        await supabaseAdmin.from("content_flags").delete().eq("flagged_by", user_id);
+        // Delete event subscriptions
+        await supabaseAdmin.from("event_subscriptions").delete().eq("user_id", user_id);
+        
+        console.log("Cleaned up all related data for user:", user_id);
       } catch (cleanupError) {
         console.log("Cleanup error (non-fatal):", cleanupError);
       }
