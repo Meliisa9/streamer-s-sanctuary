@@ -739,14 +739,14 @@ export default function AdminStore() {
               <div>
                 <Label>Category</Label>
                 <Select
-                  value={itemForm.category_id || ""}
-                  onValueChange={(v) => setItemForm(f => ({ ...f, category_id: v || null }))}
+                  value={itemForm.category_id || "none"}
+                  onValueChange={(v) => setItemForm(f => ({ ...f, category_id: v === "none" ? null : v }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Category</SelectItem>
+                    <SelectItem value="none">No Category</SelectItem>
                     {categories.map(cat => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
