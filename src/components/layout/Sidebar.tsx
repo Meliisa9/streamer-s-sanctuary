@@ -213,7 +213,7 @@ export function Sidebar() {
       variants={sidebarVariants}
       animate={collapsed ? "collapsed" : "expanded"}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-50 flex flex-col"
+      className="hidden md:flex fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border z-50 flex-col"
     >
       {/* Logo */}
       <NavLink

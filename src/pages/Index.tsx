@@ -157,12 +157,12 @@ export default function Index() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[70vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden pt-10 md:pt-0">
         <div className="absolute inset-0 bg-hero-pattern" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-[120px] animate-pulse-slow" />
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-purple-neon/15 rounded-full blur-[100px] animate-pulse-slow" />
+        <div className="absolute top-1/4 left-1/4 w-48 md:w-96 h-48 md:h-96 bg-primary/20 rounded-full blur-[80px] md:blur-[120px] animate-pulse-slow" />
+        <div className="absolute bottom-1/4 right-1/4 w-36 md:w-72 h-36 md:h-72 bg-purple-neon/15 rounded-full blur-[60px] md:blur-[100px] animate-pulse-slow" />
         
-        <div className="container mx-auto px-6 py-20 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 py-12 md:py-20 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -206,7 +206,7 @@ export default function Index() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
-              className="text-5xl md:text-7xl font-bold mb-6 leading-tight"
+              className="text-3xl sm:text-5xl md:text-7xl font-bold mb-4 md:mb-6 leading-tight"
             >
               Welcome to{" "}
               <span className="gradient-text">{settings.site_name}</span>
@@ -216,7 +216,7 @@ export default function Index() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.8 }}
-              className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+              className="text-base sm:text-xl md:text-2xl text-muted-foreground mb-6 md:mb-10 max-w-2xl mx-auto px-2"
             >
               Your premium destination for casino streaming, exclusive bonuses,
               and thrilling giveaways.
@@ -226,15 +226,15 @@ export default function Index() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+              className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 px-4"
             >
-              <Button variant="glow" size="xl" className="group" asChild>
+              <Button variant="glow" size="lg" className="group w-full sm:w-auto" asChild>
                 <a href={settings.twitch_url} target="_blank" rel="noopener noreferrer">
                   <Play className="w-5 h-5 group-hover:scale-110 transition-transform" />
                   Watch Live Stream
                 </a>
               </Button>
-              <Button variant="glass" size="xl" className="group" asChild>
+              <Button variant="glass" size="lg" className="group w-full sm:w-auto" asChild>
                 <a href={settings.twitch_follow_url} target="_blank" rel="noopener noreferrer">
                   <Twitch className="w-5 h-5" />
                   Follow on Twitch
@@ -248,7 +248,7 @@ export default function Index() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8, duration: 0.8 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20 max-w-4xl mx-auto"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-12 md:mt-20 max-w-4xl mx-auto"
           >
             {stats.map((stat, index) => (
               <motion.div
@@ -256,11 +256,11 @@ export default function Index() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 + index * 0.1, duration: 0.5 }}
-                className="glass rounded-2xl p-6 text-center card-hover"
+                className="glass rounded-2xl p-4 sm:p-6 text-center card-hover"
               >
-                <stat.icon className="w-8 h-8 mx-auto mb-3 text-primary" />
-                <p className="text-3xl font-bold gradient-text mb-1">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <stat.icon className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 sm:mb-3 text-primary" />
+                <p className="text-xl sm:text-3xl font-bold gradient-text mb-1">{stat.value}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -268,16 +268,16 @@ export default function Index() {
       </section>
 
       {/* Featured Casinos */}
-      <section className="py-20 px-6">
+      <section className="py-12 md:py-20 px-4 sm:px-6">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex items-center justify-between mb-10"
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-10"
           >
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
                 Featured <span className="gradient-text">Bonuses</span>
               </h2>
               <p className="text-muted-foreground">Exclusive deals for our community</p>
@@ -290,7 +290,7 @@ export default function Index() {
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {featuredBonuses.length > 0 ? featuredBonuses.map((bonus, index) => (
               <motion.div
                 key={bonus.id}
@@ -349,16 +349,16 @@ export default function Index() {
 
       {/* Latest News - Only show if news is visible */}
       {settings.nav_news_visible && latestNews.length > 0 && (
-        <section className="py-20 px-6 bg-card/30">
+        <section className="py-12 md:py-20 px-4 sm:px-6 bg-card/30">
           <div className="container mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex items-center justify-between mb-10"
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-10"
             >
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold mb-2">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
                   Latest <span className="gradient-text">News</span>
                 </h2>
                 <p className="text-muted-foreground">Stay updated with the latest</p>
@@ -371,7 +371,7 @@ export default function Index() {
               </Link>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {latestNews.map((article, index) => (
                 <motion.div
                   key={article.id}
@@ -419,23 +419,23 @@ export default function Index() {
       )}
 
       {/* Upcoming Streams */}
-      <section className="py-20 px-6">
+      <section className="py-12 md:py-20 px-4 sm:px-6">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-12"
+            className="text-center mb-8 md:mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 md:mb-4">
               Upcoming <span className="gradient-text">Events</span>
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto px-4">
               Don't miss out on our scheduled streams and special events
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
             {upcomingEvents.length > 0 ? upcomingEvents.map((event, index) => (
               <motion.div
                 key={event.id}
@@ -443,13 +443,13 @@ export default function Index() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="glass rounded-2xl p-6 card-hover"
+                className="glass rounded-2xl p-4 sm:p-6 card-hover"
               >
                 <div className="flex items-center gap-2 text-sm text-primary mb-3">
                   <Clock className="w-4 h-4" />
                   {formatEventDate(event.event_date, event.event_time)}
                 </div>
-                <h3 className="text-xl font-bold mb-2">{event.title}</h3>
+                <h3 className="text-lg sm:text-xl font-bold mb-2">{event.title}</h3>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>{event.event_type || "Stream"}</span>
                   {event.expected_viewers && (
@@ -461,7 +461,7 @@ export default function Index() {
                 </div>
               </motion.div>
             )) : (
-              <div className="col-span-3 text-center py-12 text-muted-foreground">
+              <div className="col-span-full text-center py-8 md:py-12 text-muted-foreground">
                 No upcoming events scheduled
               </div>
             )}
@@ -470,19 +470,19 @@ export default function Index() {
       </section>
 
       {/* Latest Wins */}
-      <section className="py-20 px-6 bg-card/30">
+      <section className="py-12 md:py-20 px-4 sm:px-6 bg-card/30">
         <div className="container mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex items-center justify-between mb-10"
+            className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 md:mb-10"
           >
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-2">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2">
                 Latest <span className="gradient-text-gold">Wins</span>
               </h2>
-              <p className="text-muted-foreground">Watch our biggest hits</p>
+              <p className="text-sm sm:text-base text-muted-foreground">Watch our biggest hits</p>
             </div>
             <Link to="/videos">
               <Button variant="outline" className="group">
@@ -492,7 +492,7 @@ export default function Index() {
             </Link>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {latestVideos.length > 0 ? latestVideos.map((video, index) => (
               <motion.div
                 key={video.id}
@@ -562,38 +562,38 @@ export default function Index() {
 
       {/* Active Giveaway */}
       {activeGiveaway && (
-        <section className="py-20 px-6">
+        <section className="py-12 md:py-20 px-4 sm:px-6">
           <div className="container mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="glass rounded-3xl p-8 md:p-12 neon-border max-w-4xl mx-auto text-center relative overflow-hidden"
+              className="glass rounded-2xl md:rounded-3xl p-6 sm:p-8 md:p-12 neon-border max-w-4xl mx-auto text-center relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-accent to-primary" />
               
-              <span className="inline-block px-4 py-1 bg-accent/20 text-accent text-sm font-medium rounded-full mb-6">
+              <span className="inline-block px-3 sm:px-4 py-1 bg-accent/20 text-accent text-xs sm:text-sm font-medium rounded-full mb-4 sm:mb-6">
                 🎉 Active Giveaway
               </span>
               
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">{activeGiveaway.title}</h2>
-              <p className="text-2xl gradient-text-gold font-bold mb-8">{activeGiveaway.prize}</p>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">{activeGiveaway.title}</h2>
+              <p className="text-xl sm:text-2xl gradient-text-gold font-bold mb-6 sm:mb-8">{activeGiveaway.prize}</p>
               
-              <div className="flex justify-center gap-4 md:gap-8 mb-8">
+              <div className="flex justify-center gap-3 sm:gap-4 md:gap-8 mb-6 sm:mb-8">
                 {[
                   { value: countdown.days, label: "Days" },
                   { value: countdown.hours, label: "Hours" },
                   { value: countdown.minutes, label: "Minutes" },
                 ].map((item) => (
-                  <div key={item.label} className="glass rounded-xl p-4 min-w-[80px]">
-                    <p className="text-3xl font-bold text-primary">{item.value}</p>
-                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <div key={item.label} className="glass rounded-xl p-3 sm:p-4 min-w-[60px] sm:min-w-[80px]">
+                    <p className="text-2xl sm:text-3xl font-bold text-primary">{item.value}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{item.label}</p>
                   </div>
                 ))}
               </div>
               
               <Link to="/giveaways">
-                <Button variant="glow" size="xl" className="group">
+                <Button variant="glow" size="lg" className="group w-full sm:w-auto">
                   <Gift className="w-5 h-5" />
                   Enter Now
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
