@@ -23,25 +23,25 @@ export function usePushNotifications() {
     }
     
     // Fetch custom notification icon
-    fetchNotificationIcon();
-  }, [user]);
-
-  const fetchNotificationIcon = async () => {
-    try {
-      const { data } = await supabase
-        .from("site_settings")
-        .select("value")
-        .eq("key", "notification_icon_url")
-        .single();
-      
-      if (data?.value && typeof data.value === "string") {
-        setNotificationIcon(data.value);
+    const fetchIcon = async () => {
+      try {
+        const { data } = await supabase
+          .from("site_settings")
+          .select("value")
+          .eq("key", "notification_icon_url")
+          .single();
+        
+        if (data?.value && typeof data.value === "string") {
+          setNotificationIcon(data.value);
+        }
+      } catch (error) {
+        // Use default favicon if no custom icon is set
+        console.log("Using default notification icon");
       }
-    } catch (error) {
-      // Use default favicon if no custom icon is set
-      console.log("Using default notification icon");
-    }
-  };
+    };
+    
+    fetchIcon();
+  }, [user]);
 
   const checkSubscription = async () => {
     if (!user) {
