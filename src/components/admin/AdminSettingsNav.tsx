@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils";
 const settingsSubcategories = [
   { path: "/admin/settings", label: "Live & Links", icon: Tv, exact: true },
   { path: "/admin/settings/branding", label: "Branding", icon: Palette },
-  { path: "/admin/settings/white-label", label: "White Label", icon: Palette },
   { path: "/admin/settings/navigation", label: "Navigation", icon: Navigation },
   { path: "/admin/settings/video-categories", label: "Video Categories", icon: Video },
   { path: "/admin/settings/statistics", label: "Statistics", icon: BarChart3 },

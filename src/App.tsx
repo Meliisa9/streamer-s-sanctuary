@@ -181,7 +181,7 @@ const App = () => (
                     <Route path="settings/auth-health" element={<AdminAuthHealth />} />
                     <Route path="settings/video-categories" element={<AdminVideoCategories />} />
                     <Route path="settings/email-templates" element={<AdminEmailTemplates />} />
-                    <Route path="settings/white-label" element={<AdminWhiteLabel />} />
+                    <Route path="settings/white-label" element={<Navigate to="/admin/settings/branding" replace />} />
                     <Route path="roles" element={<AdminRoleManagement />} />
                     <Route path="webhooks" element={<AdminWebhooks />} />
                     <Route path="engagement" element={<AdminEngagement />} />
