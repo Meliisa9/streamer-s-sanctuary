@@ -727,6 +727,42 @@ export default function UserProfile() {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
+                  {/* Achievements */}
+                  <Card className="glass border-0">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <Award className="w-4 h-4 text-primary" />
+                          Achievements
+                        </h3>
+                        <Badge variant="outline" className="text-muted-foreground">
+                          {achievementsCount || 0}
+                        </Badge>
+                      </div>
+
+                      {unlockedAchievements && unlockedAchievements.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {unlockedAchievements
+                            .map((ua) => {
+                              const meta = ACHIEVEMENTS.find((a) => a.key === ua.achievement_key);
+                              return meta
+                                ? { key: ua.achievement_key, name: meta.name, icon: meta.icon }
+                                : { key: ua.achievement_key, name: ua.achievement_key.replace(/_/g, " "), icon: "🏆" };
+                            })
+                            .slice(0, 18)
+                            .map((a) => (
+                              <Badge key={a.key} variant="outline" className="gap-1 bg-secondary/30">
+                                <span aria-hidden="true">{a.icon}</span>
+                                <span>{a.name}</span>
+                              </Badge>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No achievements unlocked yet.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
                   {/* Connected Accounts */}
                   <Card className="glass border-0">
                     <CardContent className="p-6">
