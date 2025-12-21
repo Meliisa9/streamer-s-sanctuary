@@ -29,6 +29,21 @@ export function useChannelPoints() {
     return { Authorization: `Bearer ${token}` };
   }, []);
 
+  const getInvokeErrorMessage = useCallback((err: any) => {
+    const contextBody = err?.context?.body;
+    if (typeof contextBody === "string" && contextBody.trim()) {
+      try {
+        const parsed = JSON.parse(contextBody);
+        if (typeof parsed?.error === "string") return parsed.error;
+        if (typeof parsed?.message === "string") return parsed.message;
+      } catch {
+        // ignore
+      }
+      return contextBody;
+    }
+    return err?.message || "Unknown error";
+  }, []);
+
   // Fetch all points
   const { data: pointsData, isLoading, refetch } = useQuery({
     queryKey: ["channel-points", user?.id],
@@ -190,7 +205,7 @@ export function useChannelPoints() {
       console.error("Twitch connection error:", error);
       toast({
         title: "Connection Failed",
-        description: error.message || "Failed to connect to Twitch",
+        description: getInvokeErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -231,7 +246,7 @@ export function useChannelPoints() {
       console.error("Kick connection error:", error);
       toast({
         title: "Connection Failed",
-        description: error.message || "Failed to connect to Kick",
+        description: getInvokeErrorMessage(error),
         variant: "destructive",
       });
     }

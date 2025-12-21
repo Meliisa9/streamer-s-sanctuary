@@ -12,10 +12,28 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const clientId = Deno.env.get("TWITCH_CLIENT_ID");
-    const clientSecret = Deno.env.get("TWITCH_CLIENT_SECRET");
+    const reqUrl = new URL(req.url);
+
+    const supabaseUrl = ((Deno.env.get("SUPABASE_URL") || reqUrl.origin) as string).trim();
+    const supabaseServiceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+    const clientId = (Deno.env.get("TWITCH_CLIENT_ID") || "").trim();
+    const clientSecret = (Deno.env.get("TWITCH_CLIENT_SECRET") || "").trim();
+
+    if (!supabaseUrl) {
+      return new Response(JSON.stringify({ error: "Backend is missing SUPABASE_URL" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!supabaseServiceKey) {
+      return new Response(
+        JSON.stringify({
+          error: "Backend is missing SUPABASE_SERVICE_ROLE_KEY (required to save Twitch connection).",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: "Twitch API not configured" }), {
@@ -24,7 +42,7 @@ serve(async (req) => {
       });
     }
 
-    const url = new URL(req.url);
+    const url = reqUrl;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Support both URL params (for OAuth callback) and JSON body (for API calls)
