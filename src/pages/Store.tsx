@@ -793,7 +793,7 @@ export default function Store() {
             </Button>
             <Button 
               onClick={confirmRedeem} 
-              disabled={redeemMutation.isPending || !canRedeem(selectedItem!, selectedCurrency)}
+              disabled={redeemMutation.isPending || !selectedItem || !canRedeem(selectedItem, selectedCurrency)}
             >
               {redeemMutation.isPending ? (
                 <>
