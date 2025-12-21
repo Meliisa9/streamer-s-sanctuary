@@ -1,14 +1,20 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { TrendingUp, TrendingDown, Users, Trophy, Coins, Lock, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Users, Trophy, Coins, Lock, CheckCircle, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Prediction {
   id: string;
@@ -43,6 +49,7 @@ export function StreamPredictions() {
   const [betAmounts, setBetAmounts] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [userPoints, setUserPoints] = useState(0);
+  const [isAdminOrMod, setIsAdminOrMod] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -51,6 +58,7 @@ export function StreamPredictions() {
     if (user) {
       fetchUserBets();
       fetchUserPoints();
+      checkAdminOrMod();
     }
 
     const channel = supabase
@@ -110,6 +118,105 @@ export function StreamPredictions() {
     if (data) {
       setUserPoints(data.points || 0);
     }
+  };
+
+  const checkAdminOrMod = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .in("role", ["admin", "moderator"]);
+
+    setIsAdminOrMod(data && data.length > 0);
+  };
+
+  const lockPrediction = async (predictionId: string) => {
+    const { error } = await supabase
+      .from("stream_predictions")
+      .update({ status: "locked", locked_at: new Date().toISOString() })
+      .eq("id", predictionId);
+
+    if (error) {
+      toast({ title: "Error locking prediction", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Prediction locked" });
+    fetchPredictions();
+  };
+
+  const resolvePrediction = async (predictionId: string, outcome: "option_a" | "option_b") => {
+    const prediction = predictions.find((p) => p.id === predictionId);
+    if (!prediction) return;
+
+    const winningPool = outcome === "option_a" ? (prediction.option_a_pool || 0) : (prediction.option_b_pool || 0);
+    const losingPool = outcome === "option_a" ? (prediction.option_b_pool || 0) : (prediction.option_a_pool || 0);
+    const totalPool = winningPool + losingPool;
+
+    // Update the prediction status
+    const { error: predictionError } = await supabase
+      .from("stream_predictions")
+      .update({
+        status: "resolved",
+        outcome: outcome,
+        resolved_at: new Date().toISOString(),
+        profit_pool: winningPool,
+        loss_pool: losingPool,
+      })
+      .eq("id", predictionId);
+
+    if (predictionError) {
+      toast({ title: "Error resolving prediction", variant: "destructive" });
+      return;
+    }
+
+    // Get all bets for this prediction
+    const { data: bets } = await supabase
+      .from("prediction_bets")
+      .select("*")
+      .eq("prediction_id", predictionId);
+
+    if (bets) {
+      // Calculate and distribute payouts to winners
+      for (const bet of bets) {
+        if (bet.predicted_outcome === outcome && winningPool > 0) {
+          const payout = Math.floor((bet.bet_amount / winningPool) * totalPool);
+          
+          // Update bet with payout
+          await supabase
+            .from("prediction_bets")
+            .update({ payout })
+            .eq("id", bet.id);
+
+          // Add points to winner's profile
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("points")
+            .eq("user_id", bet.user_id)
+            .single();
+
+          if (profile) {
+            await supabase
+              .from("profiles")
+              .update({ points: (profile.points || 0) + payout })
+              .eq("user_id", bet.user_id);
+          }
+
+          // Notify winner
+          await supabase.from("user_notifications").insert({
+            user_id: bet.user_id,
+            title: "You won a prediction!",
+            message: `You won ${payout} points on "${prediction.title}"`,
+            type: "achievement",
+            link: "/stream",
+          });
+        }
+      }
+    }
+
+    const outcomeLabel = outcome === "option_a" ? (prediction.option_a_label || "Option A") : (prediction.option_b_label || "Option B");
+    toast({ title: `Prediction resolved: ${outcomeLabel} wins!` });
+    fetchPredictions();
   };
 
   const placeBet = async (predictionId: string, outcome: "option_a" | "option_b") => {
@@ -210,7 +317,7 @@ export function StreamPredictions() {
   }
 
   if (predictions.length === 0) {
-    return null; // Don't show anything if no active predictions
+    return null;
   }
 
   return (
@@ -259,7 +366,44 @@ export function StreamPredictions() {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-base">{prediction.title}</CardTitle>
-                      {getStatusBadge(prediction.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(prediction.status)}
+                        {isAdminOrMod && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <Settings className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {prediction.status === "open" && (
+                                <DropdownMenuItem onClick={() => lockPrediction(prediction.id)}>
+                                  <Lock className="w-4 h-4 mr-2" />
+                                  Lock Betting
+                                </DropdownMenuItem>
+                              )}
+                              {prediction.status === "locked" && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={() => resolvePrediction(prediction.id, "option_a")}
+                                    className="text-green-400"
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    {optionALabel} Wins
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => resolvePrediction(prediction.id, "option_b")}
+                                    className="text-red-400"
+                                  >
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    {optionBLabel} Wins
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
