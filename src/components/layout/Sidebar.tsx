@@ -1,30 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Home,
-  Video,
-  Gift,
-  Newspaper,
-  Trophy,
-  Calendar,
-  Target,
-  Users,
   ChevronLeft,
   ChevronRight,
-  Twitch,
   LogIn,
   LogOut,
   Settings,
   Shield,
   User,
-  Crosshair,
+  Twitch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { supabase } from "@/integrations/supabase/client";
+import { SITE_NAV_ITEMS, type NavOrder, type NavSections, type NavSection } from "@/lib/navigation";
 
 interface NavItem {
   icon: React.ElementType;
@@ -35,59 +27,55 @@ interface NavItem {
   settingKey?: string;
 }
 
-const mainNavItems: NavItem[] = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: Video, label: "Videos", path: "/videos", settingKey: "nav_videos_visible" },
-  { icon: Trophy, label: "Bonuses", path: "/bonuses", settingKey: "nav_bonuses_visible" },
-  { icon: Newspaper, label: "News", path: "/news", settingKey: "nav_news_visible" },
-  { icon: Gift, label: "Giveaways", path: "/giveaways", settingKey: "nav_giveaways_visible" },
-  { icon: Users, label: "Streamers", path: "/streamers", settingKey: "nav_streamers_visible" },
-  { icon: Twitch, label: "Stream", path: "/stream", settingKey: "nav_stream_visible" },
-];
-
-import { BarChart, Info, Store } from "lucide-react";
-
-const communityNavItems: NavItem[] = [
-  { icon: Calendar, label: "Events", path: "/events", settingKey: "nav_events_visible" },
-  { icon: Crosshair, label: "Bonus Hunt", path: "/bonus-hunt", settingKey: "nav_bonus_hunt_visible" },
-  { icon: Target, label: "Guess The Win", path: "/bonus-hunt?tab=gtw", settingKey: "nav_gtw_visible" },
-  { icon: BarChart, label: "Average X", path: "/bonus-hunt?tab=avgx", settingKey: "nav_gtw_visible" },
-  { icon: Trophy, label: "Win Gallery", path: "/wins", settingKey: "nav_wins_visible" },
-  { icon: BarChart, label: "Streamer Stats", path: "/streamer-stats", settingKey: "nav_streamer_stats_visible" },
-  { icon: Users, label: "Leaderboard", path: "/leaderboard", settingKey: "nav_leaderboard_visible" },
-  { icon: BarChart, label: "Polls", path: "/polls", settingKey: "nav_polls_visible" },
-  { icon: Store, label: "Store", path: "/store", settingKey: "nav_store_visible" },
-  { icon: Info, label: "About", path: "/about", settingKey: "nav_about_visible" },
-];
-
-const adminNavItems: NavItem[] = [
-  { icon: Shield, label: "Admin Panel", path: "/admin", adminOnly: true },
-];
+const adminNavItems: NavItem[] = [{ icon: Shield, label: "Admin Panel", path: "/admin", adminOnly: true }];
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const [hasActiveGiveaway, setHasActiveGiveaway] = useState(false);
   const [hasBonusHuntLive, setHasBonusHuntLive] = useState(false);
+  const [navOrder, setNavOrder] = useState<NavOrder>({});
+  const [navSections, setNavSections] = useState<NavSections>({});
+
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, isModerator, isWriter, signOut } = useAuth();
   const { settings } = useSiteSettings();
 
-  // Fetch and subscribe to live status, giveaways, and bonus hunt
+  // Fetch and subscribe to live status, giveaways, bonus hunt, and nav config
   useEffect(() => {
     const fetchStatuses = async () => {
-      // Live status
-      const { data: liveData } = await supabase.from("site_settings").select("value").eq("key", "is_live").maybeSingle();
-      if (liveData) setIsLive(liveData.value === true || liveData.value === "true" || liveData.value === 1);
-      
+      // Nav config
+      const { data: navRows } = await supabase
+        .from("site_settings")
+        .select("key,value")
+        .in("key", ["nav_order", "nav_sections", "is_live"]);
+
+      navRows?.forEach((r) => {
+        if (r.key === "nav_order" && r.value) setNavOrder(r.value as NavOrder);
+        if (r.key === "nav_sections" && r.value) setNavSections(r.value as NavSections);
+        if (r.key === "is_live") {
+          const val = r.value as any;
+          setIsLive(val === true || val === "true" || val === 1);
+        }
+      });
+
       // Active giveaways
       const now = new Date().toISOString();
-      const { data: giveaways } = await supabase.from("giveaways").select("id").eq("status", "active").gte("end_date", now).limit(1);
+      const { data: giveaways } = await supabase
+        .from("giveaways")
+        .select("id")
+        .eq("status", "active")
+        .gte("end_date", now)
+        .limit(1);
       setHasActiveGiveaway((giveaways?.length || 0) > 0);
-      
+
       // Live bonus hunt
-      const { data: bonusHunts } = await supabase.from("bonus_hunts").select("id").eq("status", "live").limit(1);
+      const { data: bonusHunts } = await supabase
+        .from("bonus_hunts")
+        .select("id")
+        .eq("status", "live")
+        .limit(1);
       setHasBonusHuntLive((bonusHunts?.length || 0) > 0);
     };
 
@@ -95,18 +83,27 @@ export function Sidebar() {
 
     // Subscribe to real-time updates
     const channel = supabase
-      .channel('sidebar-statuses')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'site_settings' }, (payload: any) => {
-        if (payload.new?.key === 'is_live') {
-          const val = payload.new.value;
-          setIsLive(val === true || val === "true" || val === 1);
+      .channel("sidebar-statuses")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_settings" },
+        (payload: any) => {
+          const key = payload.new?.key;
+          if (key === "is_live") {
+            const val = payload.new.value;
+            setIsLive(val === true || val === "true" || val === 1);
+          }
+          if (key === "nav_order") setNavOrder(payload.new?.value || {});
+          if (key === "nav_sections") setNavSections(payload.new?.value || {});
         }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'giveaways' }, () => fetchStatuses())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bonus_hunts' }, () => fetchStatuses())
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "giveaways" }, () => fetchStatuses())
+      .on("postgres_changes", { event: "*", schema: "public", table: "bonus_hunts" }, () => fetchStatuses())
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const sidebarVariants = {
@@ -124,13 +121,39 @@ export function Sidebar() {
     return settings[item.settingKey as keyof typeof settings] !== false;
   };
 
+  const computedNav = useMemo(() => {
+    const sectionFor = (key: string, fallback: NavSection): NavSection => {
+      const v = navSections[key];
+      return v === "main" || v === "community" ? v : fallback;
+    };
+
+    const base = SITE_NAV_ITEMS
+      .map((def) => ({
+        icon: def.icon,
+        label: def.label,
+        path: def.path,
+        settingKey: def.settingKey,
+        __key: def.key,
+        __section: sectionFor(def.key, def.defaultSection),
+      }))
+      .sort((a, b) => (navOrder[a.__key] ?? 999) - (navOrder[b.__key] ?? 999));
+
+    return {
+      main: base.filter((i) => i.__section === "main"),
+      community: base.filter((i) => i.__section === "community"),
+    };
+  }, [navOrder, navSections]);
+
+  const visibleMainItems = computedNav.main.filter(isNavItemVisible);
+  const visibleCommunityItems = computedNav.community.filter(isNavItemVisible);
+
   const NavItemComponent = ({ item }: { item: NavItem }) => {
     // Handle special deep-link navigation items like GTW and AvgX
     const currentTab = new URLSearchParams(location.search).get("tab");
     const itemUrl = new URL(item.path, "http://placeholder");
     const itemTab = itemUrl.searchParams.get("tab");
     const itemPathname = itemUrl.pathname;
-    
+
     // Determine if this item is active
     let isActive = false;
     if (item.path === "/") {
@@ -146,7 +169,7 @@ export function Sidebar() {
     } else {
       isActive = location.pathname === item.path || location.pathname.startsWith(item.path + "/");
     }
-    
+
     const Icon = item.icon;
 
     return (
@@ -154,9 +177,7 @@ export function Sidebar() {
         <motion.div
           className={cn(
             "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group",
-            isActive
-              ? "bg-primary/15 text-primary"
-              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            isActive ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
           )}
           whileHover={{ x: 4 }}
           whileTap={{ scale: 0.98 }}
@@ -169,27 +190,24 @@ export function Sidebar() {
             />
           )}
           <Icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-primary")} />
-          {!collapsed && (
-            <span className="font-medium whitespace-nowrap overflow-hidden">
-              {item.label}
-            </span>
-          )}
+          {!collapsed && <span className="font-medium whitespace-nowrap overflow-hidden">{item.label}</span>}
+
           {/* Dynamic LIVE badge for Giveaways */}
           {item.path === "/giveaways" && hasActiveGiveaway && !collapsed && (
-            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse">LIVE</span>
+            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-destructive text-destructive-foreground rounded-full animate-pulse">
+              LIVE
+            </span>
           )}
           {/* Dynamic LIVE badge for Bonus Hunt */}
           {item.path === "/bonus-hunt" && hasBonusHuntLive && !collapsed && (
-            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-green-500 text-white rounded-full animate-pulse">LIVE</span>
+            <span className="ml-auto px-2 py-0.5 text-xs font-bold bg-green-500 text-white rounded-full animate-pulse">
+              LIVE
+            </span>
           )}
         </motion.div>
       </NavLink>
     );
   };
-
-  const visibleMainItems = mainNavItems.filter(isNavItemVisible);
-  const visibleCommunityItems = communityNavItems.filter(isNavItemVisible);
-
   return (
     <motion.aside
       variants={sidebarVariants}

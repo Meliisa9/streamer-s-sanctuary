@@ -1,9 +1,19 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, Layout, Eye, EyeOff, GripVertical, Home, Video, Trophy, Newspaper, Gift, Users, Calendar, Target, Crosshair, BarChart, Info, Twitch, ShoppingCart } from "lucide-react";
+import {
+  Save,
+  Loader2,
+  Layout,
+  Eye,
+  EyeOff,
+  GripVertical,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,61 +35,47 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { SITE_NAV_ITEMS, type NavSections, type NavOrder, type NavSection } from "@/lib/navigation";
 
 interface NavItem {
   key: string;
   label: string;
   description: string;
   icon: React.ElementType;
-  section: "main" | "community";
+  section: NavSection;
 }
 
-// Complete list of all sidebar navigation items
-const allNavItems: NavItem[] = [
-  // Main section
-  { key: "nav_home_visible", label: "Home", description: "Homepage", icon: Home, section: "main" },
-  { key: "nav_videos_visible", label: "Videos", description: "Video gallery and highlights", icon: Video, section: "main" },
-  { key: "nav_bonuses_visible", label: "Bonuses", description: "Casino bonus offers", icon: Trophy, section: "main" },
-  { key: "nav_news_visible", label: "News", description: "News and updates", icon: Newspaper, section: "main" },
-  { key: "nav_giveaways_visible", label: "Giveaways", description: "Active giveaways", icon: Gift, section: "main" },
-  { key: "nav_streamers_visible", label: "Streamers", description: "Featured streamers", icon: Users, section: "main" },
-  { key: "nav_stream_visible", label: "Stream", description: "Live stream embed", icon: Twitch, section: "main" },
-  { key: "nav_store_visible", label: "Store", description: "Points store", icon: ShoppingCart, section: "main" },
-  // Community section
-  { key: "nav_events_visible", label: "Events", description: "Stream schedule and events", icon: Calendar, section: "community" },
-  { key: "nav_bonus_hunt_visible", label: "Bonus Hunt", description: "Bonus hunt tracker", icon: Crosshair, section: "community" },
-  { key: "nav_gtw_visible", label: "Guess The Win", description: "GTW game sessions", icon: Target, section: "community" },
-  { key: "nav_avgx_visible", label: "Average X", description: "AvgX predictions", icon: BarChart, section: "community" },
-  { key: "nav_leaderboard_visible", label: "Leaderboard", description: "Points rankings", icon: Users, section: "community" },
-  { key: "nav_polls_visible", label: "Polls", description: "Community polls", icon: BarChart, section: "community" },
-  { key: "nav_about_visible", label: "About Us", description: "About the streamer", icon: Info, section: "community" },
-];
+// Use the shared nav registry as source-of-truth
+const allNavItems: NavItem[] = SITE_NAV_ITEMS.map((i) => ({
+  key: i.key,
+  label: i.label,
+  description: i.description,
+  icon: i.icon,
+  section: i.defaultSection,
+}));
 
 interface NavSettings {
   [key: string]: boolean;
 }
 
-interface NavOrder {
-  [key: string]: number;
-}
+// Stored in site_settings as JSON
+// - nav_order: { [navKey]: index }
+// - nav_sections: { [navKey]: "main" | "community" }
 
 function SortableNavItem({
   item,
   isEnabled,
   onToggle,
+  section,
+  onSectionChange,
 }: {
   item: NavItem;
   isEnabled: boolean;
   onToggle: () => void;
+  section: NavSection;
+  onSectionChange: (section: NavSection) => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.key });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.key });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -94,17 +90,11 @@ function SortableNavItem({
       ref={setNodeRef}
       style={style}
       className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-        isEnabled
-          ? "bg-primary/5 border-primary/20"
-          : "bg-secondary/30 border-border/50 opacity-60"
+        isEnabled ? "bg-primary/5 border-primary/20" : "bg-secondary/30 border-border/50 opacity-60"
       } ${isDragging ? "shadow-lg ring-2 ring-primary" : ""}`}
     >
       <div className="flex items-center gap-4">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-secondary rounded"
-        >
+        <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-secondary rounded">
           <GripVertical className="w-5 h-5 text-muted-foreground" />
         </button>
         <div className="p-2 rounded-lg bg-secondary/50">
@@ -115,7 +105,18 @@ function SortableNavItem({
           <p className="text-sm text-muted-foreground">{item.description}</p>
         </div>
       </div>
+
       <div className="flex items-center gap-3">
+        <Select value={section} onValueChange={(v) => onSectionChange(v as NavSection)}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Section" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="main">Main</SelectItem>
+            <SelectItem value="community">Community</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Badge variant={isEnabled ? "default" : "secondary"} className="text-xs">
           {isEnabled ? "Visible" : "Hidden"}
         </Badge>
@@ -128,6 +129,7 @@ function SortableNavItem({
 export default function AdminNavigation() {
   const [settings, setSettings] = useState<NavSettings>({});
   const [order, setOrder] = useState<NavOrder>({});
+  const [sections, setSections] = useState<NavSections>({});
   const [orderedItems, setOrderedItems] = useState<NavItem[]>(allNavItems);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,6 +154,7 @@ export default function AdminNavigation() {
 
       const loadedSettings: NavSettings = {};
       let loadedOrder: NavOrder = {};
+      let loadedSections: NavSections = {};
 
       // Default all items to visible
       allNavItems.forEach((item) => {
@@ -161,6 +164,8 @@ export default function AdminNavigation() {
       data?.forEach((row) => {
         if (row.key === "nav_order" && row.value) {
           loadedOrder = row.value as NavOrder;
+        } else if (row.key === "nav_sections" && row.value) {
+          loadedSections = row.value as NavSections;
         } else if (row.key.startsWith("nav_") && row.key.endsWith("_visible")) {
           loadedSettings[row.key] = row.value === true || row.value === "true";
         }
@@ -168,13 +173,16 @@ export default function AdminNavigation() {
 
       setSettings(loadedSettings);
       setOrder(loadedOrder);
+      setSections(loadedSections);
 
-      // Sort items by order
-      const sorted = [...allNavItems].sort((a, b) => {
-        const orderA = loadedOrder[a.key] ?? 999;
-        const orderB = loadedOrder[b.key] ?? 999;
-        return orderA - orderB;
-      });
+      // Apply order + stored sections
+      const sorted = [...allNavItems]
+        .map((item) => ({ ...item, section: loadedSections[item.key] || item.section }))
+        .sort((a, b) => {
+          const orderA = loadedOrder[a.key] ?? 999;
+          const orderB = loadedOrder[b.key] ?? 999;
+          return orderA - orderB;
+        });
       setOrderedItems(sorted);
     } catch (error: any) {
       console.error("Error fetching settings:", error);
@@ -214,9 +222,7 @@ export default function AdminNavigation() {
     try {
       // Save visibility settings
       for (const [key, value] of Object.entries(settings)) {
-        const { error } = await supabase
-          .from("site_settings")
-          .upsert({ key, value }, { onConflict: "key" });
+        const { error } = await supabase.from("site_settings").upsert({ key, value }, { onConflict: "key" });
         if (error) throw error;
       }
 
@@ -225,6 +231,12 @@ export default function AdminNavigation() {
         .from("site_settings")
         .upsert({ key: "nav_order", value: order }, { onConflict: "key" });
       if (orderError) throw orderError;
+
+      // Save sections
+      const { error: sectionError } = await supabase
+        .from("site_settings")
+        .upsert({ key: "nav_sections", value: sections }, { onConflict: "key" });
+      if (sectionError) throw sectionError;
 
       toast({ title: "Navigation settings saved" });
     } catch (error: any) {
@@ -242,8 +254,9 @@ export default function AdminNavigation() {
     setSettings(newSettings);
   };
 
-  const mainItems = orderedItems.filter((item) => item.section === "main");
-  const communityItems = orderedItems.filter((item) => item.section === "community");
+  const itemsWithSections = orderedItems.map((i) => ({ ...i, section: sections[i.key] || i.section }));
+  const mainItems = itemsWithSections.filter((item) => item.section === "main");
+  const communityItems = itemsWithSections.filter((item) => item.section === "community");
   const enabledCount = Object.values(settings).filter(Boolean).length;
 
   if (isLoading) {
@@ -320,9 +333,9 @@ export default function AdminNavigation() {
                     key={item.key}
                     item={item}
                     isEnabled={settings[item.key] ?? true}
-                    onToggle={() =>
-                      setSettings({ ...settings, [item.key]: !settings[item.key] })
-                    }
+                    section={(sections[item.key] || item.section) as NavSection}
+                    onSectionChange={(sec) => setSections((s) => ({ ...s, [item.key]: sec }))}
+                    onToggle={() => setSettings({ ...settings, [item.key]: !settings[item.key] })}
                   />
                 ))}
               </div>
@@ -364,9 +377,9 @@ export default function AdminNavigation() {
                     key={item.key}
                     item={item}
                     isEnabled={settings[item.key] ?? true}
-                    onToggle={() =>
-                      setSettings({ ...settings, [item.key]: !settings[item.key] })
-                    }
+                    section={(sections[item.key] || item.section) as NavSection}
+                    onSectionChange={(sec) => setSections((s) => ({ ...s, [item.key]: sec }))}
+                    onToggle={() => setSettings({ ...settings, [item.key]: !settings[item.key] })}
                   />
                 ))}
               </div>
