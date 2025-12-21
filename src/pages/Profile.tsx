@@ -118,32 +118,48 @@ export default function Profile() {
     enabled: giveawayBookmarks.length > 0,
   });
 
-  // Handle Kick OAuth callback
+  // Handle Twitch/Kick OAuth callback
   useEffect(() => {
+    // Handle Twitch callback
+    const twitchUsername = searchParams.get("twitch_username");
+    const twitchSuccess = searchParams.get("twitch_success");
+    const twitchError = searchParams.get("twitch_error");
+
+    if (twitchSuccess === "true" && user) {
+      toast({ title: "Twitch account connected!", description: twitchUsername ? `Linked as ${twitchUsername}` : "Connected successfully" });
+      refreshProfile();
+      // Clean up URL params
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("twitch_username");
+      newParams.delete("twitch_success");
+      setSearchParams(newParams);
+    } else if (twitchError) {
+      toast({ title: "Failed to connect Twitch", description: twitchError, variant: "destructive" });
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("twitch_error");
+      setSearchParams(newParams);
+    }
+
+    // Handle Kick callback
     const kickUsername = searchParams.get("kick_username");
     const kickSuccess = searchParams.get("kick_success");
     const kickError = searchParams.get("kick_error");
 
-    if (kickSuccess && kickUsername && user) {
-      supabase
-        .from("profiles")
-        .update({ kick_username: kickUsername })
-        .eq("user_id", user.id)
-        .then(({ error }) => {
-          if (error) {
-            toast({ title: "Failed to link Kick account", description: error.message, variant: "destructive" });
-          } else {
-            toast({ title: "Kick account connected!", description: `Linked as ${kickUsername}` });
-            refreshProfile();
-          }
-        });
-      
-      setSearchParams({});
+    if (kickSuccess === "true" && user) {
+      toast({ title: "Kick account connected!", description: kickUsername ? `Linked as ${kickUsername}` : "Connected successfully" });
+      refreshProfile();
+      // Clean up URL params
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("kick_username");
+      newParams.delete("kick_success");
+      setSearchParams(newParams);
     } else if (kickError) {
       toast({ title: "Failed to connect Kick", description: kickError, variant: "destructive" });
-      setSearchParams({});
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("kick_error");
+      setSearchParams(newParams);
     }
-  }, [searchParams, user]);
+  }, [searchParams, user, refreshProfile, toast, setSearchParams]);
 
   // Handle hash-based navigation
   useEffect(() => {
@@ -274,8 +290,21 @@ export default function Profile() {
   const handleConnectTwitch = async () => {
     setConnectingProvider("twitch");
     try {
-      const { error } = await supabase.auth.linkIdentity({ provider: "twitch" });
+      const { data, error } = await supabase.functions.invoke("twitch-channel-points", {
+        body: {
+          action: "authorize",
+          state: user.id,
+        },
+      });
+
       if (error) throw error;
+
+      if (!data.authUrl) {
+        throw new Error("No authorization URL returned");
+      }
+
+      // Redirect to Twitch OAuth
+      window.location.href = data.authUrl;
     } catch (error: any) {
       toast({ title: "Failed to connect Twitch", description: error.message, variant: "destructive" });
       setConnectingProvider(null);
@@ -296,46 +325,23 @@ export default function Profile() {
   const handleConnectKick = async () => {
     setConnectingProvider("kick");
     try {
-      const frontendUrl = window.location.origin;
-      const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-      const callbackBase = (localStorage.getItem("kick_callback_base") || "").trim();
-
-      if (isLocalhost && !callbackBase) {
-        throw new Error('For localhost, set localStorage key "kick_callback_base" to your ngrok/HTTPS tunnel base URL.');
-      }
-
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/kick-oauth?action=authorize&frontend_url=${encodeURIComponent(frontendUrl)}${callbackBase ? `&callback_base=${encodeURIComponent(callbackBase)}` : ""}`;
-
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
-      if (!session?.access_token) throw new Error("Not authenticated");
-
-      const response = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+      const { data, error } = await supabase.functions.invoke("kick-oauth", {
+        body: {
+          action: "authorize",
+          state: user.id,
+          frontend_url: window.location.origin,
         },
       });
 
-      const raw = await response.text();
-      let data: any = null;
-      try {
-        data = raw ? JSON.parse(raw) : null;
-      } catch {
-        data = null;
+      if (error) throw error;
+
+      const authUrl = data.authUrl || data.authorize_url;
+      if (!authUrl) {
+        throw new Error("No authorization URL returned");
       }
 
-      if (!response.ok) {
-        const detail = data?.error || raw || `HTTP ${response.status}`;
-        throw new Error(`Kick authorize failed: ${detail}`);
-      }
-
-      const authorizeUrl: string | undefined = data?.authorize_url;
-      if (!authorizeUrl) {
-        throw new Error(`Kick authorize response missing authorize_url.`);
-      }
-
-      window.location.assign(authorizeUrl);
+      // Redirect to Kick OAuth
+      window.location.href = authUrl;
     } catch (error: any) {
       toast({ title: "Failed to connect Kick", description: error.message, variant: "destructive" });
       setConnectingProvider(null);
