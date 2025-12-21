@@ -71,6 +71,55 @@ export function useChannelPoints() {
     };
   }, [user, refetch]);
 
+  // Handle OAuth return from Twitch/Kick
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Check for Twitch success
+    if (params.get("twitch_success") === "true") {
+      const username = params.get("twitch_username");
+      toast({
+        title: "Twitch Connected!",
+        description: `Connected as ${username || "your Twitch account"}`,
+      });
+      // Clean up URL
+      window.history.replaceState({}, "", window.location.pathname);
+      // Refetch data
+      refetch();
+    }
+    
+    // Check for Twitch error
+    if (params.get("twitch_error")) {
+      toast({
+        title: "Twitch Connection Failed",
+        description: params.get("twitch_error") || "Failed to connect",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    
+    // Check for Kick success
+    if (params.get("kick_success") === "true") {
+      const username = params.get("kick_username");
+      toast({
+        title: "Kick Connected!",
+        description: `Connected as ${username || "your Kick account"}`,
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+      refetch();
+    }
+    
+    // Check for Kick error
+    if (params.get("kick_error")) {
+      toast({
+        title: "Kick Connection Failed",
+        description: params.get("kick_error") || "Failed to connect",
+        variant: "destructive",
+      });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [refetch]);
+
   // Sync mutation
   const syncMutation = useMutation({
     mutationFn: async (platform: "twitch" | "kick") => {
@@ -118,19 +167,24 @@ export function useChannelPoints() {
       });
 
       if (error) throw error;
+      
+      if (!data.authUrl) {
+        throw new Error("No authorization URL returned");
+      }
 
       // Redirect to Twitch OAuth
       window.location.href = data.authUrl;
     } catch (error: any) {
+      console.error("Twitch connection error:", error);
       toast({
         title: "Connection Failed",
-        description: error.message,
+        description: error.message || "Failed to connect to Twitch",
         variant: "destructive",
       });
     }
   }, [user]);
 
-  // Connect to Kick (using existing kick-oauth function)
+  // Connect to Kick
   const connectKick = useCallback(async () => {
     if (!user) {
       toast({
@@ -145,19 +199,27 @@ export function useChannelPoints() {
       const { data, error } = await supabase.functions.invoke("kick-oauth", {
         body: { 
           action: "authorize", 
-          redirect_uri: `${window.location.origin}/auth/kick/callback`,
           state: user.id,
+          frontend_url: window.location.origin,
         },
       });
 
       if (error) throw error;
+      
+      // The function returns either authUrl or authorize_url
+      const authUrl = data.authUrl || data.authorize_url;
+      
+      if (!authUrl) {
+        throw new Error("No authorization URL returned");
+      }
 
       // Redirect to Kick OAuth
-      window.location.href = data.auth_url;
+      window.location.href = authUrl;
     } catch (error: any) {
+      console.error("Kick connection error:", error);
       toast({
         title: "Connection Failed",
-        description: error.message,
+        description: error.message || "Failed to connect to Kick",
         variant: "destructive",
       });
     }
