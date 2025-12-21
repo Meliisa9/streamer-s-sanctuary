@@ -21,6 +21,14 @@ export function useChannelPoints() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
 
+  const getAuthHeader = useCallback(async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Missing session");
+    return { Authorization: `Bearer ${token}` };
+  }, []);
+
   // Fetch all points
   const { data: pointsData, isLoading, refetch } = useQuery({
     queryKey: ["channel-points", user?.id],
@@ -32,8 +40,10 @@ export function useChannelPoints() {
         };
       }
 
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("channel-points-sync", {
         body: { action: "get_all_points" },
+        headers,
       });
 
       if (error) throw error;
@@ -74,7 +84,7 @@ export function useChannelPoints() {
   // Handle OAuth return from Twitch/Kick
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    
+
     // Check for Twitch success
     if (params.get("twitch_success") === "true") {
       const username = params.get("twitch_username");
@@ -87,7 +97,7 @@ export function useChannelPoints() {
       // Refetch data
       refetch();
     }
-    
+
     // Check for Twitch error
     if (params.get("twitch_error")) {
       toast({
@@ -97,7 +107,7 @@ export function useChannelPoints() {
       });
       window.history.replaceState({}, "", window.location.pathname);
     }
-    
+
     // Check for Kick success
     if (params.get("kick_success") === "true") {
       const username = params.get("kick_username");
@@ -108,7 +118,7 @@ export function useChannelPoints() {
       window.history.replaceState({}, "", window.location.pathname);
       refetch();
     }
-    
+
     // Check for Kick error
     if (params.get("kick_error")) {
       toast({
@@ -123,8 +133,10 @@ export function useChannelPoints() {
   // Sync mutation
   const syncMutation = useMutation({
     mutationFn: async (platform: "twitch" | "kick") => {
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("channel-points-sync", {
         body: { action: "sync", platform },
+        headers,
       });
 
       if (error) throw error;
@@ -160,14 +172,14 @@ export function useChannelPoints() {
 
     try {
       const { data, error } = await supabase.functions.invoke("twitch-channel-points", {
-        body: { 
-          action: "authorize", 
+        body: {
+          action: "authorize",
           state: user.id,
         },
       });
 
       if (error) throw error;
-      
+
       if (!data.authUrl) {
         throw new Error("No authorization URL returned");
       }
@@ -197,18 +209,18 @@ export function useChannelPoints() {
 
     try {
       const { data, error } = await supabase.functions.invoke("kick-oauth", {
-        body: { 
-          action: "authorize", 
+        body: {
+          action: "authorize",
           state: user.id,
           frontend_url: window.location.origin,
         },
       });
 
       if (error) throw error;
-      
+
       // The function returns either authUrl or authorize_url
       const authUrl = data.authUrl || data.authorize_url;
-      
+
       if (!authUrl) {
         throw new Error("No authorization URL returned");
       }
@@ -228,8 +240,10 @@ export function useChannelPoints() {
   // Disconnect mutation
   const disconnectMutation = useMutation({
     mutationFn: async (platform: "twitch" | "kick") => {
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("channel-points-sync", {
         body: { action: "disconnect", platform },
+        headers,
       });
 
       if (error) throw error;
