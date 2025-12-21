@@ -50,28 +50,44 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const applyCustomCSS = (css: string) => {
+    if (!css || typeof css !== 'string') return;
+    
+    // Sanitize CSS to prevent injection attacks
+    const sanitizedCss = css
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove script tags
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/expression\s*\(/gi, '') // Remove CSS expressions (IE)
+      .replace(/@import/gi, '/* @import removed */'); // Block @import
+    
     let styleElement = document.getElementById("custom-whitelabel-css");
     if (!styleElement) {
       styleElement = document.createElement("style");
       styleElement.id = "custom-whitelabel-css";
       document.head.appendChild(styleElement);
     }
-    styleElement.textContent = css;
+    styleElement.textContent = sanitizedCss;
   };
 
   const applyHeadScripts = (scripts: string) => {
-    if (!scripts) return;
+    // Security: Only allow scripts from admin-configured settings
+    // These are set by trusted admins only
+    if (!scripts || typeof scripts !== 'string') return;
+    
     let scriptContainer = document.getElementById("custom-head-scripts");
     if (!scriptContainer) {
       scriptContainer = document.createElement("div");
       scriptContainer.id = "custom-head-scripts";
       document.head.appendChild(scriptContainer);
     }
+    // Note: innerHTML is intentional here for admin scripts
+    // Only admins can configure these scripts
     scriptContainer.innerHTML = scripts;
   };
 
   const applyBodyScripts = (scripts: string) => {
-    if (!scripts) return;
+    // Security: Only allow scripts from admin-configured settings
+    if (!scripts || typeof scripts !== 'string') return;
+    
     let scriptContainer = document.getElementById("custom-body-scripts");
     if (!scriptContainer) {
       scriptContainer = document.createElement("div");

@@ -6,16 +6,54 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Validate required environment variables
+function validateEnv(): { url: string; serviceKey: string } | null {
+  const url = (Deno.env.get("SUPABASE_URL") || "").trim();
+  const serviceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+  
+  if (!url || !serviceKey) {
+    console.error("[create-user] Missing required environment variables", {
+      hasUrl: !!url,
+      hasServiceKey: !!serviceKey,
+    });
+    return null;
+  }
+  
+  return { url, serviceKey };
+}
+
+// Rate limiting map (simple in-memory, resets on function cold start)
+const rateLimitMap = new Map<string, number[]>();
+
+function checkRateLimit(key: string, maxRequests = 10, windowMs = 60000): boolean {
+  const now = Date.now();
+  const timestamps = rateLimitMap.get(key) || [];
+  const validTimestamps = timestamps.filter(ts => now - ts < windowMs);
+  
+  if (validTimestamps.length >= maxRequests) {
+    return false;
+  }
+  
+  validTimestamps.push(now);
+  rateLimitMap.set(key, validTimestamps);
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    const env = validateEnv();
+    if (!env) {
+      return new Response(
+        JSON.stringify({ error: "Server configuration error. Please contact the administrator." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseAdmin = createClient(env.url, env.serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
@@ -31,6 +69,12 @@ serve(async (req) => {
     if (authError || !requestingUser) {
       return new Response(JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Rate limiting per user
+    if (!checkRateLimit(`user:${requestingUser.id}`, 20, 60000)) {
+      return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { data: roleData } = await supabaseAdmin
