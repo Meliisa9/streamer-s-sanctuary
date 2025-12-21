@@ -29,6 +29,21 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     }
   }, [user]);
 
+  const getInvokeErrorMessage = (err: any) => {
+    const contextBody = err?.context?.body;
+    if (typeof contextBody === "string" && contextBody.trim()) {
+      try {
+        const parsed = JSON.parse(contextBody);
+        if (typeof parsed?.error === "string") return parsed.error;
+        if (typeof parsed?.message === "string") return parsed.message;
+      } catch {
+        // ignore
+      }
+      return contextBody;
+    }
+    return err?.message || "Unknown error";
+  };
+
   const checkAccessCode = async () => {
     if (!user) return;
 
@@ -39,12 +54,9 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Missing session");
 
-      // Call backend function to check if user has a code
       const { data, error } = await supabase.functions.invoke("admin-code", {
         body: { action: "check" },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (error) throw error;
@@ -59,7 +71,7 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       console.error("Error checking access code:", error);
       toast({
         title: "Error checking admin code",
-        description: error?.message || error?.context?.body || "Please try again",
+        description: getInvokeErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -91,12 +103,9 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Missing session");
 
-      // Call backend function to set the code (hashes server-side)
       const { data, error } = await supabase.functions.invoke("admin-code", {
         body: { action: "set", code: newCode },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (error) throw error;
@@ -107,7 +116,7 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     } catch (error: any) {
       toast({
         title: "Error setting code",
-        description: error?.message || error?.context?.body || "Failed to set code",
+        description: getInvokeErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -129,12 +138,9 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       const accessToken = sessionData?.session?.access_token;
       if (!accessToken) throw new Error("Missing session");
 
-      // Call backend function to verify the code (compares hash server-side)
       const { data, error } = await supabase.functions.invoke("admin-code", {
         body: { action: "verify", code },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (error) throw error;
@@ -152,7 +158,7 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     } catch (error: any) {
       toast({
         title: "Error verifying code",
-        description: error?.message || error?.context?.body || "Failed to verify code",
+        description: getInvokeErrorMessage(error),
         variant: "destructive",
       });
     } finally {

@@ -9,9 +9,27 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = (Deno.env.get("SUPABASE_URL") || "").trim();
+    const anonKey = (Deno.env.get("SUPABASE_ANON_KEY") || "").trim();
+    const serviceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+
+    if (!supabaseUrl || !anonKey || !serviceKey) {
+      console.log("[whitelabel-save] missing env", {
+        hasUrl: !!supabaseUrl,
+        hasAnonKey: !!anonKey,
+        hasServiceKey: !!serviceKey,
+      });
+      return new Response(
+        JSON.stringify({
+          error:
+            "Backend is missing required env vars for saving white-label settings. If running locally, ensure your backend is started and injects SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY into functions.",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const authHeader = req.headers.get("Authorization") || "";
 
