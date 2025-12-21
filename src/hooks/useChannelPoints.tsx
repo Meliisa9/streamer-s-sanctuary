@@ -29,8 +29,9 @@ export function useChannelPoints() {
     return { Authorization: `Bearer ${token}` };
   }, []);
 
-  const getInvokeErrorMessage = useCallback((err: any) => {
+  const getInvokeErrorMessage = useCallback(async (err: any): Promise<string> => {
     const contextBody = err?.context?.body;
+
     if (typeof contextBody === "string" && contextBody.trim()) {
       try {
         const parsed = JSON.parse(contextBody);
@@ -41,6 +42,27 @@ export function useChannelPoints() {
       }
       return contextBody;
     }
+
+    // supabase-js FunctionsHttpError often exposes the underlying Response as `context`
+    const maybeResponse = err?.context;
+    if (maybeResponse && typeof maybeResponse.clone === "function" && typeof maybeResponse.text === "function") {
+      try {
+        const text = await maybeResponse.clone().text();
+        if (text?.trim()) {
+          try {
+            const parsed = JSON.parse(text);
+            if (typeof parsed?.error === "string") return parsed.error;
+            if (typeof parsed?.message === "string") return parsed.message;
+          } catch {
+            // ignore
+          }
+          return text;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     return err?.message || "Unknown error";
   }, []);
 
@@ -186,11 +208,13 @@ export function useChannelPoints() {
     }
 
     try {
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("twitch-channel-points", {
         body: {
           action: "authorize",
           state: user.id,
         },
+        headers,
       });
 
       if (error) throw error;
@@ -205,7 +229,7 @@ export function useChannelPoints() {
       console.error("Twitch connection error:", error);
       toast({
         title: "Connection Failed",
-        description: getInvokeErrorMessage(error),
+        description: await getInvokeErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -223,12 +247,14 @@ export function useChannelPoints() {
     }
 
     try {
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("kick-oauth", {
         body: {
           action: "authorize",
           state: user.id,
           frontend_url: window.location.origin,
         },
+        headers,
       });
 
       if (error) throw error;
@@ -246,7 +272,7 @@ export function useChannelPoints() {
       console.error("Kick connection error:", error);
       toast({
         title: "Connection Failed",
-        description: getInvokeErrorMessage(error),
+        description: await getInvokeErrorMessage(error),
         variant: "destructive",
       });
     }

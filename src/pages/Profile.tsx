@@ -287,14 +287,60 @@ export default function Profile() {
     navigate("/");
   };
 
+  const getAuthHeader = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Missing session");
+    return { Authorization: `Bearer ${token}` };
+  };
+
+  const getInvokeErrorMessage = async (err: any): Promise<string> => {
+    const contextBody = err?.context?.body;
+
+    if (typeof contextBody === "string" && contextBody.trim()) {
+      try {
+        const parsed = JSON.parse(contextBody);
+        if (typeof parsed?.error === "string") return parsed.error;
+        if (typeof parsed?.message === "string") return parsed.message;
+      } catch {
+        // ignore
+      }
+      return contextBody;
+    }
+
+    const maybeResponse = err?.context;
+    if (maybeResponse && typeof maybeResponse.clone === "function" && typeof maybeResponse.text === "function") {
+      try {
+        const text = await maybeResponse.clone().text();
+        if (text?.trim()) {
+          try {
+            const parsed = JSON.parse(text);
+            if (typeof parsed?.error === "string") return parsed.error;
+            if (typeof parsed?.message === "string") return parsed.message;
+          } catch {
+            // ignore
+          }
+          return text;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    return err?.message || "Unknown error";
+  };
+
   const handleConnectTwitch = async () => {
     setConnectingProvider("twitch");
     try {
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("twitch-channel-points", {
         body: {
           action: "authorize",
           state: user.id,
         },
+        headers,
       });
 
       if (error) throw error;
@@ -303,10 +349,13 @@ export default function Profile() {
         throw new Error("No authorization URL returned");
       }
 
-      // Redirect to Twitch OAuth
       window.location.href = data.authUrl;
     } catch (error: any) {
-      toast({ title: "Failed to connect Twitch", description: error.message, variant: "destructive" });
+      toast({
+        title: "Failed to connect Twitch",
+        description: await getInvokeErrorMessage(error),
+        variant: "destructive",
+      });
       setConnectingProvider(null);
     }
   };
@@ -316,8 +365,13 @@ export default function Profile() {
     try {
       const { error } = await supabase.auth.linkIdentity({ provider: "discord" });
       if (error) throw error;
+      // linkIdentity triggers a redirect; UI state will be refreshed on return.
     } catch (error: any) {
-      toast({ title: "Failed to connect Discord", description: error.message, variant: "destructive" });
+      toast({
+        title: "Failed to connect Discord",
+        description: error?.message || "Failed to connect",
+        variant: "destructive",
+      });
       setConnectingProvider(null);
     }
   };
@@ -325,12 +379,14 @@ export default function Profile() {
   const handleConnectKick = async () => {
     setConnectingProvider("kick");
     try {
+      const headers = await getAuthHeader();
       const { data, error } = await supabase.functions.invoke("kick-oauth", {
         body: {
           action: "authorize",
           state: user.id,
           frontend_url: window.location.origin,
         },
+        headers,
       });
 
       if (error) throw error;
@@ -340,13 +396,25 @@ export default function Profile() {
         throw new Error("No authorization URL returned");
       }
 
-      // Redirect to Kick OAuth
       window.location.href = authUrl;
     } catch (error: any) {
-      toast({ title: "Failed to connect Kick", description: error.message, variant: "destructive" });
+      toast({
+        title: "Failed to connect Kick",
+        description: await getInvokeErrorMessage(error),
+        variant: "destructive",
+      });
       setConnectingProvider(null);
     }
   };
+
+  const [freshAuthUser, setFreshAuthUser] = useState<any>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!error) setFreshAuthUser(data.user ?? null);
+    });
+  }, [user?.id]);
 
   if (!user) {
     navigate("/auth");
@@ -363,8 +431,8 @@ export default function Profile() {
     : "Unknown";
 
   const level = getLevelInfo(profile?.points || 0);
-  const identities = user.identities || [];
-  const twitchConnected = identities.some((i) => i.provider === "twitch");
+  const identities = (freshAuthUser?.identities || user.identities || []) as any[];
+  const twitchConnected = !!profile?.twitch_username;
   const discordConnected = identities.some((i) => i.provider === "discord");
   const kickConnected = !!profile?.kick_username;
 
