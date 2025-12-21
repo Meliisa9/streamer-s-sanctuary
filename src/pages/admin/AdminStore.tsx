@@ -869,34 +869,72 @@ export default function AdminStore() {
                     />
                   </div>
 
-                  {/* Image URL with Preview */}
+                  {/* Image Upload */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Image className="w-4 h-4 text-muted-foreground" />
-                      Image URL
+                      Item Image
                     </Label>
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <Input
-                          value={itemForm.image_url}
-                          onChange={(e) => setItemForm(f => ({ ...f, image_url: e.target.value }))}
-                          placeholder="https://example.com/image.jpg"
-                          className="h-11"
-                        />
-                      </div>
-                      {itemForm.image_url && (
-                        <div className="w-24 h-24 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
-                          <img 
-                            src={itemForm.image_url} 
-                            alt="Preview" 
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
+                    <Tabs defaultValue="url" className="w-full">
+                      <TabsList className="w-full">
+                        <TabsTrigger value="url" className="flex-1">URL</TabsTrigger>
+                        <TabsTrigger value="upload" className="flex-1">Upload</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="url" className="mt-3">
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <Input
+                              value={itemForm.image_url}
+                              onChange={(e) => setItemForm(f => ({ ...f, image_url: e.target.value }))}
+                              placeholder="https://example.com/image.jpg"
+                              className="h-11"
+                            />
+                          </div>
+                          {itemForm.image_url && (
+                            <div className="w-24 h-24 rounded-lg border bg-muted overflow-hidden flex-shrink-0">
+                              <img 
+                                src={itemForm.image_url} 
+                                alt="Preview" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </TabsContent>
+                      <TabsContent value="upload" className="mt-3">
+                        <div className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              try {
+                                const fileExt = file.name.split(".").pop();
+                                const fileName = `store-items/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                const { error: uploadError } = await supabase.storage.from("media").upload(fileName, file, { upsert: true });
+                                if (uploadError) throw uploadError;
+                                const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(fileName);
+                                setItemForm(f => ({ ...f, image_url: publicUrl }));
+                                toast({ title: "Image uploaded!" });
+                              } catch (error: any) {
+                                toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+                              }
+                            }}
+                            className="hidden"
+                            id="store-image-upload"
+                          />
+                          <label htmlFor="store-image-upload" className="cursor-pointer">
+                            <Image className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">Click to upload image</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                          </label>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </div>
 
                   {/* Points Cost & Category */}
