@@ -6,6 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Validate required environment variables
+function validateEnv(): { url: string; serviceKey: string } | null {
+  const url = (Deno.env.get("SUPABASE_URL") || "").trim();
+  const serviceKey = (Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+  
+  if (!url || !serviceKey) {
+    console.error("[check-stream-status] Missing required environment variables", {
+      hasUrl: !!url,
+      hasServiceKey: !!serviceKey,
+    });
+    return null;
+  }
+  
+  return { url, serviceKey };
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -13,9 +29,15 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const env = validateEnv();
+    if (!env) {
+      return new Response(
+        JSON.stringify({ error: "Server configuration error", is_live: false }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabase = createClient(env.url, env.serviceKey);
 
     console.log("Checking stream status...");
 

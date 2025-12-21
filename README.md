@@ -438,6 +438,11 @@ Once you have admin access, here's what you can do:
 
 When you first access the admin panel, you'll set a personal access code. This is an extra layer of security - you'll need to enter this code each time you access admin features.
 
+**Important Security Notes:**
+- Access codes are securely hashed using SHA-256 with unique salts
+- Nobody can see your code, not even in the database
+- If you forget your code, an administrator must delete it from the database for you to create a new one
+
 ---
 
 ## 🔒 Security Features
@@ -446,13 +451,24 @@ StreamerX includes enterprise-level security:
 
 | Feature | What It Does |
 |---------|--------------|
-| **Row Level Security** | Database rules that protect data |
-| **Role-Based Access** | Different permissions for different users |
-| **Secure Authentication** | Industry-standard login system |
-| **Input Validation** | Prevents bad data from entering |
-| **XSS Protection** | Blocks malicious scripts |
-| **Audit Logging** | Tracks all admin actions |
-| **Admin Access Codes** | Extra security for admin panel |
+| **Row Level Security** | Database rules that protect data - users can only access what they're allowed to |
+| **Role-Based Access** | Different permissions for admin, moderator, writer, and user roles |
+| **Secure Authentication** | Industry-standard JWT authentication with Supabase Auth |
+| **Input Validation** | Zod schemas validate all user inputs before processing |
+| **XSS Protection** | DOMPurify sanitizes all HTML content with additional hooks for iframe/link security |
+| **CSRF Protection** | SameSite cookies and origin verification |
+| **Audit Logging** | All admin actions are tracked in audit logs |
+| **Admin Access Codes** | SHA-256 hashed codes add extra admin panel security |
+| **Rate Limiting** | Edge functions include rate limiting to prevent abuse |
+| **Secure Error Handling** | Error messages are sanitized to prevent information disclosure |
+
+### Security Utilities (v1.1+)
+
+The project now includes dedicated security utilities in `src/lib/`:
+
+- **`validation.ts`** - Comprehensive input validation schemas for emails, passwords, usernames, URLs, and more
+- **`security.ts`** - Security helpers including nonce generation, safe JSON parsing, sensitive data masking, and timing-safe comparisons
+- **`sanitize.ts`** - Enhanced HTML sanitization with iframe source validation and link safety hooks
 
 ---
 
@@ -484,6 +500,16 @@ StreamerX includes enterprise-level security:
 - Close other terminal windows running `npm run dev`
 - Or use a different port: `npm run dev -- --port 3000`
 
+### Edge function errors (non-2xx status)
+- Check that your backend is running (if local development)
+- Verify environment variables are set correctly
+- Check the function logs for specific error messages
+
+### "Backend is missing required environment variables"
+- For local development, ensure Supabase CLI is running with `supabase start`
+- Check that `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are available
+- For cloud deployment, verify secrets are configured in your hosting provider
+
 ---
 
 ## ❓ Frequently Asked Questions
@@ -501,10 +527,10 @@ A: Vercel and Netlify have free tiers. Supabase has a generous free tier. You ca
 A: Yes! All hosting providers let you connect custom domains.
 
 **Q: Is my data secure?**
-A: Yes! All data is protected with Row Level Security, meaning users can only access what they're supposed to.
+A: Yes! All data is protected with Row Level Security, and we use industry-standard security practices including input validation, XSS protection, and secure authentication.
 
 **Q: Can I add my own features?**
-A: Absolutely! The codebase is well-organized and documented for customization.
+A: Absolutely! The codebase is well-organized with TypeScript and documented for customization.
 
 ---
 
@@ -520,6 +546,34 @@ This project is licensed under the **MIT License** - you can use it for anything
 - 📚 Read the [Project Documentation](docs/PROJECT_DOCUMENTATION.md) for technical details
 - 🐛 Found a bug? Open an issue on GitHub
 - 💬 Have questions? Start a discussion
+
+---
+
+## 📝 Changelog
+
+### v1.1.0 (December 2024)
+- **Security Improvements:**
+  - Added comprehensive input validation library (`src/lib/validation.ts`)
+  - Added security utilities library (`src/lib/security.ts`)
+  - Enhanced HTML sanitization with iframe source validation
+  - Added rate limiting to edge functions
+  - Improved error handling and sanitization
+  - Added CSS injection protection in white-label settings
+  
+- **Edge Function Improvements:**
+  - All edge functions now validate environment variables on startup
+  - Better error messages for configuration issues
+  - Rate limiting to prevent abuse
+  
+- **Error Boundary Improvements:**
+  - Enhanced error recovery with Try Again, Reload, and Go Home options
+  - Unique error IDs for support reference
+  - Improved development error details
+
+- **Documentation Updates:**
+  - Updated README with security details
+  - Updated API documentation with white-label endpoint
+  - Comprehensive PROJECT_DOCUMENTATION for value assessment
 
 ---
 
