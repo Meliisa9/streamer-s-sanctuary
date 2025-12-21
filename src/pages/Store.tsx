@@ -25,8 +25,13 @@ import {
   CheckCircle,
   AlertCircle,
   History,
-  Loader2
+  Loader2,
+  ExternalLink,
+  Wallet,
+  RefreshCw,
+  Calendar
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface StoreCategory {
   id: string;
@@ -264,6 +269,94 @@ export default function Store() {
                   </div>
                 </motion.div>
               )}
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Stats/Info Boxes */}
+        <section className="container pb-8">
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* User Info Box */}
+            {user && profile && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="p-5 rounded-2xl bg-card border border-border"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  {profile.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Wallet className="w-6 h-6 text-primary" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold">{profile.display_name || profile.username || 'User'}</p>
+                    <p className="text-sm text-muted-foreground">Member</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                    <span className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-yellow-500" />
+                      Points Balance
+                    </span>
+                    <span className="font-bold">{userPoints.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                    <span className="flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 text-primary" />
+                      Redemptions
+                    </span>
+                    <span className="font-bold">{myRedemptions.length}</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Delivery Info Box */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="p-5 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Clock className="w-5 h-5 text-primary" />
+                </div>
+                <p className="font-semibold">Delivery Info</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Items will be credited within <span className="font-semibold text-foreground">14 BUSINESS DAYS</span> from the day of approval.
+              </p>
+            </motion.div>
+
+            {/* T&C Link Box */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="p-5 rounded-2xl bg-card border border-border"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-muted">
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="font-semibold">Terms & Conditions</p>
+              </div>
+              <p className="text-sm text-muted-foreground mb-3">
+                Learn how points work, delivery times, and store policies.
+              </p>
+              <Link 
+                to="/store/terms" 
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                Read Store T&C
+                <ExternalLink className="w-4 h-4" />
+              </Link>
             </motion.div>
           </div>
         </section>
@@ -542,13 +635,15 @@ function ItemCard({
       transition={{ delay: index * 0.05 }}
     >
       <Card className={`h-full flex flex-col overflow-hidden group ${isFeatured ? "border-primary/50 shadow-lg shadow-primary/10" : ""}`}>
-        <CardHeader className="p-0 relative">
+        <CardHeader className="p-0 relative overflow-hidden">
           {item.image_url ? (
-            <img
-              src={item.image_url}
-              alt={item.name}
-              className="w-full h-48 object-cover transition-transform group-hover:scale-105"
-            />
+            <div className="w-full h-48 overflow-hidden">
+              <img
+                src={item.image_url}
+                alt={item.name}
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+              />
+            </div>
           ) : (
             <div className="w-full h-48 bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
               <Package className="w-16 h-16 text-muted-foreground" />

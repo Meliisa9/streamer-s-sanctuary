@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, Layout, Eye, EyeOff, GripVertical, Home, Video, Trophy, Newspaper, Gift, Users, Calendar, Target, Crosshair, BarChart, Info, Twitch } from "lucide-react";
+import { Save, Loader2, Layout, Eye, EyeOff, GripVertical, Home, Video, Trophy, Newspaper, Gift, Users, Calendar, Target, Crosshair, BarChart, Info, Twitch, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ const allNavItems: NavItem[] = [
   { key: "nav_giveaways_visible", label: "Giveaways", description: "Active giveaways", icon: Gift, section: "main" },
   { key: "nav_streamers_visible", label: "Streamers", description: "Featured streamers", icon: Users, section: "main" },
   { key: "nav_stream_visible", label: "Stream", description: "Live stream embed", icon: Twitch, section: "main" },
+  { key: "nav_store_visible", label: "Store", description: "Points store", icon: ShoppingCart, section: "main" },
   // Community section
   { key: "nav_events_visible", label: "Events", description: "Stream schedule and events", icon: Calendar, section: "community" },
   { key: "nav_bonus_hunt_visible", label: "Bonus Hunt", description: "Bonus hunt tracker", icon: Crosshair, section: "community" },

@@ -79,7 +79,9 @@ import AdminLanguage from "./pages/admin/AdminLanguage";
 import WinGallery from "./pages/WinGallery";
 import StreamerStats from "./pages/StreamerStats";
 import Store from "./pages/Store";
+import StoreTerms from "./pages/StoreTerms";
 import AdminStore from "./pages/admin/AdminStore";
+import AdminStoreTerms from "./pages/admin/AdminStoreTerms";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -141,6 +143,7 @@ const App = () => (
                     <Route path="/wins" element={<WinGallery />} />
                     <Route path="/streamer-stats" element={<StreamerStats />} />
                     <Route path="/store" element={<Store />} />
+                    <Route path="/store/terms" element={<StoreTerms />} />
                     <Route path="/user/:usernameOrId" element={<UserProfile />} />
                   </Route>
 
@@ -188,6 +191,7 @@ const App = () => (
                     <Route path="streamer-stats" element={<AdminStreamerStats />} />
                     <Route path="settings/language" element={<AdminLanguage />} />
                     <Route path="store" element={<AdminStore />} />
+                    <Route path="store/terms" element={<AdminStoreTerms />} />
                     <Route path="audit" element={<AdminAuditLog />} />
                     <Route path="activity" element={<AdminActivityLog />} />
                   </Route>
