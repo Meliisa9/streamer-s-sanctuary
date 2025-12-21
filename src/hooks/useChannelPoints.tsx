@@ -213,6 +213,7 @@ export function useChannelPoints() {
         body: {
           action: "authorize",
           state: user.id,
+          frontend_url: window.location.origin,
         },
         headers,
       });

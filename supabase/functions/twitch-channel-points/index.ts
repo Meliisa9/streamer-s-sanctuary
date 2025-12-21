@@ -65,11 +65,18 @@ serve(async (req) => {
       // Generate authorization URL for Twitch OAuth
       const functionUrl = `${supabaseUrl}/functions/v1/twitch-channel-points`;
       const redirectUri = `${functionUrl}?action=callback`;
-      const frontendUrl = req.headers.get("origin") || "http://localhost:8080";
+      
+      // Get frontend URL from body or headers
+      const frontendUrl = (bodyData.frontend_url as string) || 
+                          url.searchParams.get("frontend_url") || 
+                          req.headers.get("origin") ||
+                          "http://localhost:8080";
       const scopes = ["channel:read:redemptions", "user:read:email"].join(" ");
       
       // Get state from body (user_id)
       const userId = (bodyData.state as string) || "";
+      
+      console.log("Twitch authorize", { frontendUrl, redirectUri, userId });
       
       // Encode state with frontend URL for redirect back
       const stateData = btoa(JSON.stringify({ frontend_url: frontendUrl, user_id: userId }));
