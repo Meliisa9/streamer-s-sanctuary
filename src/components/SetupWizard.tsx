@@ -158,23 +158,20 @@ export default function SetupWizard({ open, onClose, onComplete }: SetupWizardPr
           .upsert({ key: setting.key, value: setting.value }, { onConflict: "key" });
       }
 
-      // Save admin access code if provided
+      // Save admin access code if provided (using edge function to hash it properly)
       if (formData.admin_access_code.length >= 6) {
-        const { data: existingCode } = await supabase
-          .from("admin_access_codes")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (existingCode) {
-          await supabase
-            .from("admin_access_codes")
-            .update({ access_code: formData.admin_access_code })
-            .eq("user_id", user.id);
-        } else {
-          await supabase
-            .from("admin_access_codes")
-            .insert({ user_id: user.id, access_code: formData.admin_access_code });
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        
+        if (accessToken) {
+          const { error: codeError } = await supabase.functions.invoke("admin-code", {
+            body: { action: "set", code: formData.admin_access_code },
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          
+          if (codeError) {
+            console.error("Error setting admin access code:", codeError);
+          }
         }
       }
 
