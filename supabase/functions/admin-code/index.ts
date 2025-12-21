@@ -30,7 +30,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     // Create admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -47,18 +47,33 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } }
     });
-    
+
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) {
-      console.error('Auth error:', userError);
+      console.error('[admin-code] Auth error:', userError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Bootstrap: if no roles exist yet, promote first authenticated user to admin
+    const { count: rolesCount } = await supabaseAdmin
+      .from('user_roles')
+      .select('id', { count: 'exact', head: true });
+
+    if ((rolesCount ?? 0) === 0) {
+      console.log('[admin-code] Bootstrapping first admin role for user', user.id);
+      const { error: bootstrapError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({ user_id: user.id, role: 'admin' });
+      if (bootstrapError) {
+        console.error('[admin-code] Bootstrap role error:', bootstrapError);
+      }
+    }
+
     const { action, code } = await req.json();
-    console.log(`Admin code action: ${action} for user: ${user.id}`);
+    console.log(`[admin-code] action=${action} user=${user.id}`);
 
     if (action === 'check') {
       // Check if user has an access code set (not just row exists, but has actual code)
