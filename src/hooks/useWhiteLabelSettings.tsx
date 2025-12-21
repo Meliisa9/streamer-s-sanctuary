@@ -132,7 +132,7 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
         "postgres_changes",
         { event: "*", schema: "public", table: "site_settings" },
         (payload) => {
-          const key = (payload.new as any)?.key;
+          const key = ((payload.new as any)?.key ?? (payload.old as any)?.key) as string | undefined;
           if (key?.startsWith("whitelabel_")) {
             fetchSettings();
           }

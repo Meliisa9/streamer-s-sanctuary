@@ -33,14 +33,21 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     if (!user) return;
 
     try {
-      // Call edge function to check if user has a code
-      const { data, error } = await supabase.functions.invoke('admin-code', {
-        body: { action: 'check' }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Missing session");
+
+      // Call backend function to check if user has a code
+      const { data, error } = await supabase.functions.invoke("admin-code", {
+        body: { action: "check" },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
-      if (error) {
-        console.error("Error checking access code:", error);
-      }
+      if (error) throw error;
 
       if (!data?.hasCode) {
         setHasAccessCode(false);
@@ -48,8 +55,13 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       } else {
         setHasAccessCode(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking access code:", error);
+      toast({
+        title: "Error checking admin code",
+        description: error?.message || error?.context?.body || "Please try again",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -73,9 +85,18 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     setIsSubmitting(true);
 
     try {
-      // Call edge function to set the code (hashes server-side)
-      const { data, error } = await supabase.functions.invoke('admin-code', {
-        body: { action: 'set', code: newCode }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Missing session");
+
+      // Call backend function to set the code (hashes server-side)
+      const { data, error } = await supabase.functions.invoke("admin-code", {
+        body: { action: "set", code: newCode },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (error) throw error;
@@ -84,7 +105,11 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
       setIsVerified(true);
       toast({ title: "Access code created", description: "Your personal admin access code has been set securely" });
     } catch (error: any) {
-      toast({ title: "Error setting code", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error setting code",
+        description: error?.message || error?.context?.body || "Failed to set code",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -98,9 +123,18 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
     setIsSubmitting(true);
 
     try {
-      // Call edge function to verify the code (compares hash server-side)
-      const { data, error } = await supabase.functions.invoke('admin-code', {
-        body: { action: 'verify', code }
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Missing session");
+
+      // Call backend function to verify the code (compares hash server-side)
+      const { data, error } = await supabase.functions.invoke("admin-code", {
+        body: { action: "verify", code },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
 
       if (error) throw error;
@@ -109,14 +143,18 @@ export function AdminCodeGate({ children }: AdminCodeGateProps) {
         setIsVerified(true);
         toast({ title: "Access granted" });
       } else {
-        toast({ 
-          title: "Invalid code", 
+        toast({
+          title: "Invalid code",
           description: data?.error || "Please enter your correct admin access code",
-          variant: "destructive" 
+          variant: "destructive",
         });
       }
     } catch (error: any) {
-      toast({ title: "Error verifying code", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error verifying code",
+        description: error?.message || error?.context?.body || "Failed to verify code",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
       setCode("");
