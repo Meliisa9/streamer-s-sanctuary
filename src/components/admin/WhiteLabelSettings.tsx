@@ -106,45 +106,44 @@ export function WhiteLabelSettings() {
 
     setIsSaving(true);
     try {
-      // Build array of upserts to execute
-      const upsertPromises = Object.entries(config).map(([key, value]) => {
-        return supabase
-          .from("site_settings")
-          .upsert(
-            { 
-              key: `whitelabel_${key}`, 
-              value: value as any,
-              updated_at: new Date().toISOString()
-            }, 
-            { onConflict: "key" }
-          );
+      const { data, error } = await supabase.functions.invoke("whitelabel-save", {
+        body: { config },
       });
 
-      const results = await Promise.all(upsertPromises);
-      const errors = results.filter(r => r.error);
-      
-      if (errors.length > 0) {
-        throw new Error(errors[0].error?.message || "Failed to save settings");
+      if (error) {
+        throw error;
       }
 
-      // Apply custom CSS immediately
+      if (!data?.ok) {
+        throw new Error(data?.error || "Failed to save settings");
+      }
+
+      // Apply immediately for instant feedback
       applyCustomCSS(config.custom_css);
-      
-      // Apply head/body scripts
-      if (config.custom_head_scripts) {
-        applyHeadScripts(config.custom_head_scripts);
-      }
-      if (config.custom_body_scripts) {
-        applyBodyScripts(config.custom_body_scripts);
-      }
+      if (config.custom_head_scripts) applyHeadScripts(config.custom_head_scripts);
+      if (config.custom_body_scripts) applyBodyScripts(config.custom_body_scripts);
 
       toast({ title: "White-label settings saved successfully" });
     } catch (error: any) {
       console.error("Error saving white-label settings:", error);
-      toast({ title: "Error saving settings", description: error.message, variant: "destructive" });
+      toast({
+        title: "Error saving settings",
+        description: error?.message || "Failed to save settings",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const applyCustomCSS = (css: string) => {
+    let styleElement = document.getElementById("custom-whitelabel-css");
+    if (!styleElement) {
+      styleElement = document.createElement("style");
+      styleElement.id = "custom-whitelabel-css";
+      document.head.appendChild(styleElement);
+    }
+    styleElement.textContent = css;
   };
 
   const applyHeadScripts = (scripts: string) => {
@@ -167,16 +166,6 @@ export function WhiteLabelSettings() {
       document.body.appendChild(container);
     }
     container.innerHTML = scripts;
-  };
-
-  const applyCustomCSS = (css: string) => {
-    let styleElement = document.getElementById("custom-whitelabel-css");
-    if (!styleElement) {
-      styleElement = document.createElement("style");
-      styleElement.id = "custom-whitelabel-css";
-      document.head.appendChild(styleElement);
-    }
-    styleElement.textContent = css;
   };
 
   const copyToClipboard = (text: string, field: string) => {

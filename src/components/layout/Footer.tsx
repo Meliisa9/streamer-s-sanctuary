@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Twitter, Youtube, Instagram, MessageCircle, Heart, Twitch, Globe, Facebook, Linkedin, Github, Send, Mail, Link as LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useWhiteLabelSettings } from "@/hooks/useWhiteLabelSettings";
 import { supabase } from "@/integrations/supabase/client";
 
 const quickLinks = [
@@ -64,6 +65,7 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
   function Footer(props, ref) {
     const { className, ...rest } = props;
     const { settings } = useSiteSettings();
+    const { settings: wl } = useWhiteLabelSettings();
     const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
     useEffect(() => {
@@ -192,9 +194,15 @@ export const Footer = forwardRef<HTMLElement, ComponentPropsWithoutRef<"footer">
             <p className="text-sm text-muted-foreground">
               {settings.footer_copyright || `© ${new Date().getFullYear()} ${settings.site_name}. All rights reserved.`}
             </p>
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              Made with <Heart className="w-4 h-4 text-destructive" /> for the community
-            </p>
+
+            {wl.powered_by_visible && wl.powered_by_text ? (
+              <p className="text-sm text-muted-foreground">{wl.powered_by_text}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                Made with <Heart className="w-4 h-4 text-destructive" /> for the community
+              </p>
+            )}
+
             <p className="text-xs text-muted-foreground max-w-md text-center md:text-right">
               Gambling can be addictive. Play responsibly. 18+
             </p>

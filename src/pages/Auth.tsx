@@ -1,15 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Twitch, MessageCircle, Mail, Lock, User, X, Loader2, 
-  Eye, EyeOff, CheckCircle, Info, KeyRound, ArrowLeft
+import {
+  Twitch,
+  MessageCircle,
+  Mail,
+  Lock,
+  User,
+  X,
+  Loader2,
+  Eye,
+  EyeOff,
+  CheckCircle,
+  Info,
+  KeyRound,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useWhiteLabelSettings } from "@/hooks/useWhiteLabelSettings";
 import { z } from "zod";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Footer } from "@/components/layout/Footer";
@@ -51,6 +63,7 @@ function Auth() {
   
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { settings: wl } = useWhiteLabelSettings();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -355,7 +368,7 @@ function Auth() {
     <div className="min-h-screen flex">
       {/* Sidebar */}
       <Sidebar />
-      
+
       {/* Main Content Area */}
       <motion.main
         className="flex-1 flex flex-col min-h-screen relative"
@@ -370,7 +383,7 @@ function Auth() {
             <GlobalSearch />
           </div>
         </div>
-        
+
         {/* Background content placeholder */}
         <div className="flex-1 px-6 opacity-30 pointer-events-none">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -379,14 +392,29 @@ function Auth() {
             ))}
           </div>
         </div>
-        
+
         <Footer />
       </motion.main>
 
       {/* Modal Overlay */}
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         {/* Backdrop */}
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+        <div
+          className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+          style={
+            wl.login_background_url
+              ? {
+                  backgroundImage: `url(${wl.login_background_url})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
+        >
+          {wl.login_background_url && (
+            <div className="absolute inset-0 bg-background/70" />
+          )}
+        </div>
         
         {/* Auth Popup */}
         <motion.div
@@ -414,23 +442,36 @@ function Auth() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-                    {mode === "forgot" ? (
-                      <Mail className="w-8 h-8 text-white" />
+                  <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4 shadow-lg shadow-primary/20 overflow-hidden">
+                    {wl.login_logo_url && mode === "login" ? (
+                      <img
+                        src={wl.login_logo_url}
+                        alt="Login logo"
+                        className="w-full h-full object-contain p-2"
+                        loading="lazy"
+                      />
+                    ) : mode === "forgot" ? (
+                      <Mail className="w-8 h-8 text-primary-foreground" />
                     ) : mode === "signup" ? (
-                      <User className="w-8 h-8 text-white" />
+                      <User className="w-8 h-8 text-primary-foreground" />
                     ) : mode === "reset" ? (
-                      <KeyRound className="w-8 h-8 text-white" />
+                      <KeyRound className="w-8 h-8 text-primary-foreground" />
                     ) : (
-                      <Lock className="w-8 h-8 text-white" />
+                      <Lock className="w-8 h-8 text-primary-foreground" />
                     )}
                   </div>
                   <h1 className="text-2xl font-bold mb-2">
-                    {mode === "login" ? "Welcome Back" : mode === "signup" ? "Create Account" : mode === "reset" ? "Set New Password" : "Reset Password"}
+                    {mode === "login"
+                      ? wl.login_welcome_text || "Welcome Back"
+                      : mode === "signup"
+                      ? "Create Account"
+                      : mode === "reset"
+                      ? "Set New Password"
+                      : "Reset Password"}
                   </h1>
                   <p className="text-muted-foreground text-sm">
                     {mode === "login"
-                      ? "Sign in to access your account"
+                      ? wl.login_subtitle || "Sign in to access your account"
                       : mode === "signup"
                       ? "Join the community today"
                       : mode === "reset"

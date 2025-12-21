@@ -1,13 +1,19 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "./Sidebar";
 import { Footer } from "./Footer";
 import { UserNotifications } from "@/components/UserNotifications";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { useWhiteLabelSettings } from "@/hooks/useWhiteLabelSettings";
+import { useAuth } from "@/contexts/AuthContext";
+import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
 
 export function MainLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const location = useLocation();
+  const { settings, isLoading: isWhiteLabelLoading } = useWhiteLabelSettings();
+  const { isModerator, isLoading: isAuthLoading } = useAuth();
 
   useEffect(() => {
     const checkSidebarState = () => {
@@ -25,6 +31,30 @@ export function MainLayout() {
 
     return () => observer.disconnect();
   }, []);
+
+  const isMaintenanceOn = !!settings.maintenance_mode;
+  const isAuthRoute = location.pathname.startsWith("/auth");
+
+  if (!isWhiteLabelLoading && !isAuthLoading && isMaintenanceOn && !isModerator && !isAuthRoute) {
+    return (
+      <div className="min-h-screen flex">
+        <Sidebar />
+        <motion.main
+          className="flex-1 flex flex-col min-h-screen"
+          animate={{ marginLeft: sidebarCollapsed ? 80 : 260 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          <div className="flex items-center gap-4 p-4">
+            <div className="flex-1 flex justify-center">
+              <GlobalSearch />
+            </div>
+          </div>
+          <MaintenanceScreen message={settings.maintenance_message} />
+          <Footer />
+        </motion.main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex">
