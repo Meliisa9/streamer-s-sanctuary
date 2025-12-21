@@ -203,21 +203,16 @@ function AdminNavItem({ item, isActive, collapsed, isSubItem = false }: { item: 
     <NavLink to={item.path}>
       <div
         className={cn(
-          "flex items-center gap-3 rounded-lg transition-all duration-200 group",
-          isSubItem ? "px-3 py-2 ml-6" : "px-3 py-2.5",
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
           isActive
             ? "bg-primary/15 text-primary"
             : "text-muted-foreground hover:bg-secondary hover:text-foreground"
         )}
       >
-        <Icon className={cn(
-          "flex-shrink-0", 
-          isSubItem ? "w-4 h-4" : "w-5 h-5",
-          isActive && "text-primary"
-        )} />
+        <Icon className={cn("flex-shrink-0 w-5 h-5", isActive && "text-primary")} />
         {!collapsed && (
           <>
-            <span className={cn("font-medium flex-1", isSubItem ? "text-xs" : "text-sm")}>{item.label}</span>
+            <span className="font-medium flex-1 text-sm">{item.label}</span>
             {item.badge && item.badge > 0 && (
               <span className="px-1.5 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full">
                 {item.badge}
