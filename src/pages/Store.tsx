@@ -368,7 +368,7 @@ export default function Store() {
         {/* Stats/Info Boxes */}
         <section className="container py-12">
           <div className={`grid gap-6 ${user && profile ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-            {/* User Info Box */}
+            {/* User Wallet Box */}
             {user && profile && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -389,15 +389,45 @@ export default function Store() {
                     <p className="text-sm text-muted-foreground">Member</p>
                   </div>
                 </div>
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                <div className="space-y-2 text-sm">
+                  {/* Site Points */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
                     <span className="flex items-center gap-2">
                       <Coins className="w-4 h-4 text-yellow-500" />
-                      Points Balance
+                      Site Points
                     </span>
-                    <span className="font-bold text-base">{userPoints.toLocaleString()}</span>
+                    <span className="font-bold text-base text-yellow-600">{channelPoints.site.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                  {/* Twitch Points */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                    <span className="flex items-center gap-2">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 text-purple-500" fill="currentColor">
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                      </svg>
+                      Twitch Points
+                    </span>
+                    <span className="font-bold text-base text-purple-600">
+                      {isConnected("twitch") ? channelPoints.twitch.toLocaleString() : (
+                        <span className="text-muted-foreground text-xs font-normal">Not linked</span>
+                      )}
+                    </span>
+                  </div>
+                  {/* Kick Points */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                    <span className="flex items-center gap-2">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 text-green-500" fill="currentColor">
+                        <path d="M1.333 0v24h21.334V0H1.333Zm17.067 18.133h-4.267L9.6 12.8v5.333H6.4V5.867h3.2v5.066l4.267-5.066h4.267l-4.8 5.6 5.066 6.666Z" />
+                      </svg>
+                      Kick Points
+                    </span>
+                    <span className="font-bold text-base text-green-600">
+                      {isConnected("kick") ? channelPoints.kick.toLocaleString() : (
+                        <span className="text-muted-foreground text-xs font-normal">Not linked</span>
+                      )}
+                    </span>
+                  </div>
+                  {/* Redemptions */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50 mt-3">
                     <span className="flex items-center gap-2">
                       <ShoppingCart className="w-4 h-4 text-primary" />
                       Redemptions
