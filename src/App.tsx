@@ -75,6 +75,7 @@ import AdminWhiteLabel from "./pages/admin/AdminWhiteLabel";
 import AdminPredictions from "./pages/admin/AdminPredictions";
 import AdminWinGallery from "./pages/admin/AdminWinGallery";
 import AdminStreamerStats from "./pages/admin/AdminStreamerStats";
+import AdminLeaderboard from "./pages/admin/AdminLeaderboard";
 import WinGallery from "./pages/WinGallery";
 import StreamerStats from "./pages/StreamerStats";
 import Store from "./pages/Store";
@@ -187,6 +188,7 @@ const App = () => (
                     <Route path="bonus-hunt" element={<AdminBonusHunt />} />
                     <Route path="predictions" element={<AdminPredictions />} />
                     <Route path="win-gallery" element={<AdminWinGallery />} />
+                    <Route path="leaderboard" element={<AdminLeaderboard />} />
                     <Route path="streamer-stats" element={<AdminStreamerStats />} />
                     <Route path="settings/language" element={<Navigate to="/admin/settings/branding" replace />} />
                     <Route path="store" element={<AdminStore />} />
