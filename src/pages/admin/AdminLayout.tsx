@@ -114,6 +114,7 @@ const navSections: NavSection[] = [
       { icon: Crosshair, label: "Bonus Hunt", path: "/admin/bonus-hunt", roles: ["admin", "moderator"] },
       { icon: BarChart3, label: "Polls", path: "/admin/polls", roles: ["admin", "moderator"] },
       { icon: Target, label: "Predictions", path: "/admin/predictions", roles: ["admin", "moderator"] },
+      { icon: Trophy, label: "Leaderboard", path: "/admin/leaderboard", roles: ["admin", "moderator"] },
       { icon: Trophy, label: "Win Gallery", path: "/admin/win-gallery", roles: ["admin", "moderator"] },
       { icon: Store, label: "Points Store", path: "/admin/store", roles: ["admin", "moderator"] },
     ],
